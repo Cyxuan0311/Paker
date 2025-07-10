@@ -1,0 +1,27 @@
+# Build
+/build/
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.so
+*.dll
+*.dylib
+
+# IDE
+.vscode/
+.idea/
+*.sublime*
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Others
+cpppm.json 
