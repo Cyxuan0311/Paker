@@ -2,7 +2,11 @@
 
 <!-- GitHub Badges -->
 <p align="left">
+<<<<<<< HEAD
   <a href="https://github.com/Cyxuan0311/Paker.git/stargazers"><img src="https://img.shields.io/github/stars/Cyxuan0311/Paker?style=social" alt="Stars"></a>
+=======
+  <a href="https://github.com/Cyxuan0311/Paker/stargazers"><img src="https://img.shields.io/github/stars/Cyxuan0311/Paker?style=social" alt="Stars"></a>
+>>>>>>> 682c1a6e795d342221cecb3827565bbf463cdfe9
   <a href="https://github.com/Cyxuan0311/Paker/issues"><img src="https://img.shields.io/github/issues/Cyxuan0311/Paker" alt="Issues"></a>
   <a href="https://github.com/Cyxuan0311/Paker/pulls"><img src="https://img.shields.io/github/issues-pr/Cyxuan0311/Paker" alt="Pull Requests"></a>
   <a href="https://github.com/Cyxuan0311/Paker/network/members"><img src="https://img.shields.io/github/forks/Cyxuan0311/Paker?style=social" alt="Forks"></a>
