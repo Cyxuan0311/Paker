@@ -2,11 +2,11 @@
 
 <!-- GitHub Badges -->
 <p align="left">
-  <a href="https://github.com/yourusername/Paker/stargazers"><img src="https://img.shields.io/github/stars/Cyxuan0311/Paker?style=social" alt="Stars"></a>
-  <a href="https://github.com/yourusername/Paker/issues"><img src="https://img.shields.io/github/issues/Cyxuan0311/Paker" alt="Issues"></a>
-  <a href="https://github.com/yourusername/Paker/pulls"><img src="https://img.shields.io/github/issues-pr/Cyxuan0311/Paker" alt="Pull Requests"></a>
-  <a href="https://github.com/yourusername/Paker/network/members"><img src="https://img.shields.io/github/forks/Cyxuan0311/Paker?style=social" alt="Forks"></a>
-  <a href="https://github.com/yourusername/Paker/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Cyxuan0311/Paker" alt="License"></a>
+  <a href="https://github.com/Cyxuan0311/Paker/stargazers"><img src="https://img.shields.io/github/stars/Cyxuan0311/Paker?style=social" alt="Stars"></a>
+  <a href="https://github.com/Cyxuan0311/Paker/issues"><img src="https://img.shields.io/github/issues/Cyxuan0311/Paker" alt="Issues"></a>
+  <a href="https://github.com/Cyxuan0311/Paker/pulls"><img src="https://img.shields.io/github/issues-pr/Cyxuan0311/Paker" alt="Pull Requests"></a>
+  <a href="https://github.com/Cyxuan0311/Paker/network/members"><img src="https://img.shields.io/github/forks/Cyxuan0311/Paker?style=social" alt="Forks"></a>
+  <a href="https://github.com/Cyxuan0311/Paker/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Cyxuan0311/Paker" alt="License"></a>
 </p>
 
 Paker 是一个用 C++ 编写的轻量级 C++ 包管理器，支持本地依赖管理和命令行操作。
