@@ -2,7 +2,7 @@
 
 <!-- GitHub Badges -->
 <p align="left">
-  <a href="https://github.com/yourusername/Paker/stargazers"><img src="https://img.shields.io/github/stars/yourusername/Paker?style=social" alt="Stars"></a>
+  <a href="https://github.com/yourusername/Paker/stargazers"><img src="https://img.shields.io/github/stars/Cyxuan0311/Paker?style=social" alt="Stars"></a>
   <a href="https://github.com/yourusername/Paker/issues"><img src="https://img.shields.io/github/issues/yourusername/Paker" alt="Issues"></a>
   <a href="https://github.com/yourusername/Paker/pulls"><img src="https://img.shields.io/github/issues-pr/yourusername/Paker" alt="Pull Requests"></a>
   <a href="https://github.com/yourusername/Paker/network/members"><img src="https://img.shields.io/github/forks/yourusername/Paker?style=social" alt="Forks"></a>
