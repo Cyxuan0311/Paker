@@ -1,5 +1,6 @@
 # Build
 /build/
+/packages/
 CMakeFiles/
 CMakeCache.txt
 Makefile
@@ -24,4 +25,4 @@ cmake_install.cmake
 Thumbs.db
 
 # Others
-cpppm.json 
+Paker.json 
