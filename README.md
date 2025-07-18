@@ -2,11 +2,8 @@
 
 <!-- GitHub Badges -->
 <p align="left">
-<<<<<<< HEAD
   <a href="https://github.com/Cyxuan0311/Paker.git/stargazers"><img src="https://img.shields.io/github/stars/Cyxuan0311/Paker?style=social" alt="Stars"></a>
-=======
   <a href="https://github.com/Cyxuan0311/Paker/stargazers"><img src="https://img.shields.io/github/stars/Cyxuan0311/Paker?style=social" alt="Stars"></a>
->>>>>>> 682c1a6e795d342221cecb3827565bbf463cdfe9
   <a href="https://github.com/Cyxuan0311/Paker/issues"><img src="https://img.shields.io/github/issues/Cyxuan0311/Paker" alt="Issues"></a>
   <a href="https://github.com/Cyxuan0311/Paker/pulls"><img src="https://img.shields.io/github/issues-pr/Cyxuan0311/Paker" alt="Pull Requests"></a>
   <a href="https://github.com/Cyxuan0311/Paker/network/members"><img src="https://img.shields.io/github/forks/Cyxuan0311/Paker?style=social" alt="Forks"></a>
@@ -30,116 +27,24 @@ cmake ..
 make
 ```
 
-## 使用示例
+## 使用示例与命令行功能
 
-### 初始化项目
-```bash
-./Paker init
-```
-输出：
-```
-Initialized Paker project.
-```
-
-### 添加依赖
-```bash
-./Paker add fmt
-```
-输出：
-```
-Added dependency: fmt
-```
-
-### 列出依赖
-```bash
-./Paker list
-```
-输出：
-```
-Dependencies:
-  fmt: *
-```
-
-### 移除依赖
-```bash
-./Paker remove fmt
-```
-输出：
-```
-Removed dependency: fmt
-```
-
-## 命令行功能
-
-### 初始化项目
-```bash
-./Paker init
-```
-
-### 添加依赖
-```bash
-./Paker add fmt
-```
-
-### 递归添加依赖及其依赖
-```bash
-./Paker add-recursive fmt
-```
-
-### 列出依赖
-```bash
-./Paker list
-```
-
-### 移除依赖
-```bash
-./Paker remove fmt
-```
-
-### 显示依赖树
-```bash
-./Paker tree
-```
-
-### 依赖版本锁定与复现
-- 生成/更新 lock 文件
-```bash
-./Paker lock
-```
-- 按 lock 文件安装依赖
-```bash
-./Paker install-lock
-```
-
-### 升级依赖
-- 升级所有依赖到最新
-```bash
-./Paker upgrade
-```
-- 升级指定依赖
-```bash
-./Paker upgrade fmt
-```
-
-### 搜索可用依赖包
-```bash
-./Paker search fmt
-```
-
-### 查看依赖包信息
-```bash
-./Paker info fmt
-```
-
-### 同步/刷新本地依赖（git pull）
-```bash
-./Paker update
-```
-
-### 清理未使用或损坏的依赖包
-```bash
-./Paker clean
-```
+| 功能             | 命令示例                        | 说明                         | 示例输出 |
+|------------------|----------------------------------|------------------------------|----------|
+| 初始化项目       | `./Paker init`                   | 初始化依赖管理               | Initialized Paker project. |
+| 添加依赖         | `./Paker add fmt`                | 添加依赖包                   | Added dependency: fmt |
+| 递归添加依赖     | `./Paker add-recursive fmt`      | 递归安装依赖及其依赖         | Added dependency: fmt ... |
+| 列出依赖         | `./Paker list`                   | 列出所有依赖                 | Dependencies:  fmt: * |
+| 移除依赖         | `./Paker remove fmt`             | 移除依赖包                   | Removed dependency: fmt |
+| 显示依赖树       | `./Paker tree`                   | 以树状结构展示依赖关系       | - fmt\n  - spdlog |
+| 依赖锁定         | `./Paker lock`                   | 生成/更新 Paker.lock         | Generated Paker.lock |
+| 按锁文件安装     | `./Paker install-lock`           | 按 lock 文件安装依赖         | Installed dependencies from Paker.lock |
+| 升级所有依赖     | `./Paker upgrade`                | 升级所有依赖到最新           | Upgrading fmt to latest...\nUpgrade complete. |
+| 升级指定依赖     | `./Paker upgrade fmt`            | 升级指定依赖到最新           | Upgrading fmt to latest...\nUpgrade complete. |
+| 搜索依赖包       | `./Paker search fmt`             | 搜索可用依赖包               | fmt    https://github.com/fmtlib/fmt.git |
+| 查看依赖信息     | `./Paker info fmt`               | 查看依赖包详细信息           | Package: fmt\nRepo: ... |
+| 同步/刷新依赖    | `./Paker update`                 | git pull 同步本地依赖         | Updating fmt...\nUpdate complete. |
+| 清理无用/损坏依赖| `./Paker clean`                  | 清理未声明或损坏的依赖包      | Removing unused package: ...\nClean complete. |
 
 ## 目录结构
 ```
