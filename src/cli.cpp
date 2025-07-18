@@ -1,7 +1,10 @@
-#include "cli.h"
-#include "package_manager.h"
-#include "CLI11.hpp"
+#include "Paker/install.h"
+#include "Paker/list.h"
+#include "Paker/lock.h"
+#include "Paker/info.h"
+#include "Paker/update.h"
 #include <iostream>
+#include "CLI11.hpp"
 
 int run_cli(int argc, char* argv[]) {
     CLI::App app{"Paker - C++ Package Manager"};
@@ -12,12 +15,40 @@ int run_cli(int argc, char* argv[]) {
         pm_init();
     });
 
+    // add-remote
+    std::string remote_name, remote_url;
+    auto add_remote_cmd = app.add_subcommand("add-remote", "Add or update a custom dependency source");
+    add_remote_cmd->add_option("name", remote_name, "Remote name")->required();
+    add_remote_cmd->add_option("url", remote_url, "Remote url")->required();
+    add_remote_cmd->callback([&]() {
+        add_remote(remote_name, remote_url);
+    });
+
+    // remove-remote
+    std::string remove_name;
+    auto remove_remote_cmd = app.add_subcommand("remove-remote", "Remove a custom dependency source");
+    remove_remote_cmd->add_option("name", remove_name, "Remote name")->required();
+    remove_remote_cmd->callback([&]() {
+        remove_remote(remove_name);
+    });
+
     // add
     std::string add_pkg;
     auto add = app.add_subcommand("add", "Add a dependency or project info");
     add->add_option("package", add_pkg, "Package name to add");
     add->callback([&]() {
-        if (!add_pkg.empty()) pm_add(add_pkg);
+        if (!add_pkg.empty()) {
+            auto custom_repos = get_custom_repos();
+            auto all_repos = get_all_repos();
+            if (custom_repos.count(add_pkg)) {
+                pm_add(add_pkg);
+            } else if (all_repos.count(add_pkg)) {
+                std::cout << "[Info] Using built-in url: " << all_repos[add_pkg] << std::endl;
+                pm_add(add_pkg);
+            } else {
+                std::cout << "[Error] No url found for package: " << add_pkg << ". Please add a remote using 'add-remote'." << std::endl;
+            }
+        }
     });
 
     // add desc
