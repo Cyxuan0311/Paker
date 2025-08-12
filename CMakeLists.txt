@@ -7,16 +7,16 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(glog REQUIRED)
 
 file(GLOB PAKER_SRCS src/Paker/*.cpp)
+file(GLOB RECORDER_SRCS src/Recorder/*.cpp)
 
 add_executable(Paker
     src/main.cpp
-    src/cli.cpp
-    src/package_manager.cpp
     src/builtin_repos.cpp
     ${PAKER_SRCS}
+    ${RECORDER_SRCS}
 )
 
-target_include_directories(Paker PRIVATE include include/Paker)
+target_include_directories(Paker PRIVATE include include/Paker include/Recorder include/third_party)
 
 # 修复 std::filesystem 链接错误
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")

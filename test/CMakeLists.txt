@@ -11,11 +11,24 @@ include_directories(
     ../include
 )
 
-add_executable(PakerTests
-    test_package_manager.cpp
+# 单元测试
+add_executable(PakerUnitTests
+    unit/test_package_manager.cpp
+    unit/test_record.cpp
 )
 
-target_link_libraries(PakerTests
+# 集成测试
+add_executable(PakerIntegrationTests
+    integration/test_integration.cpp
+)
+
+target_link_libraries(PakerUnitTests
+    GTest::GTest
+    GTest::Main
+    pthread
+)
+
+target_link_libraries(PakerIntegrationTests
     GTest::GTest
     GTest::Main
     pthread
