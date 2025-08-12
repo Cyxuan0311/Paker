@@ -1,5 +1,6 @@
 #include "Paker/info.h"
 #include "Paker/utils.h"
+#include "Paker/output.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -12,37 +13,55 @@ namespace fs = std::filesystem;
 
 void pm_search(const std::string& keyword) {
     auto repos = get_all_repos();
-    std::cout << "Search results for '" << keyword << "':\n";
+    Output::info("Search results for '" + keyword + "':");
+    
+    Table table;
+    table.add_column("Package", 20);
+    table.add_column("Repository", 50);
+    
     bool found = false;
     for (const auto& [name, url] : repos) {
         if (name.find(keyword) != std::string::npos) {
-            std::cout << "  " << name << "\t" << url << "\n";
+            table.add_row({name, url});
             found = true;
         }
     }
-    if (!found) std::cout << "  (none)\n";
+    
+    if (!found) {
+        Output::info("  (none)");
+    } else {
+        Output::print_table(table);
+    }
 }
 
 void pm_info(const std::string& pkg) {
     auto repos = get_all_repos();
     auto it = repos.find(pkg);
     if (it == repos.end()) {
-        std::cout << "No info for package: " << pkg << "\n";
+        Output::error("No info for package: " + pkg);
         return;
     }
-    std::cout << "Package: " << pkg << "\n";
-    std::cout << "Repo: " << it->second << "\n";
+    
+    Output::info("Package: " + pkg);
+    Output::info("Repository: " + it->second);
+    
     fs::path pkg_dir = fs::path("packages") / pkg;
     fs::path readme = pkg_dir / "README.md";
     if (!fs::exists(readme)) readme = pkg_dir / "README.rst";
+    
     if (fs::exists(readme)) {
+        Output::info("Description (from README):");
         std::ifstream ifs(readme);
         std::string line;
-        std::cout << "Description (from README):\n";
         int cnt = 0;
         while (std::getline(ifs, line) && cnt < 10) {
-            std::cout << line << "\n";
+            Output::info("  " + line);
             ++cnt;
         }
+        if (cnt == 10) {
+            Output::info("  ... (truncated)");
+        }
+    } else {
+        Output::warning("No README file found for this package");
     }
 } 
