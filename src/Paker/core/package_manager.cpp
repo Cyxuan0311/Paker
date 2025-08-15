@@ -3,6 +3,7 @@
 #include "Paker/conflict/conflict_detector.h"
 #include "Paker/conflict/conflict_resolver.h"
 #include "Paker/core/output.h"
+#include "Paker/cache/cache_manager.h"
 #include <iostream>
 #include <fstream>
 #include "nlohmann/json.hpp"
@@ -50,6 +51,19 @@ void pm_init() {
     ofs << j.dump(4);
     LOG(INFO) << "Initialized Paker project: " << project_name;
     Output::success("Initialized Paker project: " + project_name);
+    
+    // 初始化全局缓存管理器（默认启用）
+    if (!g_cache_manager) {
+        if (initialize_cache_manager()) {
+            Output::success("Global cache system initialized (default mode)");
+            Output::info("Cache locations:");
+            Output::info("  - User cache: ~/.paker/cache");
+            Output::info("  - Global cache: /usr/local/share/paker/cache");
+            Output::info("  - Project links: .paker/links");
+        } else {
+            Output::warning("Failed to initialize global cache system, falling back to legacy mode");
+        }
+    }
 }
 
 void pm_add_desc(const std::string& desc) {
