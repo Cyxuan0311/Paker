@@ -17,6 +17,7 @@ add_executable(PakerUnitTests
     unit/test_record.cpp
     unit/test_dependency_resolution.cpp
     unit/test_monitoring.cpp
+    unit/test_cache_manager.cpp
 )
 
 # 集成测试
