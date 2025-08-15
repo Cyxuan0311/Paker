@@ -4,6 +4,7 @@
 #include "Paker/commands/info.h"
 #include "Paker/commands/update.h"
 #include "Paker/commands/monitor.h"
+#include "Paker/commands/cache.h"
 #include "Paker/core/utils.h"
 #include "Paker/core/output.h"
 #include "Paker/core/package_manager.h"
@@ -220,6 +221,70 @@ int run_cli(int argc, char* argv[]) {
     auto monitor_clear = app.add_subcommand("monitor-clear", "Clear performance monitoring data");
     monitor_clear->callback([]() {
         pm_monitor_clear();
+    });
+
+    // cache commands
+    std::string cache_pkg, cache_version;
+    
+    // cache-install
+    auto cache_install = app.add_subcommand("cache-install", "Install package to global cache");
+    cache_install->add_option("package", cache_pkg, "Package name")->required();
+    cache_install->add_option("version", cache_version, "Package version (optional)");
+    cache_install->callback([&]() {
+        pm_cache_install(cache_pkg, cache_version);
+    });
+    
+    // cache-remove
+    auto cache_remove = app.add_subcommand("cache-remove", "Remove package from global cache");
+    cache_remove->add_option("package", cache_pkg, "Package name")->required();
+    cache_remove->add_option("version", cache_version, "Package version (optional)");
+    cache_remove->callback([&]() {
+        pm_cache_remove(cache_pkg, cache_version);
+    });
+    
+    // cache-list
+    auto cache_list = app.add_subcommand("cache-list", "List all cached packages");
+    cache_list->callback([]() {
+        pm_cache_list();
+    });
+    
+    // cache-info
+    auto cache_info = app.add_subcommand("cache-info", "Show cached package information");
+    cache_info->add_option("package", cache_pkg, "Package name")->required();
+    cache_info->callback([&]() {
+        pm_cache_info(cache_pkg);
+    });
+    
+    // cache-cleanup
+    auto cache_cleanup = app.add_subcommand("cache-cleanup", "Clean up unused packages from cache");
+    cache_cleanup->callback([]() {
+        pm_cache_cleanup();
+    });
+    
+    // cache-stats
+    auto cache_stats = app.add_subcommand("cache-stats", "Show cache statistics");
+    cache_stats->callback([]() {
+        pm_cache_stats();
+    });
+    
+    // cache-status
+    auto cache_status = app.add_subcommand("cache-status", "Show detailed cache status and health");
+    cache_status->callback([]() {
+        pm_cache_status();
+    });
+    
+    // cache-optimize
+    auto cache_optimize = app.add_subcommand("cache-optimize", "Optimize cache performance and storage");
+    cache_optimize->callback([]() {
+        pm_cache_optimize();
+    });
+    
+    // cache-migrate
+    std::string migrate_path;
+    auto cache_migrate = app.add_subcommand("cache-migrate", "Migrate project from legacy mode to cache mode");
+    cache_migrate->add_option("project_path", migrate_path, "Project path (optional, defaults to current directory)");
+    cache_migrate->callback([&]() {
+        pm_cache_migrate(migrate_path);
     });
 
     // record commands

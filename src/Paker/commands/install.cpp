@@ -5,6 +5,7 @@
 #include "Paker/conflict/conflict_detector.h"
 #include "Paker/conflict/conflict_resolver.h"
 #include "Paker/monitor/performance_monitor.h"
+#include "Paker/cache/cache_manager.h"
 #include "Recorder/record.h"
 #include <filesystem>
 #include <fstream>
@@ -88,59 +89,104 @@ void pm_add(const std::string& pkg_input) {
     }
     
     std::string repo_url = it->second;
-    fs::path pkg_dir = fs::path("packages") / pkg;
-    if (fs::exists(pkg_dir)) {
-        LOG(WARNING) << "Package already exists in packages/" << pkg;
-        Output::warning("Package already exists in packages/" + pkg);
-        return;
-    }
     
-    fs::create_directories(pkg_dir.parent_path());
+    // 默认使用全局缓存模式（除非明确禁用）
+    bool use_cache_mode = g_cache_manager != nullptr;
     
-    // 显示安装进度
-    Output::info("Installing package: " + pkg);
-    ProgressBar progress(3, 40, "Installing: ");
-    
-    // 步骤1: 克隆仓库
-    progress.update(1);
-    Output::debug("Cloning repository: " + repo_url);
-    
-    std::ostringstream cmd;
-    cmd << "git clone --depth 1 " << repo_url << " " << pkg_dir.string();
-    int ret = std::system(cmd.str().c_str());
-    if (ret != 0) {
-        LOG(ERROR) << "Failed to clone repo: " << repo_url;
-        Output::error("Failed to clone repository: " + repo_url);
-        return;
-    }
-    
-    // 步骤2: 检出版本
-    progress.update(2);
-    if (!version.empty() && version != "*") {
-        Output::debug("Checking out version: " + version);
-        std::ostringstream checkout_cmd;
-        checkout_cmd << "cd " << pkg_dir.string() << " && git fetch --tags && git checkout " << version;
-        int ret2 = std::system(checkout_cmd.str().c_str());
-        if (ret2 != 0) {
-            LOG(WARNING) << "Failed to checkout version/tag: " << version;
-            Output::warning("Failed to checkout version/tag: " + version);
+    if (use_cache_mode) {
+        Output::info("Using global cache mode (default)");
+        // 全局缓存模式
+        std::string target_version = version.empty() ? "latest" : version;
+        
+        // 检查包是否已在缓存中
+        if (!g_cache_manager->is_package_cached(pkg, target_version)) {
+            Output::info("Installing " + pkg + "@" + target_version + " to global cache...");
+            
+            if (!g_cache_manager->install_package_to_cache(pkg, target_version, repo_url)) {
+                Output::error("Failed to install package to cache");
+                return;
+            }
         } else {
-            LOG(INFO) << "Checked out " << pkg << " to version " << version;
-            Output::info("Checked out " + pkg + " to version " + version);
+            Output::info("Package " + pkg + "@" + target_version + " already in cache");
         }
+        
+        // 创建项目链接
+        std::string project_path = fs::current_path().string();
+        if (!g_cache_manager->create_project_link(pkg, target_version, project_path)) {
+            Output::error("Failed to create project link");
+            return;
+        }
+        
+        // 获取链接路径用于记录
+        std::string linked_path = g_cache_manager->get_project_package_path(pkg, project_path);
+        if (linked_path.empty()) {
+            Output::error("Failed to get project package path");
+            return;
+        }
+        
+        // 记录文件
+        Recorder::Record record(get_record_file_path());
+        std::vector<std::string> installed_files = collect_package_files(linked_path);
+        record.addPackageRecord(pkg, linked_path, installed_files);
+        
+        Output::success("Successfully installed " + pkg + " (cached, " + std::to_string(installed_files.size()) + " files)");
+        
+    } else {
+        // 传统模式（向后兼容）
+        fs::path pkg_dir = fs::path("packages") / pkg;
+        if (fs::exists(pkg_dir)) {
+            LOG(WARNING) << "Package already exists in packages/" << pkg;
+            Output::warning("Package already exists in packages/" + pkg);
+            return;
+        }
+        
+        fs::create_directories(pkg_dir.parent_path());
+        
+        // 显示安装进度
+        Output::info("Installing package: " + pkg);
+        ProgressBar progress(3, 40, "Installing: ");
+        
+        // 步骤1: 克隆仓库
+        progress.update(1);
+        Output::debug("Cloning repository: " + repo_url);
+        
+        std::ostringstream cmd;
+        cmd << "git clone --depth 1 " << repo_url << " " << pkg_dir.string();
+        int ret = std::system(cmd.str().c_str());
+        if (ret != 0) {
+            LOG(ERROR) << "Failed to clone repo: " << repo_url;
+            Output::error("Failed to clone repository: " + repo_url);
+            return;
+        }
+        
+        // 步骤2: 检出版本
+        progress.update(2);
+        if (!version.empty() && version != "*") {
+            Output::debug("Checking out version: " + version);
+            std::ostringstream checkout_cmd;
+            checkout_cmd << "cd " << pkg_dir.string() << " && git fetch --tags && git checkout " << version;
+            int ret2 = std::system(checkout_cmd.str().c_str());
+            if (ret2 != 0) {
+                LOG(WARNING) << "Failed to checkout version/tag: " << version;
+                Output::warning("Failed to checkout version/tag: " + version);
+            } else {
+                LOG(INFO) << "Checked out " << pkg << " to version " << version;
+                Output::info("Checked out " + pkg + " to version " + version);
+            }
+        }
+        
+        // 步骤3: 记录文件
+        progress.update(3);
+        Output::debug("Recording package files...");
+        
+        // 使用Record类记录安装的文件
+        Recorder::Record record(get_record_file_path());
+        std::vector<std::string> installed_files = collect_package_files(pkg_dir.string());
+        
+        // 记录包信息
+        record.addPackageRecord(pkg, pkg_dir.string(), installed_files);
+        LOG(INFO) << "Recorded " << installed_files.size() << " files for package: " << pkg;
     }
-    
-    // 步骤3: 记录文件
-    progress.update(3);
-    Output::debug("Recording package files...");
-    
-    // 使用Record类记录安装的文件
-    Recorder::Record record(get_record_file_path());
-    std::vector<std::string> installed_files = collect_package_files(pkg_dir.string());
-    
-    // 记录包信息
-    record.addPackageRecord(pkg, pkg_dir.string(), installed_files);
-    LOG(INFO) << "Recorded " << installed_files.size() << " files for package: " << pkg;
     
     progress.finish();
     Output::success("Successfully installed " + pkg + " (" + std::to_string(installed_files.size()) + " files recorded)");
