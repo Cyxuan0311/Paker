@@ -10,21 +10,61 @@
   <img src="https://img.shields.io/badge/test-GoogleTest-red.svg" alt="GoogleTest">
   <img src="https://img.shields.io/badge/feature-Record%20Tracking-purple.svg" alt="Record Tracking">
   <img src="https://img.shields.io/badge/feature-Colorful%20CLI-cyan.svg" alt="Colorful CLI">
+  <img src="https://img.shields.io/badge/feature-Dependency%20Resolution-green.svg" alt="Dependency Resolution">
+  <img src="https://img.shields.io/badge/feature-Conflict%20Detection-red.svg" alt="Conflict Detection">
 </p>
 
 Paker 是一个用 C++ 编写的轻量级 C++ 包管理器，支持本地依赖管理、自定义依赖源、包安装记录跟踪和丰富的命令行操作。具备精确的文件跟踪功能，确保依赖包的完整安装和清理。提供友好的彩色 CLI 输出，包括表格化显示、进度条和优化的依赖树可视化。
+
+**新增功能**：强大的依赖冲突检测与解决机制，支持版本冲突检测、循环依赖检测、自动冲突解决和交互式冲突处理。
 
 ## 目录结构
 ```
 Paker/
 ├── include/
 │   ├── Paker/           # Paker模块头文件
-│   │   ├── output.h     # CLI输出系统
+│   │   ├── core/        # 核心功能模块
+│   │   │   ├── package_manager.h  # 包管理器主接口
+│   │   │   ├── utils.h            # 工具函数
+│   │   │   └── output.h           # CLI输出系统
+│   │   ├── dependency/  # 依赖管理模块
+│   │   │   ├── dependency_graph.h    # 依赖图数据结构
+│   │   │   ├── dependency_resolver.h # 依赖解析器
+│   │   │   ├── version_manager.h     # 版本管理
+│   │   │   └── sources.h             # 仓库管理
+│   │   ├── conflict/    # 冲突检测与解决模块
+│   │   │   ├── conflict_detector.h   # 冲突检测器
+│   │   │   └── conflict_resolver.h   # 冲突解决器
+│   │   └── commands/    # 命令模块
+│   │       ├── install.h  # 安装命令
+│   │       ├── list.h     # 列表命令
+│   │       ├── lock.h     # 锁定命令
+│   │       ├── info.h     # 信息命令
+│   │       ├── update.h   # 更新命令
+│   │       └── cli.h      # CLI接口
 │   ├── Recorder/        # Recorder模块头文件
 │   └── third_party/     # 第三方库头文件
 ├── src/
 │   ├── Paker/           # Paker模块实现
-│   │   ├── output.cpp   # CLI输出系统实现
+│   │   ├── core/        # 核心功能实现
+│   │   │   ├── package_manager.cpp
+│   │   │   ├── utils.cpp
+│   │   │   └── output.cpp
+│   │   ├── dependency/  # 依赖管理实现
+│   │   │   ├── dependency_graph.cpp
+│   │   │   ├── dependency_resolver.cpp
+│   │   │   ├── version_manager.cpp
+│   │   │   └── sources.cpp
+│   │   ├── conflict/    # 冲突检测与解决实现
+│   │   │   ├── conflict_detector.cpp
+│   │   │   └── conflict_resolver.cpp
+│   │   └── commands/    # 命令实现
+│   │       ├── install.cpp
+│   │       ├── list.cpp
+│   │       ├── lock.cpp
+│   │       ├── info.cpp
+│   │       ├── update.cpp
+│   │       └── cli.cpp
 │   ├── Recorder/        # Recorder模块实现
 │   ├── builtin_repos.cpp
 │   └── main.cpp
@@ -56,9 +96,57 @@ Paker/
 | 移除依赖源       | `./Paker remove-remote mylib`    | 移除自定义依赖源             | Removed remote: mylib |
 | 同步/刷新依赖    | `./Paker update`                 | git pull 同步本地依赖         | Updating fmt...\nUpdate complete. |
 | 清理无用/损坏依赖| `./Paker clean`                  | 清理未声明或损坏的依赖包      | Removing unused package: ...\nClean complete. |
+| **解析项目依赖**   | `./Paker resolve-dependencies`   | 解析整个项目的依赖树         | Resolving project dependencies...\nDependencies resolved successfully |
+| **检查依赖冲突**   | `./Paker check-conflicts`        | 检测依赖树中的冲突           | Checking for dependency conflicts...\nFound 2 conflicts |
+| **解决依赖冲突**   | `./Paker resolve-conflicts`      | 自动或交互式解决冲突         | Auto-resolve conflicts? [Y/n/i]: \nConflicts resolved successfully |
+| **验证依赖完整性** | `./Paker validate-dependencies`  | 验证依赖图的完整性           | Validating dependencies...\nDependencies validated successfully |
 | **显示包安装记录** | `./Paker record-show fmt`        | 显示指定包的安装记录         | Package: fmt<br>Install Path: packages/fmt<br>Files (156): ... |
 | **列出所有包记录** | `./Paker record-list`            | 列出所有已安装的包记录       | Installed packages (3):<br>  fmt (156 files)<br>  spdlog (89 files) |
 | **获取包文件列表** | `./Paker record-files fmt`       | 获取指定包的所有文件列表     | Files for package 'fmt':<br>  packages/fmt/src/format.cc<br>  packages/fmt/include/fmt/format.h |
+
+### 依赖冲突检测与解决
+
+Paker 提供了强大的依赖冲突检测与解决机制，能够自动识别和解决复杂的依赖问题。
+
+#### 冲突类型检测
+- **版本冲突**: 检测同一包在不同路径中的版本冲突
+- **循环依赖**: 检测依赖图中的循环依赖关系
+- **缺失依赖**: 检测未找到的依赖包
+
+#### 解决策略
+- **自动解决**: 智能选择最佳版本，自动解决冲突
+- **交互式解决**: 用户可选择具体的解决策略
+- **版本升级/降级**: 自动调整版本以满足依赖约束
+- **依赖移除**: 移除冲突的依赖关系
+
+#### 使用示例
+```bash
+# 检查项目中的依赖冲突
+./Paker check-conflicts
+
+# 自动解决冲突
+./Paker resolve-conflicts
+
+# 验证依赖完整性
+./Paker validate-dependencies
+
+# 解析项目依赖树
+./Paker resolve-dependencies
+```
+
+#### 冲突报告示例
+```
+⚠️  Dependency Conflicts Detected
+
+Conflict 1:
+Package: fmt
+Type: Version Conflict
+Conflicting Versions:
+  - 8.1.1 (required by spdlog@1.11.0)
+  - 9.1.0 (required by json@3.11.2)
+Conflict Path: myproject -> spdlog -> fmt
+Suggested Solution: Use compatible version 9.1.0
+```
 
 ### 自定义依赖源支持
 
@@ -164,31 +252,37 @@ Paker 集成了强大的包安装记录功能，可以精确跟踪每个安装�
 ./Paker add fmt
 ./Paker add spdlog
 
-# 4. 查看依赖列表（表格化显示）
+# 4. 解析项目依赖
+./Paker resolve-dependencies
+
+# 5. 检查依赖冲突
+./Paker check-conflicts
+
+# 6. 查看依赖列表（表格化显示）
 ./Paker list
 
-# 5. 查看依赖树（优化显示）
+# 7. 查看依赖树（优化显示）
 ./Paker tree
 
-# 6. 查看安装记录
+# 8. 验证依赖完整性
+./Paker validate-dependencies
+
+# 9. 查看安装记录
 ./Paker record-list
 ./Paker record-show fmt
 
-# 7. 使用 CLI 选项
+# 10. 使用 CLI 选项
 ./Paker --no-color list          # 禁用彩色输出
 ./Paker -v add fmt              # 启用详细模式
 ./Paker --no-color -v search json  # 组合使用
 
-# 5. 查看依赖树
-./Paker tree
-
-# 6. 锁定依赖版本
+# 11. 锁定依赖版本
 ./Paker lock
 
-# 7. 查看包文件列表
+# 12. 查看包文件列表
 ./Paker record-files fmt
 
-# 8. 移除不需要的包
+# 13. 移除不需要的包
 ./Paker remove spdlog
 ```
 
@@ -196,6 +290,16 @@ Paker 集成了强大的包安装记录功能，可以精确跟踪每个安装�
 ```bash
 # 递归安装依赖
 ./Paker add-recursive mylib
+
+# 解析复杂依赖树
+./Paker resolve-dependencies
+
+# 检测并解决冲突
+./Paker check-conflicts
+./Paker resolve-conflicts
+
+# 验证依赖完整性
+./Paker validate-dependencies
 
 # 升级所有依赖
 ./Paker upgrade
@@ -217,6 +321,10 @@ Paker 集成了强大的包安装记录功能，可以精确跟踪每个安装�
 
 # 禁用彩色输出（适用于脚本或管道）
 ./Paker --no-color list | grep "installed"
+
+# 交互式解决冲突
+./Paker resolve-conflicts
+# 选择 'i' 进入交互模式
 ```
 
 ## 依赖
