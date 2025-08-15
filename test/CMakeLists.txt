@@ -15,6 +15,8 @@ include_directories(
 add_executable(PakerUnitTests
     unit/test_package_manager.cpp
     unit/test_record.cpp
+    unit/test_dependency_resolution.cpp
+    unit/test_monitoring.cpp
 )
 
 # 集成测试
