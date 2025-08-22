@@ -5,6 +5,7 @@
 #include "Paker/commands/update.h"
 #include "Paker/commands/monitor.h"
 #include "Paker/commands/cache.h"
+#include "Paker/commands/rollback.h"
 #include "Paker/core/utils.h"
 #include "Paker/core/output.h"
 #include "Paker/core/package_manager.h"
@@ -319,6 +320,87 @@ int run_cli(int argc, char* argv[]) {
         } else {
             std::cout << "Package '" << record_pkg << "' not found in installation records." << std::endl;
         }
+    });
+
+    // Rollback commands
+    std::string rollback_pkg, rollback_version, rollback_timestamp;
+    bool force_rollback = false;
+    
+    // rollback-to-version
+    auto rollback_version_cmd = app.add_subcommand("rollback-to-version", "Rollback package to specific version");
+    rollback_version_cmd->add_option("package", rollback_pkg, "Package name")->required();
+    rollback_version_cmd->add_option("version", rollback_version, "Target version")->required();
+    rollback_version_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
+    rollback_version_cmd->callback([&]() {
+        pm_rollback_to_version(rollback_pkg, rollback_version, force_rollback);
+    });
+    
+    // rollback-to-previous
+    auto rollback_previous_cmd = app.add_subcommand("rollback-to-previous", "Rollback package to previous version");
+    rollback_previous_cmd->add_option("package", rollback_pkg, "Package name")->required();
+    rollback_previous_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
+    rollback_previous_cmd->callback([&]() {
+        pm_rollback_to_previous(rollback_pkg, force_rollback);
+    });
+    
+    // rollback-to-timestamp
+    auto rollback_timestamp_cmd = app.add_subcommand("rollback-to-timestamp", "Rollback all packages to specific timestamp");
+    rollback_timestamp_cmd->add_option("timestamp", rollback_timestamp, "Target timestamp (YYYY-MM-DD HH:MM:SS)")->required();
+    rollback_timestamp_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
+    rollback_timestamp_cmd->callback([&]() {
+        pm_rollback_to_timestamp(rollback_timestamp, force_rollback);
+    });
+    
+    // history-show
+    auto history_show_cmd = app.add_subcommand("history-show", "Show version history");
+    history_show_cmd->add_option("package", rollback_pkg, "Package name (optional)");
+    history_show_cmd->callback([&]() {
+        pm_history_show(rollback_pkg);
+    });
+    
+    // rollback-list
+    auto rollback_list_cmd = app.add_subcommand("rollback-list", "List rollbackable versions for a package");
+    rollback_list_cmd->add_option("package", rollback_pkg, "Package name")->required();
+    rollback_list_cmd->callback([&]() {
+        pm_rollback_list(rollback_pkg);
+    });
+    
+    // rollback-check
+    auto rollback_check_cmd = app.add_subcommand("rollback-check", "Check rollback safety for a package");
+    rollback_check_cmd->add_option("package", rollback_pkg, "Package name")->required();
+    rollback_check_cmd->add_option("version", rollback_version, "Target version")->required();
+    rollback_check_cmd->callback([&]() {
+        pm_rollback_check(rollback_pkg, rollback_version);
+    });
+    
+    // history-cleanup
+    size_t max_entries = 50;
+    auto history_cleanup_cmd = app.add_subcommand("history-cleanup", "Clean up old history records");
+    history_cleanup_cmd->add_option("max_entries", max_entries, "Maximum entries to keep (default: 50)");
+    history_cleanup_cmd->callback([&]() {
+        pm_history_cleanup(max_entries);
+    });
+    
+    // history-export
+    std::string export_path;
+    auto history_export_cmd = app.add_subcommand("history-export", "Export history records");
+    history_export_cmd->add_option("path", export_path, "Export file path")->required();
+    history_export_cmd->callback([&]() {
+        pm_history_export(export_path);
+    });
+    
+    // history-import
+    std::string import_path;
+    auto history_import_cmd = app.add_subcommand("history-import", "Import history records");
+    history_import_cmd->add_option("path", import_path, "Import file path")->required();
+    history_import_cmd->callback([&]() {
+        pm_history_import(import_path);
+    });
+    
+    // rollback-stats
+    auto rollback_stats_cmd = app.add_subcommand("rollback-stats", "Show rollback statistics");
+    rollback_stats_cmd->callback([]() {
+        pm_rollback_stats();
     });
 
     CLI11_PARSE(app, argc, argv);

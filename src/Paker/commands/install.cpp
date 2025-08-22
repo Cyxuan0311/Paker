@@ -191,6 +191,9 @@ void pm_add(const std::string& pkg_input) {
     progress.finish();
     Output::success("Successfully installed " + pkg + " (" + std::to_string(installed_files.size()) + " files recorded)");
     
+    // 记录版本变更
+    pm_record_version_change(pkg, "", version, repo_url, "Package installation");
+    
     // 结束性能监控并记录指标
     PAKER_PERF_END("package_install", MetricType::INSTALL_TIME);
     
