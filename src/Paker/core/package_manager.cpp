@@ -233,6 +233,22 @@ void pm_validate_dependencies() {
     Output::success("Dependencies validated successfully");
 }
 
+void pm_record_version_change(const std::string& package_name, 
+                            const std::string& old_version,
+                            const std::string& new_version,
+                            const std::string& repository_url,
+                            const std::string& reason) {
+    auto* history_manager = get_history_manager();
+    if (!history_manager) {
+        LOG(ERROR) << "History manager not initialized";
+        return;
+    }
+    
+    if (!history_manager->record_version_change(package_name, old_version, new_version, repository_url, reason)) {
+        LOG(ERROR) << "Failed to record version change for " << package_name;
+    }
+}
+
 // ==================== 资源管理 ====================
 
 // 在程序退出时清理资源
