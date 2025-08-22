@@ -135,6 +135,12 @@ Paker/
 | **性能报告**      | `./Paker performance-report`     | 生成性能监控报告             | 📈 Performance Report:<br>  Average install time: 2.3s<br>  Cache hit rate: 78% |
 | **依赖分析**      | `./Paker analyze-dependencies`   | 分析依赖树和版本分布         | 📊 Dependency Analysis:<br>  Total dependencies: 12<br>  Max depth: 3 |
 | **系统诊断**      | `./Paker diagnose`               | 运行系统诊断检查             | 🔧 System Diagnostics:<br>  Configuration: ✅ OK<br>  Dependencies: ⚠️ 2 warnings |
+| **回滚到指定版本** | `./Paker rollback-to-version fmt 1.0.0` | 回滚包到指定版本         | 🔄 Rolling back fmt to version 1.0.0<br>Rollback completed successfully |
+| **回滚到上一版本** | `./Paker rollback-to-previous fmt` | 回滚包到上一个版本         | 🔄 Rolling back fmt to previous version<br>Rollback completed successfully |
+| **回滚到时间点**   | `./Paker rollback-to-timestamp "2024-01-15 10:30:00"` | 回滚所有包到指定时间点 | 🔄 Rolling back to timestamp<br>Rollback completed successfully |
+| **显示版本历史**   | `./Paker history-show fmt`       | 显示包的版本历史记录       | 📜 Version history for fmt:<br>  Package │ Old Version │ New Version │ Timestamp |
+| **列出可回滚版本** | `./Paker rollback-list fmt`      | 列出可回滚的版本           | 📋 Rollbackable versions for fmt:<br>  1. 1.2.0 (current)<br>  2. 1.1.0 |
+| **检查回滚安全性** | `./Paker rollback-check fmt 1.0.0` | 检查回滚操作的安全性     | 🔍 Checking rollback safety<br>✅ Rollback is safe |
 
 ### 全局缓存模式
 
@@ -218,6 +224,70 @@ Conflicting Versions:
   - 9.1.0 (required by json@3.11.2)
 Conflict Path: myproject -> spdlog -> fmt
 Suggested Solution: Use compatible version 9.1.0
+```
+
+### 版本回滚系统
+
+Paker 提供了强大的版本回滚功能，支持快速、安全地回滚到之前的版本：
+
+#### 回滚策略
+- **单个包回滚**：回滚指定的包到指定版本
+- **批量回滚**：回滚多个包到指定时间点
+- **依赖感知回滚**：自动处理依赖关系，确保系统一致性
+- **选择性回滚**：用户可选择性地回滚特定包
+
+#### 安全机制
+- **回滚前检查**：验证回滚操作的安全性
+- **依赖验证**：检查版本兼容性和依赖约束
+- **备份创建**：自动创建当前版本的备份
+- **强制回滚**：在必要时跳过安全检查
+
+#### 历史管理
+- **版本历史记录**：详细记录所有版本变更
+- **时间点回滚**：支持回滚到特定的时间点
+- **历史清理**：自动清理过期的历史记录
+- **历史导出/导入**：支持历史记录的备份和恢复
+
+#### 使用示例
+```bash
+# 回滚到指定版本
+./Paker rollback-to-version fmt 1.0.0
+
+# 回滚到上一个版本
+./Paker rollback-to-previous fmt
+
+# 回滚到指定时间点
+./Paker rollback-to-timestamp "2024-01-15 10:30:00"
+
+# 显示版本历史
+./Paker history-show fmt
+
+# 检查回滚安全性
+./Paker rollback-check fmt 1.0.0
+
+# 列出可回滚的版本
+./Paker rollback-list fmt
+```
+
+#### 回滚报告示例
+```
+🔄 Rollback Report
+==================
+
+Status: ✅ Success
+Duration: 1250ms
+Message: Successfully rolled back fmt to version 1.0.0
+
+✅ Successfully Rolled Back:
+  - fmt
+
+💾 Backup Location: .paker/backups/fmt_current_20240115_103000.tar.gz
+📁 Files Affected: 156
+
+💡 Recommendations:
+  - Verify the rolled back packages work correctly
+  - Test your application thoroughly
+  - Consider updating your dependency specifications
 ```
 
 ### 监控与诊断系统
