@@ -38,4 +38,11 @@ void pm_clean();
 void pm_resolve_dependencies();                    // 解析依赖
 void pm_check_conflicts();                         // 检查冲突
 void pm_resolve_conflicts();                       // 解决冲突
-void pm_validate_dependencies();                   // 验证依赖 
+void pm_validate_dependencies();                   // 验证依赖
+
+// 版本回滚相关函数
+void pm_record_version_change(const std::string& package_name, 
+                             const std::string& old_version,
+                             const std::string& new_version,
+                             const std::string& repository_url,
+                             const std::string& reason = "");  // 记录版本变更 
