@@ -4,6 +4,7 @@
 
 void pm_init();
 void pm_add(const std::string& pkg);
+void pm_add_parallel(const std::vector<std::string>& packages);
 void pm_remove(const std::string& pkg);
 void pm_list();
 void pm_add_desc(const std::string& desc);
