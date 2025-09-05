@@ -20,4 +20,13 @@ int pm_cache_config_set(const std::string& key, const std::string& value);
 int pm_cache_config_get(const std::string& key);
 int pm_cache_config_list();
 
+// LRU缓存管理函数
+void pm_cache_init_lru();
+void pm_cache_lru_stats();
+void pm_cache_lru_status();
+void pm_cache_smart_cleanup();
+void pm_cache_most_accessed();
+void pm_cache_oldest_items();
+void pm_cache_optimization_advice();
+
 } // namespace Paker 
