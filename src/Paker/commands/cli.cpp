@@ -86,6 +86,14 @@ int run_cli(int argc, char* argv[]) {
         pm_add_version(vers);
     });
 
+    // add-parallel
+    std::vector<std::string> add_parallel_pkgs;
+    auto add_parallel = app.add_subcommand("add-parallel", "Add multiple dependencies in parallel");
+    add_parallel->add_option("packages", add_parallel_pkgs, "Package names")->required();
+    add_parallel->callback([&]() {
+        pm_add_parallel(add_parallel_pkgs);
+    });
+
     // remove
     std::string rm_pkg;
     auto remove = app.add_subcommand("remove", "Remove a dependency");
@@ -260,6 +268,42 @@ int run_cli(int argc, char* argv[]) {
     auto cache_cleanup = app.add_subcommand("cache-cleanup", "Clean up unused packages from cache");
     cache_cleanup->callback([]() {
         pm_cache_cleanup();
+    });
+
+    // LRU缓存管理命令
+    auto cache_init_lru = app.add_subcommand("cache-init-lru", "Initialize LRU cache manager");
+    cache_init_lru->callback([]() {
+        pm_cache_init_lru();
+    });
+
+    auto cache_lru_stats = app.add_subcommand("cache-lru-stats", "Show LRU cache statistics");
+    cache_lru_stats->callback([]() {
+        pm_cache_lru_stats();
+    });
+
+    auto cache_lru_status = app.add_subcommand("cache-lru-status", "Show LRU cache status and health");
+    cache_lru_status->callback([]() {
+        pm_cache_lru_status();
+    });
+
+    auto cache_smart_cleanup = app.add_subcommand("cache-smart-cleanup", "Perform smart cache cleanup");
+    cache_smart_cleanup->callback([]() {
+        pm_cache_smart_cleanup();
+    });
+
+    auto cache_most_accessed = app.add_subcommand("cache-most-accessed", "Show most accessed packages");
+    cache_most_accessed->callback([]() {
+        pm_cache_most_accessed();
+    });
+
+    auto cache_oldest_items = app.add_subcommand("cache-oldest-items", "Show oldest cached items");
+    cache_oldest_items->callback([]() {
+        pm_cache_oldest_items();
+    });
+
+    auto cache_optimization_advice = app.add_subcommand("cache-optimization-advice", "Get cache optimization advice");
+    cache_optimization_advice->callback([]() {
+        pm_cache_optimization_advice();
     });
     
     // cache-stats

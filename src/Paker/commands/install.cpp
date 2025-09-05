@@ -6,6 +6,9 @@
 #include "Paker/conflict/conflict_resolver.h"
 #include "Paker/monitor/performance_monitor.h"
 #include "Paker/cache/cache_manager.h"
+#include "Paker/core/parallel_executor.h"
+#include "Paker/core/incremental_updater.h"
+#include "Paker/cache/lru_cache_manager.h"
 #include "Recorder/record.h"
 #include <filesystem>
 #include <fstream>
@@ -17,6 +20,88 @@
 extern const std::map<std::string, std::string>& get_builtin_repos();
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+
+// 辅助函数实现
+std::string get_repository_url(const std::string& package) {
+    const auto& repos = get_builtin_repos();
+    auto it = repos.find(package);
+    if (it != repos.end()) {
+        return it->second;
+    }
+    return "";
+}
+
+std::string get_package_install_path(const std::string& package) {
+    return "packages/" + package;
+}
+
+// 并行安装多个包
+void pm_add_parallel(const std::vector<std::string>& packages) {
+    if (packages.empty()) {
+        Output::warning("No packages specified for parallel installation");
+        return;
+    }
+    
+    // 初始化并行执行器
+    if (!g_parallel_executor) {
+        if (!initialize_parallel_executor()) {
+            Output::error("Failed to initialize parallel executor");
+            return;
+        }
+    }
+    
+    Output::info("Starting parallel installation of " + std::to_string(packages.size()) + " packages");
+    
+    std::vector<std::string> task_ids;
+    
+    // 提交所有下载任务
+    for (const auto& pkg_input : packages) {
+        auto [pkg, version] = parse_name_version(pkg_input);
+        if (pkg.empty()) {
+            Output::warning("Invalid package name: " + pkg_input);
+            continue;
+        }
+        
+        std::string repo_url = get_repository_url(pkg);
+        if (repo_url.empty()) {
+            Output::warning("No repository found for package: " + pkg);
+            continue;
+        }
+        
+        // 创建下载任务
+        std::string target_path = get_package_install_path(pkg);
+        auto download_task = DownloadTaskFactory::create_download_task(pkg, version, repo_url, target_path);
+        
+        std::string task_id = g_parallel_executor->submit_task(download_task);
+        if (!task_id.empty()) {
+            task_ids.push_back(task_id);
+        }
+    }
+    
+    // 等待所有任务完成
+    Output::info("Waiting for " + std::to_string(task_ids.size()) + " download tasks to complete...");
+    
+    bool all_success = true;
+    for (const auto& task_id : task_ids) {
+        if (!g_parallel_executor->wait_for_task(task_id, std::chrono::minutes(10))) {
+            Output::error("Task " + task_id + " failed or timed out");
+            all_success = false;
+        } else {
+            TaskStatus status = g_parallel_executor->get_task_status(task_id);
+            if (status != TaskStatus::COMPLETED) {
+                std::string error = g_parallel_executor->get_task_error(task_id);
+                Output::error("Task " + task_id + " failed: " + error);
+                all_success = false;
+            }
+        }
+    }
+    
+    if (all_success) {
+        Output::success("Parallel installation completed successfully");
+    } else {
+        Output::error("Some packages failed to install");
+    }
+}
 
 void pm_add(const std::string& pkg_input) {
     // 开始性能监控
