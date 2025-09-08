@@ -2,12 +2,31 @@
 #include "Paker/cache/cache_manager.h"
 #include "Paker/core/output.h"
 #include "Paker/core/utils.h"
-#include "Paker/sources.h"
+#include "Paker/dependency/sources.h"
 #include <glog/logging.h>
 #include <iomanip>
 #include <sstream>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 namespace Paker {
+
+// 格式化文件大小显示
+std::string format_size(size_t bytes) {
+    const char* units[] = {"B", "KB", "MB", "GB", "TB"};
+    int unit = 0;
+    double size = static_cast<double>(bytes);
+    
+    while (size >= 1024.0 && unit < 4) {
+        size /= 1024.0;
+        unit++;
+    }
+    
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(1) << size << " " << units[unit];
+    return oss.str();
+}
 
 int pm_cache_install(const std::string& package, const std::string& version) {
     try {
@@ -318,22 +337,6 @@ int pm_cache_config_list() {
         LOG(ERROR) << "Error listing cache config: " << e.what();
         return 1;
     }
-}
-
-// 辅助函数
-std::string format_size(size_t bytes) {
-    const char* units[] = {"B", "KB", "MB", "GB", "TB"};
-    int unit_index = 0;
-    double size = static_cast<double>(bytes);
-    
-    while (size >= 1024.0 && unit_index < 4) {
-        size /= 1024.0;
-        unit_index++;
-    }
-    
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2) << size << " " << units[unit_index];
-    return oss.str();
 }
 
 int pm_cache_status() {

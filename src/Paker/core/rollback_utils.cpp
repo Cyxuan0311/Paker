@@ -2,6 +2,7 @@
 #include "Paker/core/output.h"
 #include "Paker/dependency/version_manager.h"
 #include "Paker/dependency/dependency_resolver.h"
+#include "Paker/cache/cache_manager.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -33,24 +34,22 @@ bool RollbackUtils::check_rollback_safety(const std::string& package_name, const
         }
         
         // 3. 检查依赖关系
-        auto* resolver = get_dependency_resolver();
-        if (resolver) {
-            auto* graph = resolver->get_dependency_graph();
-            if (graph) {
-                auto* node = graph->get_node(package_name);
-                if (node) {
-                    // 检查依赖该包的包
-                    for (const auto& [other_name, other_node] : graph->get_all_nodes()) {
-                        if (other_node->dependencies.find(package_name) != other_node->dependencies.end()) {
-                            // 检查依赖包是否兼容目标版本
-                            auto constraint_it = other_node->version_constraints.find(package_name);
-                            if (constraint_it != other_node->version_constraints.end()) {
-                                if (!constraint_it->second.satisfies(target_version)) {
-                                    LOG(WARNING) << "Dependency constraint violation: " << other_name 
-                                               << " requires " << package_name << " " 
-                                               << constraint_it->second.to_string();
-                                    return false;
-                                }
+        DependencyResolver resolver;
+        if (resolver.resolve_project_dependencies()) {
+            auto& graph = resolver.get_dependency_graph();
+            auto* node = graph.get_node(package_name);
+            if (node) {
+                // 检查依赖该包的包
+                for (const auto& [other_name, other_node] : graph.get_nodes()) {
+                    if (other_node.dependencies.find(package_name) != other_node.dependencies.end()) {
+                        // 检查依赖包是否兼容目标版本
+                        auto constraint_it = other_node.version_constraints.find(package_name);
+                        if (constraint_it != other_node.version_constraints.end()) {
+                            if (!constraint_it->second.satisfies(target_version)) {
+                                LOG(WARNING) << "Dependency constraint violation: " << other_name 
+                                           << " requires " << package_name << " " 
+                                           << constraint_it->second.to_string();
+                                return false;
                             }
                         }
                     }
@@ -60,9 +59,9 @@ bool RollbackUtils::check_rollback_safety(const std::string& package_name, const
         
         // 4. 检查文件系统状态
         std::string current_path;
-        if (g_cache_manager) {
+        if (Paker::g_cache_manager) {
             std::string project_path = fs::current_path().string();
-            current_path = g_cache_manager->get_project_package_path(package_name, project_path);
+            current_path = Paker::g_cache_manager->get_project_package_path(package_name, project_path);
         } else {
             current_path = "packages/" + package_name;
         }
@@ -292,4 +291,4 @@ bool RollbackUtils::apply_differential_backup(const std::string& backup_path,
     }
 }
 
-} // namespace Paker 
+} // namespace Paker

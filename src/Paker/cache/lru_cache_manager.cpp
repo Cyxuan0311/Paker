@@ -72,7 +72,7 @@ bool LRUCacheManager::add_item(const std::string& package_name, const std::strin
         
         // 检查是否已存在
         if (cache_items_.find(key) != cache_items_.end()) {
-            LOG(DEBUG) << "Item already exists: " << key;
+            LOG(INFO) << "Item already exists: " << key;
             mark_accessed(package_name, version);
             return true;
         }
@@ -118,7 +118,7 @@ bool LRUCacheManager::remove_item(const std::string& package_name, const std::st
         
         auto it = cache_items_.find(key);
         if (it == cache_items_.end()) {
-            LOG(DEBUG) << "Item not found: " << key;
+            LOG(INFO) << "Item not found: " << key;
             return false;
         }
         
@@ -566,7 +566,7 @@ bool LRUCacheManager::validate_cache_integrity() const {
 }
 
 // 私有方法实现
-void LRUCacheManager::update_lru(const std::string& key) {
+void LRUCacheManager::update_lru(const std::string& key) const {
     auto it = lru_map_.find(key);
     if (it != lru_map_.end()) {
         lru_list_.erase(it->second);
@@ -597,7 +597,7 @@ void LRUCacheManager::evict_item(const std::string& key) {
     statistics_.total_items--;
     statistics_.total_size_bytes -= item.size_bytes;
     
-    LOG(DEBUG) << "Evicted cache item: " << key;
+    LOG(INFO) << "Evicted cache item: " << key;
 }
 
 bool LRUCacheManager::should_evict(const LRUCacheItem& item) const {
@@ -632,7 +632,7 @@ size_t LRUCacheManager::calculate_item_size(const std::string& cache_path) const
     }
 }
 
-void LRUCacheManager::update_statistics(const std::string& key, bool hit) {
+void LRUCacheManager::update_statistics(const std::string& key, bool hit) const {
     if (hit) {
         statistics_.hit_count++;
     } else {
@@ -967,6 +967,7 @@ size_t SmartCacheCleaner::calculate_cleanup_size() const {
 
 std::vector<std::string> SmartCacheCleaner::select_items_for_cleanup(CleanupRecommendation::Type type) const {
     std::vector<std::string> items;
+    auto stats = cache_manager_->get_statistics();
     
     switch (type) {
         case CleanupRecommendation::Type::LIGHT:

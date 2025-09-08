@@ -114,9 +114,10 @@ std::vector<FileInfo> IncrementalUpdater::scan_directory(const std::string& dir_
                 FileInfo file_info;
                 file_info.path = fs::relative(entry.path(), dir_path).string();
                 file_info.size = entry.file_size();
-                file_info.last_modified = std::chrono::system_clock::from_time_t(
-                    std::chrono::system_clock::to_time_t(
-                        std::chrono::file_clock::to_sys(entry.last_write_time())));
+                auto ftime = entry.last_write_time();
+                auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                    ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+                file_info.last_modified = sctp;
                 file_info.hash = calculate_file_hash(entry.path().string());
                 
                 files.push_back(file_info);
@@ -167,7 +168,7 @@ PackageChanges IncrementalUpdater::detect_package_changes(const std::string& pac
         }
         
         // 检测变更
-        for (const auto& [path, current_file] : current_map) {
+        for (auto& [path, current_file] : current_map) {
             auto prev_it = previous_map.find(path);
             if (prev_it == previous_map.end()) {
                 // 新文件
@@ -190,7 +191,7 @@ PackageChanges IncrementalUpdater::detect_package_changes(const std::string& pac
         }
         
         // 剩余的是删除的文件
-        for (const auto& [path, file] : previous_map) {
+        for (auto& [path, file] : previous_map) {
             file.change_type = ChangeType::DELETED;
             changes.deleted_files.push_back(file);
             changes.changed_size += file.size;
@@ -227,7 +228,7 @@ bool IncrementalUpdater::perform_incremental_update(const std::string& package,
                 std::string file_path = target_path + "/" + file.path;
                 if (fs::exists(file_path)) {
                     fs::remove(file_path);
-                    LOG(DEBUG) << "Deleted file: " << file.path;
+                    LOG(INFO) << "Deleted file: " << file.path;
                 }
             }
             

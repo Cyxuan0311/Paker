@@ -29,7 +29,7 @@ static void print_tree(const std::string& pkg, std::set<std::string>& visited, i
             }
         } catch (...) {
             LOG(WARNING) << "Failed to parse dependencies for " << pkg;
-            Output::warning("Failed to parse dependencies for " + pkg);
+            Paker::Output::warning("Failed to parse dependencies for " + pkg);
         }
     }
 }
@@ -38,7 +38,7 @@ void pm_list() {
     std::string json_file = get_json_file();
     if (!fs::exists(json_file)) {
         LOG(ERROR) << "Not a Paker project. Run 'paker init' first.";
-        Output::error("Not a Paker project. Run 'paker init' first.");
+        Paker::Output::error("Not a Paker project. Run 'paker init' first.");
         return;
     }
     
@@ -48,19 +48,19 @@ void pm_list() {
     
     // 项目信息
     LOG(INFO) << "Project: " << j["name"] << " v" << j["version"];
-    Output::info("Project: " + j["name"].get<std::string>() + " v" + j["version"].get<std::string>());
+    Paker::Output::info("Project: " + j["name"].get<std::string>() + " v" + j["version"].get<std::string>());
     
     if (!j["description"].get<std::string>().empty()) {
         LOG(INFO) << "Description: " << j["description"];
-        Output::info("Description: " + j["description"].get<std::string>());
+        Paker::Output::info("Description: " + j["description"].get<std::string>());
     }
     
     // 声明的依赖
-    Output::info("\nDependencies (declared):");
+    Paker::Output::info("\nDependencies (declared):");
     if (j["dependencies"].empty()) {
-        Output::info("  (none)");
+        Paker::Output::info("  (none)");
     } else {
-        Table table;
+        Paker::Table table;
         table.add_column("Package", 20);
         table.add_column("Version", 15);
         
@@ -68,15 +68,15 @@ void pm_list() {
             LOG(INFO) << "  " << k << ": " << v;
             table.add_row({k, v.get<std::string>()});
         }
-        Output::print_table(table);
+        Paker::Output::print_table(table);
     }
     
     // 已下载的依赖
-    Output::info("\nDependencies (downloaded):");
+    Paker::Output::info("\nDependencies (downloaded):");
     fs::path pkg_dir = "packages";
     if (fs::exists(pkg_dir) && fs::is_directory(pkg_dir)) {
         bool found = false;
-        Table table;
+        Paker::Table table;
         table.add_column("Package", 20);
         table.add_column("Version", 15);
         table.add_column("Status", 10);
@@ -107,12 +107,12 @@ void pm_list() {
         }
         
         if (!found) {
-            Output::info("  (none)");
+            Paker::Output::info("  (none)");
         } else {
-            Output::print_table(table);
+            Paker::Output::print_table(table);
         }
     } else {
-        Output::info("  (none)");
+        Paker::Output::info("  (none)");
     }
 }
 
@@ -120,7 +120,7 @@ void pm_tree() {
     std::string json_file = get_json_file();
     if (!fs::exists(json_file)) {
         LOG(ERROR) << "Not a Paker project. Run 'paker init' first.";
-        Output::error("Not a Paker project. Run 'paker init' first.");
+        Paker::Output::error("Not a Paker project. Run 'paker init' first.");
         return;
     }
     
@@ -128,7 +128,7 @@ void pm_tree() {
     json j; ifs >> j;
     
     LOG(INFO) << "Dependency Tree:";
-    Output::info("Dependency Tree:");
+    Paker::Output::info("Dependency Tree:");
     
     // 构建依赖树数据结构
     std::map<std::string, std::vector<std::string>> deps;
@@ -166,5 +166,5 @@ void pm_tree() {
     }
     
     // 使用新的依赖树输出
-    Output::print_dependency_tree(root_name, deps, versions);
+    Paker::Output::print_dependency_tree(root_name, deps, versions);
 } 

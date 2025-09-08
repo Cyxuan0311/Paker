@@ -79,7 +79,7 @@ private:
     bool restore_backup(const std::string& backup_path, const std::string& target_path);
     std::string generate_backup_path(const std::string& package_name, const std::string& version);
     bool validate_rollback_safety(const std::string& package_name, const std::string& target_version);
-    std::vector<std::string> get_dependent_packages(const std::string& package_name);
+    std::vector<std::string> get_dependent_packages(const std::string& package_name) const;
     
 public:
     explicit VersionHistoryManager(const std::string& project_path = "");
@@ -168,5 +168,8 @@ public:
     static bool apply_differential_backup(const std::string& backup_path, 
                                         const std::string& target_path);
 };
+
+// 全局函数
+VersionHistoryManager* get_history_manager();
 
 } // namespace Paker 

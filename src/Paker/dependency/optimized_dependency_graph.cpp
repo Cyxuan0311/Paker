@@ -50,7 +50,7 @@ size_t OptimizedDependencyGraph::add_node(const LightweightDependencyNode& node)
         cleanup_cache();
     }
     
-    LOG(DEBUG) << "Added node: " << node.name << " at index " << index;
+    LOG(INFO) << "Added node: " << node.name << " at index " << index;
     return index;
 }
 
@@ -107,7 +107,7 @@ bool OptimizedDependencyGraph::remove_node(const std::string& name) {
         }
     }
     
-    LOG(DEBUG) << "Removed node: " << name;
+    LOG(INFO) << "Removed node: " << name;
     return true;
 }
 
@@ -185,7 +185,7 @@ bool OptimizedDependencyGraph::add_dependency(const std::string& from, const std
     from_node.dependency_indices.push_back(to_index);
     nodes_[to_index].dependent_indices.push_back(from_index);
     
-    LOG(DEBUG) << "Added dependency: " << from << " -> " << to;
+    LOG(INFO) << "Added dependency: " << from << " -> " << to;
     return true;
 }
 
@@ -215,7 +215,7 @@ bool OptimizedDependencyGraph::remove_dependency(const std::string& from, const 
         to_node.dependent_indices.erase(dep_it2);
     }
     
-    LOG(DEBUG) << "Removed dependency: " << from << " -> " << to;
+    LOG(INFO) << "Removed dependency: " << from << " -> " << to;
     return true;
 }
 
@@ -868,6 +868,51 @@ size_t DependencyGraphAnalyzer::calculate_breadth(size_t node_index) const {
     if (!node) return 0;
     
     return node->dependency_indices.size();
+}
+
+void DependencyGraphAnalyzer::find_longest_chain(size_t node_index, std::unordered_set<size_t>& visited, 
+                                                std::vector<size_t>& current_chain, 
+                                                std::vector<std::vector<std::string>>& chains) const {
+    if (visited.find(node_index) != visited.end()) {
+        // 发现循环，记录当前链
+        if (current_chain.size() > 1) {
+            std::vector<std::string> chain_names;
+            for (size_t idx : current_chain) {
+                const auto* node = graph_->get_node_by_index(idx);
+                if (node) {
+                    chain_names.push_back(node->name);
+                }
+            }
+            chains.push_back(chain_names);
+        }
+        return;
+    }
+    
+    visited.insert(node_index);
+    current_chain.push_back(node_index);
+    
+    const auto* node = graph_->get_node_by_index(node_index);
+    if (node) {
+        // 递归处理所有依赖
+        for (size_t dep_index : node->dependency_indices) {
+            find_longest_chain(dep_index, visited, current_chain, chains);
+        }
+        
+        // 如果没有依赖，这是一个叶子节点，记录链
+        if (node->dependency_indices.empty() && current_chain.size() > 1) {
+            std::vector<std::string> chain_names;
+            for (size_t idx : current_chain) {
+                const auto* chain_node = graph_->get_node_by_index(idx);
+                if (chain_node) {
+                    chain_names.push_back(chain_node->name);
+                }
+            }
+            chains.push_back(chain_names);
+        }
+    }
+    
+    current_chain.pop_back();
+    visited.erase(node_index);
 }
 
 } // namespace Paker

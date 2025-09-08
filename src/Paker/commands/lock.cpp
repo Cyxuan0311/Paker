@@ -22,14 +22,14 @@ void pm_lock() {
     json j; ifs >> j;
     
     // 添加依赖验证
-    DependencyResolver resolver;
+    Paker::DependencyResolver resolver;
     if (!resolver.resolve_project_dependencies()) {
         LOG(ERROR) << "Failed to resolve project dependencies";
         std::cout << "Failed to resolve project dependencies\n";
         return;
     }
     
-    ConflictDetector detector(resolver.get_dependency_graph());
+    Paker::ConflictDetector detector(resolver.get_dependency_graph());
     auto conflicts = detector.detect_all_conflicts();
     
     if (!conflicts.empty()) {

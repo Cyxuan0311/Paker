@@ -58,8 +58,8 @@ struct CacheStatistics {
 class LRUCacheManager {
 private:
     // LRU链表：最近使用的在头部，最少使用的在尾部
-    std::list<std::string> lru_list_;
-    std::unordered_map<std::string, std::list<std::string>::iterator> lru_map_;
+    mutable std::list<std::string> lru_list_;
+    mutable std::unordered_map<std::string, std::list<std::string>::iterator> lru_map_;
     
     // 缓存项存储
     std::unordered_map<std::string, LRUCacheItem> cache_items_;
@@ -71,7 +71,7 @@ private:
     CacheEvictionPolicy eviction_policy_;
     
     // 统计信息
-    CacheStatistics statistics_;
+    mutable CacheStatistics statistics_;
     
     // 线程安全
     mutable std::mutex cache_mutex_;
@@ -80,11 +80,11 @@ private:
     std::string cache_directory_;
     
     // 内部方法
-    void update_lru(const std::string& key);
+    void update_lru(const std::string& key) const;
     void evict_item(const std::string& key);
     bool should_evict(const LRUCacheItem& item) const;
     size_t calculate_item_size(const std::string& cache_path) const;
-    void update_statistics(const std::string& key, bool hit);
+    void update_statistics(const std::string& key, bool hit) const;
     
     // 清理策略
     void evict_by_lru();

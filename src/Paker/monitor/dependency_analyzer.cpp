@@ -175,8 +175,9 @@ std::string DependencyAnalyzer::generate_dependency_tree_visualization() {
         
         // 计算缩进
         size_t depth = 0;
+        std::map<std::string, size_t> depth_cache;
         for (const auto& dep : node->dependencies) {
-            depth = std::max(depth, calculate_package_depth(dep, {}));
+            depth = std::max(depth, calculate_package_depth(dep, depth_cache));
         }
         
         std::string indent(depth * 2, ' ');

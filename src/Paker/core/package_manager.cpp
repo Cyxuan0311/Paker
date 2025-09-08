@@ -4,6 +4,7 @@
 #include "Paker/conflict/conflict_resolver.h"
 #include "Paker/core/output.h"
 #include "Paker/cache/cache_manager.h"
+#include "Paker/core/version_history.h"
 #include <iostream>
 #include <fstream>
 #include "nlohmann/json.hpp"
@@ -13,13 +14,13 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 // 全局依赖解析器实例
-static DependencyResolver* g_resolver = nullptr;
-static DependencyGraph* g_graph = nullptr;
+static Paker::DependencyResolver* g_resolver = nullptr;
+static Paker::DependencyGraph* g_graph = nullptr;
 
 // 初始化依赖解析器
 static void init_resolver() {
     if (!g_resolver) {
-        g_resolver = new DependencyResolver();
+        g_resolver = new Paker::DependencyResolver();
         g_graph = &g_resolver->get_dependency_graph();
     }
 }
@@ -37,7 +38,7 @@ void pm_init() {
     std::string json_file = get_json_file();
     if (fs::exists(json_file)) {
         LOG(INFO) << "Project already initialized.";
-        Output::info("Project already initialized.");
+        Paker::Output::info("Project already initialized.");
         return;
     }
     std::string project_name = get_project_name();
@@ -50,18 +51,18 @@ void pm_init() {
     std::ofstream ofs(json_file);
     ofs << j.dump(4);
     LOG(INFO) << "Initialized Paker project: " << project_name;
-    Output::success("Initialized Paker project: " + project_name);
+    Paker::Output::success("Initialized Paker project: " + project_name);
     
     // 初始化全局缓存管理器（默认启用）
-    if (!g_cache_manager) {
-        if (initialize_cache_manager()) {
-            Output::success("Global cache system initialized (default mode)");
-            Output::info("Cache locations:");
-            Output::info("  - User cache: ~/.paker/cache");
-            Output::info("  - Global cache: /usr/local/share/paker/cache");
-            Output::info("  - Project links: .paker/links");
+    if (!Paker::g_cache_manager) {
+        if (Paker::initialize_cache_manager()) {
+            Paker::Output::success("Global cache system initialized (default mode)");
+            Paker::Output::info("Cache locations:");
+            Paker::Output::info("  - User cache: ~/.paker/cache");
+            Paker::Output::info("  - Global cache: /usr/local/share/paker/cache");
+            Paker::Output::info("  - Project links: .paker/links");
         } else {
-            Output::warning("Failed to initialize global cache system, falling back to legacy mode");
+            Paker::Output::warning("Failed to initialize global cache system, falling back to legacy mode");
         }
     }
 }
@@ -70,7 +71,7 @@ void pm_add_desc(const std::string& desc) {
     std::string json_file = get_json_file();
     if (!fs::exists(json_file)) {
         LOG(ERROR) << "Not a Paker project. Run 'paker init' first.";
-        Output::error("Not a Paker project. Run 'paker init' first.");
+        Paker::Output::error("Not a Paker project. Run 'paker init' first.");
         return;
     }
     std::ifstream ifs(json_file);
@@ -80,14 +81,14 @@ void pm_add_desc(const std::string& desc) {
     std::ofstream ofs(json_file);
     ofs << j.dump(4);
     LOG(INFO) << "Updated project description.";
-    Output::success("Updated project description.");
+    Paker::Output::success("Updated project description.");
 }
 
 void pm_add_version(const std::string& vers) {
     std::string json_file = get_json_file();
     if (!fs::exists(json_file)) {
         LOG(ERROR) << "Not a Paker project. Run 'paker init' first.";
-        Output::error("Not a Paker project. Run 'paker init' first.");
+        Paker::Output::error("Not a Paker project. Run 'paker init' first.");
         return;
     }
     std::ifstream ifs(json_file);
@@ -97,7 +98,7 @@ void pm_add_version(const std::string& vers) {
     std::ofstream ofs(json_file);
     ofs << j.dump(4);
     LOG(INFO) << "Updated project version.";
-    Output::success("Updated project version.");
+    Paker::Output::success("Updated project version.");
 }
 
 // ==================== 依赖冲突检测与解决功能 ====================
@@ -106,40 +107,40 @@ void pm_resolve_dependencies() {
     init_resolver();
     
     LOG(INFO) << "Resolving project dependencies";
-    Output::info("Resolving project dependencies...");
+    Paker::Output::info("Resolving project dependencies...");
     
     if (!g_resolver->resolve_project_dependencies()) {
         LOG(ERROR) << "Failed to resolve project dependencies";
-        Output::error("Failed to resolve project dependencies");
+        Paker::Output::error("Failed to resolve project dependencies");
         return;
     }
     
-    Output::success("Dependencies resolved successfully");
+    Paker::Output::success("Dependencies resolved successfully");
 }
 
 void pm_check_conflicts() {
     init_resolver();
     
     LOG(INFO) << "Checking for dependency conflicts";
-    Output::info("Checking for dependency conflicts...");
+    Paker::Output::info("Checking for dependency conflicts...");
     
     // 确保依赖已解析
     if (!g_resolver->resolve_project_dependencies()) {
         LOG(ERROR) << "Failed to resolve dependencies for conflict checking";
-        Output::error("Failed to resolve dependencies for conflict checking");
+        Paker::Output::error("Failed to resolve dependencies for conflict checking");
         return;
     }
     
     // 检测冲突
-    ConflictDetector detector(*g_graph);
+    Paker::ConflictDetector detector(*g_graph);
     auto conflicts = detector.detect_all_conflicts();
     
     if (conflicts.empty()) {
-        Output::success("No conflicts detected");
+        Paker::Output::success("No conflicts detected");
     } else {
-        Output::warning("Found " + std::to_string(conflicts.size()) + " conflicts");
+        Paker::Output::warning("Found " + std::to_string(conflicts.size()) + " conflicts");
         std::string report = detector.generate_conflict_report(conflicts);
-        Output::info(report);
+        Paker::Output::info(report);
     }
 }
 
@@ -147,30 +148,30 @@ void pm_resolve_conflicts() {
     init_resolver();
     
     LOG(INFO) << "Resolving dependency conflicts";
-    Output::info("Resolving dependency conflicts...");
+    Paker::Output::info("Resolving dependency conflicts...");
     
     // 确保依赖已解析
     if (!g_resolver->resolve_project_dependencies()) {
         LOG(ERROR) << "Failed to resolve dependencies for conflict resolution";
-        Output::error("Failed to resolve dependencies for conflict resolution");
+        Paker::Output::error("Failed to resolve dependencies for conflict resolution");
         return;
     }
     
     // 检测冲突
-    ConflictDetector detector(*g_graph);
+    Paker::ConflictDetector detector(*g_graph);
     auto conflicts = detector.detect_all_conflicts();
     
     if (conflicts.empty()) {
-        Output::success("No conflicts to resolve");
+        Paker::Output::success("No conflicts to resolve");
         return;
     }
     
     // 解决冲突
-    ConflictResolver resolver(*g_graph);
+    Paker::ConflictResolver resolver(*g_graph);
     
     // 询问用户是否自动解决
-    Output::info("Found " + std::to_string(conflicts.size()) + " conflicts");
-    Output::info("Auto-resolve conflicts? [Y/n/i]: ");
+    Paker::Output::info("Found " + std::to_string(conflicts.size()) + " conflicts");
+    Paker::Output::info("Auto-resolve conflicts? [Y/n/i]: ");
     
     std::string response;
     std::getline(std::cin, response);
@@ -183,22 +184,22 @@ void pm_resolve_conflicts() {
         // 交互式解决
         success = resolver.interactive_resolve_conflicts(conflicts);
     } else {
-        Output::info("Conflict resolution cancelled");
+        Paker::Output::info("Conflict resolution cancelled");
         return;
     }
     
     if (success) {
-        Output::success("Conflicts resolved successfully");
+        Paker::Output::success("Conflicts resolved successfully");
         
         // 重新检测冲突以确认解决
         auto remaining_conflicts = detector.detect_all_conflicts();
         if (remaining_conflicts.empty()) {
-            Output::success("All conflicts have been resolved");
+            Paker::Output::success("All conflicts have been resolved");
         } else {
-            Output::warning("Some conflicts remain: " + std::to_string(remaining_conflicts.size()));
+            Paker::Output::warning("Some conflicts remain: " + std::to_string(remaining_conflicts.size()));
         }
     } else {
-        Output::error("Failed to resolve all conflicts");
+        Paker::Output::error("Failed to resolve all conflicts");
     }
 }
 
@@ -206,31 +207,31 @@ void pm_validate_dependencies() {
     init_resolver();
     
     LOG(INFO) << "Validating dependencies";
-    Output::info("Validating dependencies...");
+    Paker::Output::info("Validating dependencies...");
     
     // 解析依赖
     if (!g_resolver->resolve_project_dependencies()) {
         LOG(ERROR) << "Failed to resolve dependencies for validation";
-        Output::error("Failed to resolve dependencies for validation");
+        Paker::Output::error("Failed to resolve dependencies for validation");
         return;
     }
     
     // 验证依赖图
     if (!g_resolver->validate_dependencies()) {
         LOG(ERROR) << "Dependency validation failed";
-        Output::error("Dependency validation failed");
+        Paker::Output::error("Dependency validation failed");
         return;
     }
     
     // 检测冲突
-    ConflictDetector detector(*g_graph);
+    Paker::ConflictDetector detector(*g_graph);
     if (!detector.validate_dependency_graph()) {
         LOG(ERROR) << "Dependency graph validation failed";
-        Output::error("Dependency graph validation failed");
+        Paker::Output::error("Dependency graph validation failed");
         return;
     }
     
-    Output::success("Dependencies validated successfully");
+    Paker::Output::success("Dependencies validated successfully");
 }
 
 void pm_record_version_change(const std::string& package_name, 
@@ -238,7 +239,7 @@ void pm_record_version_change(const std::string& package_name,
                             const std::string& new_version,
                             const std::string& repository_url,
                             const std::string& reason) {
-    auto* history_manager = get_history_manager();
+    auto* history_manager = Paker::get_history_manager();
     if (!history_manager) {
         LOG(ERROR) << "History manager not initialized";
         return;

@@ -1,6 +1,8 @@
 #include "Paker/dependency/dependency_resolver.h"
 #include "Paker/core/utils.h"
 #include "Paker/dependency/sources.h"
+#include "Paker/core/package_manager.h"
+#include "Paker/dependency/version_manager.h"
 #include <filesystem>
 #include <fstream>
 #include <sstream>

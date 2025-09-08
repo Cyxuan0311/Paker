@@ -10,6 +10,7 @@
 #include <atomic>
 #include <future>
 #include <memory>
+#include <map>
 
 namespace Paker {
 
@@ -53,7 +54,7 @@ class ParallelExecutor {
 private:
     std::vector<std::thread> workers_;
     std::queue<std::shared_ptr<Task>> task_queue_;
-    std::mutex queue_mutex_;
+    mutable std::mutex queue_mutex_;
     std::condition_variable queue_cv_;
     std::atomic<bool> stop_flag_;
     std::atomic<size_t> active_tasks_;
@@ -62,7 +63,7 @@ private:
     
     // 任务结果存储
     std::map<std::string, std::shared_ptr<Task>> completed_tasks_;
-    std::mutex results_mutex_;
+    mutable std::mutex results_mutex_;
     
 public:
     ParallelExecutor(size_t max_workers = std::thread::hardware_concurrency(),

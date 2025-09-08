@@ -9,6 +9,7 @@
 #include "Paker/core/utils.h"
 #include "Paker/core/output.h"
 #include "Paker/core/package_manager.h"
+#include "Paker/dependency/sources.h"
 #include "Recorder/record.h"
 #include <iostream>
 #include "third_party/CLI11.hpp"
@@ -24,8 +25,8 @@ int run_cli(int argc, char* argv[]) {
     
     // 设置输出选项
     app.preparse_callback([&](size_t) {
-        Output::set_colored_output(!no_color);
-        Output::set_verbose_mode(verbose);
+        Paker::Output::set_colored_output(!no_color);
+        Paker::Output::set_verbose_mode(verbose);
     });
 
     // init
@@ -62,10 +63,10 @@ int run_cli(int argc, char* argv[]) {
             if (custom_repos.count(add_pkg)) {
                 pm_add(add_pkg);
             } else if (all_repos.count(add_pkg)) {
-                Output::info("Using built-in url: " + all_repos[add_pkg]);
+                Paker::Output::info("Using built-in url: " + all_repos[add_pkg]);
                 pm_add(add_pkg);
             } else {
-                Output::error("No url found for package: " + add_pkg + ". Please add a remote using 'add-remote'.");
+                Paker::Output::error("No url found for package: " + add_pkg + ". Please add a remote using 'add-remote'.");
             }
         }
     });
@@ -199,7 +200,7 @@ int run_cli(int argc, char* argv[]) {
     auto perf_report = app.add_subcommand("performance-report", "Generate performance report");
     perf_report->add_option("-o,--output", perf_output, "Output file (optional)");
     perf_report->callback([&]() {
-        pm_performance_report(perf_output);
+        Paker::pm_performance_report(perf_output);
     });
 
     // analyze-dependencies
@@ -207,7 +208,7 @@ int run_cli(int argc, char* argv[]) {
     auto analyze_deps = app.add_subcommand("analyze-dependencies", "Analyze dependencies");
     analyze_deps->add_option("-o,--output", analyze_output, "Output file (optional)");
     analyze_deps->callback([&]() {
-        pm_analyze_dependencies(analyze_output);
+        Paker::pm_analyze_dependencies(analyze_output);
     });
 
     // diagnose
@@ -215,7 +216,7 @@ int run_cli(int argc, char* argv[]) {
     auto diagnose = app.add_subcommand("diagnose", "Run diagnostic checks");
     diagnose->add_option("-o,--output", diagnose_output, "Output file (optional)");
     diagnose->callback([&]() {
-        pm_diagnose(diagnose_output);
+        Paker::pm_diagnose(diagnose_output);
     });
 
     // monitor-enable
@@ -223,13 +224,13 @@ int run_cli(int argc, char* argv[]) {
     auto monitor_enable_cmd = app.add_subcommand("monitor-enable", "Enable performance monitoring");
     monitor_enable_cmd->add_flag("--disable", monitor_enable, "Disable monitoring")->default_val(true);
     monitor_enable_cmd->callback([&]() {
-        pm_monitor_enable(monitor_enable);
+        Paker::pm_monitor_enable(monitor_enable);
     });
 
     // monitor-clear
     auto monitor_clear = app.add_subcommand("monitor-clear", "Clear performance monitoring data");
     monitor_clear->callback([]() {
-        pm_monitor_clear();
+        Paker::pm_monitor_clear();
     });
 
     // cache commands
@@ -240,7 +241,7 @@ int run_cli(int argc, char* argv[]) {
     cache_install->add_option("package", cache_pkg, "Package name")->required();
     cache_install->add_option("version", cache_version, "Package version (optional)");
     cache_install->callback([&]() {
-        pm_cache_install(cache_pkg, cache_version);
+        Paker::pm_cache_install(cache_pkg, cache_version);
     });
     
     // cache-remove
@@ -248,80 +249,80 @@ int run_cli(int argc, char* argv[]) {
     cache_remove->add_option("package", cache_pkg, "Package name")->required();
     cache_remove->add_option("version", cache_version, "Package version (optional)");
     cache_remove->callback([&]() {
-        pm_cache_remove(cache_pkg, cache_version);
+        Paker::pm_cache_remove(cache_pkg, cache_version);
     });
     
     // cache-list
     auto cache_list = app.add_subcommand("cache-list", "List all cached packages");
     cache_list->callback([]() {
-        pm_cache_list();
+        Paker::pm_cache_list();
     });
     
     // cache-info
     auto cache_info = app.add_subcommand("cache-info", "Show cached package information");
     cache_info->add_option("package", cache_pkg, "Package name")->required();
     cache_info->callback([&]() {
-        pm_cache_info(cache_pkg);
+        Paker::pm_cache_info(cache_pkg);
     });
     
     // cache-cleanup
     auto cache_cleanup = app.add_subcommand("cache-cleanup", "Clean up unused packages from cache");
     cache_cleanup->callback([]() {
-        pm_cache_cleanup();
+        Paker::pm_cache_cleanup();
     });
 
     // LRU缓存管理命令
     auto cache_init_lru = app.add_subcommand("cache-init-lru", "Initialize LRU cache manager");
     cache_init_lru->callback([]() {
-        pm_cache_init_lru();
+        Paker::pm_cache_init_lru();
     });
 
     auto cache_lru_stats = app.add_subcommand("cache-lru-stats", "Show LRU cache statistics");
     cache_lru_stats->callback([]() {
-        pm_cache_lru_stats();
+        Paker::pm_cache_lru_stats();
     });
 
     auto cache_lru_status = app.add_subcommand("cache-lru-status", "Show LRU cache status and health");
     cache_lru_status->callback([]() {
-        pm_cache_lru_status();
+        Paker::pm_cache_lru_status();
     });
 
     auto cache_smart_cleanup = app.add_subcommand("cache-smart-cleanup", "Perform smart cache cleanup");
     cache_smart_cleanup->callback([]() {
-        pm_cache_smart_cleanup();
+        Paker::pm_cache_smart_cleanup();
     });
 
     auto cache_most_accessed = app.add_subcommand("cache-most-accessed", "Show most accessed packages");
     cache_most_accessed->callback([]() {
-        pm_cache_most_accessed();
+        Paker::pm_cache_most_accessed();
     });
 
     auto cache_oldest_items = app.add_subcommand("cache-oldest-items", "Show oldest cached items");
     cache_oldest_items->callback([]() {
-        pm_cache_oldest_items();
+        Paker::pm_cache_oldest_items();
     });
 
     auto cache_optimization_advice = app.add_subcommand("cache-optimization-advice", "Get cache optimization advice");
     cache_optimization_advice->callback([]() {
-        pm_cache_optimization_advice();
+        Paker::pm_cache_optimization_advice();
     });
     
     // cache-stats
     auto cache_stats = app.add_subcommand("cache-stats", "Show cache statistics");
     cache_stats->callback([]() {
-        pm_cache_stats();
+        Paker::pm_cache_stats();
     });
     
     // cache-status
     auto cache_status = app.add_subcommand("cache-status", "Show detailed cache status and health");
     cache_status->callback([]() {
-        pm_cache_status();
+        Paker::pm_cache_status();
     });
     
     // cache-optimize
     auto cache_optimize = app.add_subcommand("cache-optimize", "Optimize cache performance and storage");
     cache_optimize->callback([]() {
-        pm_cache_optimize();
+        Paker::pm_cache_optimize();
     });
     
     // cache-migrate
@@ -329,7 +330,7 @@ int run_cli(int argc, char* argv[]) {
     auto cache_migrate = app.add_subcommand("cache-migrate", "Migrate project from legacy mode to cache mode");
     cache_migrate->add_option("project_path", migrate_path, "Project path (optional, defaults to current directory)");
     cache_migrate->callback([&]() {
-        pm_cache_migrate(migrate_path);
+        Paker::pm_cache_migrate(migrate_path);
     });
 
     // record commands
@@ -376,7 +377,7 @@ int run_cli(int argc, char* argv[]) {
     rollback_version_cmd->add_option("version", rollback_version, "Target version")->required();
     rollback_version_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
     rollback_version_cmd->callback([&]() {
-        pm_rollback_to_version(rollback_pkg, rollback_version, force_rollback);
+        Paker::pm_rollback_to_version(rollback_pkg, rollback_version, force_rollback);
     });
     
     // rollback-to-previous
@@ -384,7 +385,7 @@ int run_cli(int argc, char* argv[]) {
     rollback_previous_cmd->add_option("package", rollback_pkg, "Package name")->required();
     rollback_previous_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
     rollback_previous_cmd->callback([&]() {
-        pm_rollback_to_previous(rollback_pkg, force_rollback);
+        Paker::pm_rollback_to_previous(rollback_pkg, force_rollback);
     });
     
     // rollback-to-timestamp
@@ -392,21 +393,21 @@ int run_cli(int argc, char* argv[]) {
     rollback_timestamp_cmd->add_option("timestamp", rollback_timestamp, "Target timestamp (YYYY-MM-DD HH:MM:SS)")->required();
     rollback_timestamp_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
     rollback_timestamp_cmd->callback([&]() {
-        pm_rollback_to_timestamp(rollback_timestamp, force_rollback);
+        Paker::pm_rollback_to_timestamp(rollback_timestamp, force_rollback);
     });
     
     // history-show
     auto history_show_cmd = app.add_subcommand("history-show", "Show version history");
     history_show_cmd->add_option("package", rollback_pkg, "Package name (optional)");
     history_show_cmd->callback([&]() {
-        pm_history_show(rollback_pkg);
+        Paker::pm_history_show(rollback_pkg);
     });
     
     // rollback-list
     auto rollback_list_cmd = app.add_subcommand("rollback-list", "List rollbackable versions for a package");
     rollback_list_cmd->add_option("package", rollback_pkg, "Package name")->required();
     rollback_list_cmd->callback([&]() {
-        pm_rollback_list(rollback_pkg);
+        Paker::pm_rollback_list(rollback_pkg);
     });
     
     // rollback-check
@@ -414,7 +415,7 @@ int run_cli(int argc, char* argv[]) {
     rollback_check_cmd->add_option("package", rollback_pkg, "Package name")->required();
     rollback_check_cmd->add_option("version", rollback_version, "Target version")->required();
     rollback_check_cmd->callback([&]() {
-        pm_rollback_check(rollback_pkg, rollback_version);
+        Paker::pm_rollback_check(rollback_pkg, rollback_version);
     });
     
     // history-cleanup
@@ -422,7 +423,7 @@ int run_cli(int argc, char* argv[]) {
     auto history_cleanup_cmd = app.add_subcommand("history-cleanup", "Clean up old history records");
     history_cleanup_cmd->add_option("max_entries", max_entries, "Maximum entries to keep (default: 50)");
     history_cleanup_cmd->callback([&]() {
-        pm_history_cleanup(max_entries);
+        Paker::pm_history_cleanup(max_entries);
     });
     
     // history-export
@@ -430,7 +431,7 @@ int run_cli(int argc, char* argv[]) {
     auto history_export_cmd = app.add_subcommand("history-export", "Export history records");
     history_export_cmd->add_option("path", export_path, "Export file path")->required();
     history_export_cmd->callback([&]() {
-        pm_history_export(export_path);
+        Paker::pm_history_export(export_path);
     });
     
     // history-import
@@ -438,13 +439,13 @@ int run_cli(int argc, char* argv[]) {
     auto history_import_cmd = app.add_subcommand("history-import", "Import history records");
     history_import_cmd->add_option("path", import_path, "Import file path")->required();
     history_import_cmd->callback([&]() {
-        pm_history_import(import_path);
+        Paker::pm_history_import(import_path);
     });
     
     // rollback-stats
     auto rollback_stats_cmd = app.add_subcommand("rollback-stats", "Show rollback statistics");
     rollback_stats_cmd->callback([]() {
-        pm_rollback_stats();
+        Paker::pm_rollback_stats();
     });
 
     CLI11_PARSE(app, argc, argv);

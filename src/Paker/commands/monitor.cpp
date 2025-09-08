@@ -44,13 +44,15 @@ int pm_analyze_dependencies(const std::string& output_file) {
         Output::info("Analyzing dependencies...");
         
         // 解析依赖
-        if (!g_resolver) {
-            Output::error("Dependency resolver not initialized");
+        // 创建依赖解析器
+        DependencyResolver resolver;
+        if (!resolver.resolve_project_dependencies()) {
+            Output::error("Failed to resolve project dependencies");
             return 1;
         }
         
         // 获取依赖图
-        auto graph = g_resolver->get_dependency_graph();
+        auto graph = resolver.get_dependency_graph();
         if (graph.empty()) {
             Output::warning("No dependencies found to analyze");
             return 0;
@@ -97,13 +99,15 @@ int pm_diagnose(const std::string& output_file) {
         Output::info("Running diagnostic...");
         
         // 解析依赖
-        if (!g_resolver) {
-            Output::error("Dependency resolver not initialized");
+        // 创建依赖解析器
+        DependencyResolver resolver;
+        if (!resolver.resolve_project_dependencies()) {
+            Output::error("Failed to resolve project dependencies");
             return 1;
         }
         
         // 获取依赖图
-        auto graph = g_resolver->get_dependency_graph();
+        auto graph = resolver.get_dependency_graph();
         
         // 创建诊断工具
         DiagnosticTool diagnostic(graph);

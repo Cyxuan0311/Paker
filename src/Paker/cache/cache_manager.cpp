@@ -610,4 +610,95 @@ void cleanup_cache_manager() {
     }
 }
 
+// 添加缺失的函数实现
+std::vector<PackageCacheInfo> CacheManager::get_package_list() const {
+    std::vector<PackageCacheInfo> packages;
+    
+    // 检查全局缓存路径
+    if (fs::exists(global_cache_path_)) {
+        try {
+            for (const auto& entry : fs::directory_iterator(global_cache_path_)) {
+                if (entry.is_directory()) {
+                    std::string package_name = entry.path().filename().string();
+                    
+                    // 查找版本目录
+                    for (const auto& version_entry : fs::directory_iterator(entry.path())) {
+                        if (version_entry.is_directory()) {
+                            std::string version = version_entry.path().filename().string();
+                            
+                            PackageCacheInfo info;
+                            info.package_name = package_name;
+                            info.version = version;
+                            info.cache_path = version_entry.path().string();
+                            info.size_bytes = calculate_directory_size(version_entry.path().string());
+                            info.last_access = std::chrono::system_clock::from_time_t(
+                                std::chrono::duration_cast<std::chrono::seconds>(
+                                    fs::last_write_time(version_entry.path()).time_since_epoch()).count());
+                            
+                            packages.push_back(info);
+                        }
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            LOG(ERROR) << "Error getting package list from global cache: " << e.what();
+        }
+    }
+    
+    return packages;
+}
+
+bool CacheManager::load_configuration(const std::string& config_path) {
+    try {
+        if (!fs::exists(config_path)) {
+            LOG(WARNING) << "Configuration file does not exist: " << config_path;
+            return false;
+        }
+        
+        std::ifstream config_file(config_path);
+        if (!config_file.is_open()) {
+            LOG(ERROR) << "Failed to open configuration file: " << config_path;
+            return false;
+        }
+        
+        // 简单的配置加载逻辑
+        std::string line;
+        while (std::getline(config_file, line)) {
+            if (line.empty() || line[0] == '#') continue;
+            
+            size_t pos = line.find('=');
+            if (pos != std::string::npos) {
+                std::string key = line.substr(0, pos);
+                std::string value = line.substr(pos + 1);
+                
+                // 处理配置项
+                if (key == "global_cache_dir") {
+                    global_cache_path_ = value;
+                } else if (key == "user_cache_dir") {
+                    user_cache_path_ = value;
+                } else if (key == "project_cache_dir") {
+                    project_cache_path_ = value;
+                } else if (key == "max_cache_size") {
+                    max_cache_size_ = std::stoull(value);
+                } else if (key == "version_storage") {
+                    if (value == "shallow") {
+                        version_storage_ = VersionStorage::SHALLOW_CLONE;
+                    } else if (value == "archive") {
+                        version_storage_ = VersionStorage::ARCHIVE_ONLY;
+                    } else if (value == "compressed") {
+                        version_storage_ = VersionStorage::COMPRESSED;
+                    }
+                }
+            }
+        }
+        
+        LOG(INFO) << "Configuration loaded from: " << config_path;
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error loading configuration: " << e.what();
+        return false;
+    }
+}
+
 } // namespace Paker 

@@ -1,4 +1,4 @@
-#include "Paker/cli.h"
+#include "Paker/commands/cli.h"
 
 int main(int argc, char* argv[]) {
     return run_cli(argc, argv);

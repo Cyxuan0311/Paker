@@ -82,8 +82,8 @@ private:
 extern PerformanceMonitor g_performance_monitor;
 
 // 便捷宏
-#define PAKER_PERF_START(name) g_performance_monitor.start_timer(name)
-#define PAKER_PERF_END(name, type) g_performance_monitor.end_timer(name, type)
-#define PAKER_PERF_RECORD(type, name, value, unit) g_performance_monitor.record_metric(type, name, value, unit)
+#define PAKER_PERF_START(name) Paker::g_performance_monitor.start_timer(name)
+#define PAKER_PERF_END(name, type) Paker::g_performance_monitor.end_timer(name, type)
+#define PAKER_PERF_RECORD(type, name, value, unit) Paker::g_performance_monitor.record_metric(type, name, value, unit)
 
 } // namespace Paker 

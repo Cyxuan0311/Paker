@@ -5,8 +5,35 @@
 #include <glog/logging.h>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 namespace Paker {
+
+// 获取缓存目录
+std::string get_cache_directory() {
+    // 默认缓存目录
+    std::string home_dir = std::getenv("HOME") ? std::getenv("HOME") : "/tmp";
+    return fs::path(home_dir) / ".paker" / "cache";
+}
+
+// 格式化字节数显示
+std::string format_bytes(size_t bytes) {
+    const char* units[] = {"B", "KB", "MB", "GB", "TB"};
+    int unit = 0;
+    double size = static_cast<double>(bytes);
+    
+    while (size >= 1024.0 && unit < 4) {
+        size /= 1024.0;
+        unit++;
+    }
+    
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(1) << size << " " << units[unit];
+    return oss.str();
+}
 
 // 初始化LRU缓存管理器
 void pm_cache_init_lru() {

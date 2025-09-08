@@ -1,4 +1,5 @@
 #include "Paker/conflict/conflict_resolver.h"
+#include "Paker/conflict/conflict_detector.h"
 #include "Paker/dependency/version_manager.h"
 #include "Paker/core/output.h"
 #include <iostream>

@@ -3,6 +3,9 @@
 #include <glog/logging.h>
 #include <algorithm>
 #include <sstream>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 namespace Paker {
 
@@ -303,7 +306,7 @@ std::shared_ptr<Task> DownloadTaskFactory::create_download_task(
             LOG(INFO) << "Downloading " << package_name << "@" << version << " from " << repository_url;
             
             // 创建目标目录
-            std::filesystem::create_directories(std::filesystem::path(target_path).parent_path());
+            fs::create_directories(fs::path(target_path).parent_path());
             
             // 执行git clone
             std::ostringstream cmd;
@@ -357,11 +360,11 @@ std::shared_ptr<Task> DownloadTaskFactory::create_install_task(
             LOG(INFO) << "Installing " << package_name << "@" << version << " to " << target_path;
             
             // 创建符号链接
-            if (std::filesystem::exists(target_path)) {
-                std::filesystem::remove(target_path);
+            if (fs::exists(target_path)) {
+                fs::remove(target_path);
             }
             
-            std::filesystem::create_symlink(source_path, target_path);
+            fs::create_symlink(source_path, target_path);
             
             LOG(INFO) << "Successfully installed " << package_name << "@" << version;
             return true;

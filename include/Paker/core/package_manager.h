@@ -1,6 +1,7 @@
+#pragma once
 #include <string>
 #include <map>
-#pragma once
+#include <vector>
 
 void pm_init();
 void pm_add(const std::string& pkg);

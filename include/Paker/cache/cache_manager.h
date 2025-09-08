@@ -81,7 +81,7 @@ public:
     CacheStrategy get_cache_strategy() const { return strategy_; }
     
     void set_version_storage(VersionStorage storage) { version_storage_ = storage; }
-    VersionStorage get_version_storage() const { return version_storage_ = storage; }
+    VersionStorage get_version_storage() const { return version_storage_; }
     
     // 路径管理
     std::string get_global_cache_path() const { return global_cache_path_; }
@@ -121,10 +121,12 @@ public:
     bool migrate_from_legacy_mode(const std::string& project_path);
     bool migrate_to_cache_mode(const std::string& project_path);
     
+    // 缓存索引管理
+    bool save_cache_index();
+    
 private:
     // 内部辅助方法
     bool load_cache_index();
-    bool save_cache_index();
     bool update_package_info(const std::string& package, const std::string& version);
     std::string generate_cache_key(const std::string& package, const std::string& version) const;
     bool create_symbolic_link(const std::string& target, const std::string& link_path);
@@ -139,6 +141,11 @@ private:
     // 路径解析
     std::string resolve_cache_path(const std::string& package, const std::string& version) const;
     std::string resolve_project_path(const std::string& package, const std::string& project_path) const;
+    
+    // 安装方法
+    bool install_shallow_clone(const std::string& repo_url, const std::string& cache_path, const std::string& version);
+    bool install_archive_only(const std::string& repo_url, const std::string& cache_path, const std::string& version);
+    bool install_compressed(const std::string& repo_url, const std::string& cache_path, const std::string& version);
 };
 
 // 全局缓存管理器实例

@@ -135,7 +135,10 @@ CachePathResolver::PathStats CachePathResolver::get_path_statistics(CacheLocatio
         fs::path cleanup_file = fs::path(path) / ".last_cleanup";
         if (fs::exists(cleanup_file)) {
             auto ftime = fs::last_write_time(cleanup_file);
-            stats.last_cleanup = std::chrono::clock_cast<std::chrono::system_clock>(ftime);
+            // 将 file_time_type 转换为 system_clock::time_point
+            auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+            stats.last_cleanup = sctp;
         }
         
     } catch (const std::exception& e) {
@@ -259,7 +262,10 @@ size_t CachePathResolver::calculate_path_size(const std::string& path) const {
 std::chrono::system_clock::time_point CachePathResolver::get_path_last_modified(const std::string& path) const {
     try {
         auto ftime = fs::last_write_time(path);
-        return std::chrono::clock_cast<std::chrono::system_clock>(ftime);
+        // 将 file_time_type 转换为 system_clock::time_point
+        auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+            ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+        return sctp;
     } catch (const std::exception& e) {
         return std::chrono::system_clock::now();
     }

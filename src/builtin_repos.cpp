@@ -1,4 +1,4 @@
-#include "Paker/package_manager.h"
+#include "Paker/core/package_manager.h"
 
 const RepoMap& get_builtin_repos() {
     static const RepoMap repos = {

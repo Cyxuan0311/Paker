@@ -42,7 +42,7 @@ private:
     std::unordered_map<std::string, size_t> name_to_index_;
     
     // 访问统计
-    std::unordered_map<size_t, size_t> access_counts_;
+    mutable std::unordered_map<size_t, size_t> access_counts_;
     
     // 缓存配置
     size_t max_cached_nodes_;
@@ -180,6 +180,9 @@ public:
 private:
     size_t calculate_depth(size_t node_index, std::unordered_set<size_t>& visited) const;
     size_t calculate_breadth(size_t node_index) const;
+    void find_longest_chain(size_t node_index, std::unordered_set<size_t>& visited, 
+                           std::vector<size_t>& current_chain, 
+                           std::vector<std::vector<std::string>>& chains) const;
 };
 
 } // namespace Paker
