@@ -2,6 +2,17 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <memory>
+
+// 前向声明
+namespace Paker {
+    class DependencyResolver;
+    class DependencyGraph;
+    class CacheManager;
+    class ParallelExecutor;
+    class PerformanceMonitor;
+    class IncrementalUpdater;
+}
 
 void pm_init();
 void pm_add(const std::string& pkg);
@@ -47,4 +58,21 @@ void pm_record_version_change(const std::string& package_name,
                              const std::string& old_version,
                              const std::string& new_version,
                              const std::string& repository_url,
-                             const std::string& reason = "");  // 记录版本变更 
+                             const std::string& reason = "");  // 记录版本变更
+
+// 服务架构相关函数
+namespace Paker {
+    // 初始化服务管理器
+    bool initialize_service_manager();
+    
+    // 清理服务管理器
+    void cleanup_service_manager();
+    
+    // 便捷访问函数（通过服务架构）
+    DependencyResolver* get_dependency_resolver();
+    DependencyGraph* get_dependency_graph();
+    CacheManager* get_cache_manager();
+    ParallelExecutor* get_parallel_executor();
+    PerformanceMonitor* get_performance_monitor();
+    IncrementalUpdater* get_incremental_updater();
+} 
