@@ -19,6 +19,8 @@ add_executable(PakerUnitTests
     unit/test_monitoring.cpp
     unit/test_cache_manager.cpp
     unit/test_rollback.cpp
+    unit/test_memory_management.cpp
+    unit/test_service_architecture.cpp
 )
 
 # 集成测试
