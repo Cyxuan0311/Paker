@@ -6,6 +6,7 @@
 #include "Paker/commands/monitor.h"
 #include "Paker/commands/cache.h"
 #include "Paker/commands/rollback.h"
+#include "Paker/commands/warmup.h"
 #include "Paker/core/utils.h"
 #include "Paker/core/output.h"
 #include "Paker/core/package_manager.h"
@@ -305,6 +306,27 @@ int run_cli(int argc, char* argv[]) {
     auto cache_optimization_advice = app.add_subcommand("cache-optimization-advice", "Get cache optimization advice");
     cache_optimization_advice->callback([]() {
         Paker::pm_cache_optimization_advice();
+    });
+
+    // warmup commands
+    auto warmup = app.add_subcommand("warmup", "Start cache warmup process");
+    warmup->callback([]() {
+        Paker::pm_warmup();
+    });
+
+    auto warmup_analyze = app.add_subcommand("warmup-analyze", "Analyze project dependencies for warmup");
+    warmup_analyze->callback([]() {
+        Paker::pm_warmup_analyze();
+    });
+
+    auto warmup_stats = app.add_subcommand("warmup-stats", "Show cache warmup statistics");
+    warmup_stats->callback([]() {
+        Paker::pm_warmup_stats();
+    });
+
+    auto warmup_config = app.add_subcommand("warmup-config", "Show cache warmup configuration");
+    warmup_config->callback([]() {
+        Paker::pm_warmup_config();
     });
     
     // cache-stats
