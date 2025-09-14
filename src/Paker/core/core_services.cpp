@@ -1,5 +1,6 @@
 #include "Paker/core/core_services.h"
 #include "Paker/core/output.h"
+#include "Paker/cache/cache_warmup.h"
 #include <glog/logging.h>
 
 namespace Paker {
@@ -175,6 +176,38 @@ IncrementalUpdater* IncrementalUpdaterService::get_updater() {
     return updater_.get();
 }
 
+// ==================== CacheWarmupServiceWrapper ====================
+
+CacheWarmupServiceWrapper::CacheWarmupServiceWrapper() {
+    warmup_service_ = std::make_shared<CacheWarmupService>();
+}
+
+bool CacheWarmupServiceWrapper::initialize() {
+    std::lock_guard<std::mutex> lock(warmup_mutex_);
+    
+    if (!warmup_service_) {
+        warmup_service_ = std::make_shared<CacheWarmupService>();
+    }
+    
+    warmup_service_->initialize();
+    LOG(INFO) << "CacheWarmupServiceWrapper initialized";
+    return true;
+}
+
+void CacheWarmupServiceWrapper::shutdown() {
+    std::lock_guard<std::mutex> lock(warmup_mutex_);
+    if (warmup_service_) {
+        warmup_service_->shutdown();
+    }
+    warmup_service_.reset();
+    LOG(INFO) << "CacheWarmupServiceWrapper shut down";
+}
+
+CacheWarmupService* CacheWarmupServiceWrapper::get_warmup_service() {
+    std::lock_guard<std::mutex> lock(warmup_mutex_);
+    return warmup_service_.get();
+}
+
 // ==================== ServiceFactory ====================
 
 std::shared_ptr<DependencyResolverService> ServiceFactory::create_dependency_resolver_service() {
@@ -197,6 +230,10 @@ std::shared_ptr<IncrementalUpdaterService> ServiceFactory::create_incremental_up
     return std::make_shared<IncrementalUpdaterService>();
 }
 
+std::shared_ptr<CacheWarmupServiceWrapper> ServiceFactory::create_cache_warmup_service() {
+    return std::make_shared<CacheWarmupServiceWrapper>();
+}
+
 bool ServiceFactory::register_all_core_services() {
     if (!g_service_manager) {
         LOG(ERROR) << "Service manager not initialized";
@@ -209,6 +246,7 @@ bool ServiceFactory::register_all_core_services() {
     g_service_manager->register_service(create_parallel_executor_service());
     g_service_manager->register_service(create_performance_monitor_service());
     g_service_manager->register_service(create_incremental_updater_service());
+    g_service_manager->register_service(create_cache_warmup_service());
     
     // 初始化所有服务
     if (!g_service_manager->initialize_all()) {
@@ -250,6 +288,11 @@ PerformanceMonitor* get_performance_monitor() {
 IncrementalUpdater* get_incremental_updater() {
     auto service = ServiceLocator::get<IncrementalUpdaterService>();
     return service ? service->get_updater() : nullptr;
+}
+
+CacheWarmupService* get_cache_warmup_service() {
+    auto service = ServiceLocator::get<CacheWarmupServiceWrapper>();
+    return service ? service->get_warmup_service() : nullptr;
 }
 
 } // namespace Paker
