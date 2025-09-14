@@ -3,6 +3,7 @@
 #include "Paker/core/service_container.h"
 #include "Paker/dependency/dependency_resolver.h"
 #include "Paker/cache/cache_manager.h"
+#include "Paker/cache/cache_warmup.h"
 #include "Paker/core/parallel_executor.h"
 #include "Paker/monitor/performance_monitor.h"
 #include "Paker/core/incremental_updater.h"
@@ -96,6 +97,23 @@ public:
     IncrementalUpdater* get_updater();
 };
 
+// 缓存预热服务
+class CacheWarmupServiceWrapper : public IService {
+private:
+    std::shared_ptr<CacheWarmupService> warmup_service_;
+    std::mutex warmup_mutex_;
+
+public:
+    CacheWarmupServiceWrapper();
+    ~CacheWarmupServiceWrapper() override = default;
+
+    bool initialize() override;
+    void shutdown() override;
+    std::string get_name() const override { return "CacheWarmupServiceWrapper"; }
+
+    CacheWarmupService* get_warmup_service();
+};
+
 // 服务工厂
 class ServiceFactory {
 public:
@@ -104,6 +122,7 @@ public:
     static std::shared_ptr<ParallelExecutorService> create_parallel_executor_service();
     static std::shared_ptr<PerformanceMonitorService> create_performance_monitor_service();
     static std::shared_ptr<IncrementalUpdaterService> create_incremental_updater_service();
+    static std::shared_ptr<CacheWarmupServiceWrapper> create_cache_warmup_service();
     
     // 注册所有核心服务
     static bool register_all_core_services();
@@ -116,5 +135,6 @@ CacheManager* get_cache_manager();
 ParallelExecutor* get_parallel_executor();
 PerformanceMonitor* get_performance_monitor();
 IncrementalUpdater* get_incremental_updater();
+CacheWarmupService* get_cache_warmup_service();
 
 } // namespace Paker
