@@ -9,6 +9,9 @@ find_package(glog REQUIRED)
 # 查找OpenSSL库
 find_package(OpenSSL REQUIRED)
 
+# 查找CURL库
+find_package(CURL REQUIRED)
+
 file(GLOB_RECURSE PAKER_SRCS src/Paker/*.cpp)
 file(GLOB RECORDER_SRCS src/Recorder/*.cpp)
 
@@ -23,7 +26,7 @@ target_include_directories(Paker PRIVATE include include/Paker include/Recorder 
 
 # 修复 std::filesystem 链接错误
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_link_libraries(Paker stdc++fs glog::glog OpenSSL::SSL OpenSSL::Crypto)
+    target_link_libraries(Paker stdc++fs glog::glog OpenSSL::SSL OpenSSL::Crypto CURL::libcurl)
 else()
-    target_link_libraries(Paker glog::glog OpenSSL::SSL OpenSSL::Crypto)
+    target_link_libraries(Paker glog::glog OpenSSL::SSL OpenSSL::Crypto CURL::libcurl)
 endif() 
