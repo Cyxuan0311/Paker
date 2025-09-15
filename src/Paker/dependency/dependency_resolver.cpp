@@ -1,4 +1,5 @@
 #include "Paker/dependency/dependency_resolver.h"
+#include "Paker/dependency/incremental_parser.h"
 #include "Paker/core/utils.h"
 #include "Paker/dependency/sources.h"
 #include "Paker/core/package_manager.h"
@@ -14,13 +15,30 @@ namespace fs = std::filesystem;
 
 namespace Paker {
 
-DependencyResolver::DependencyResolver() : recursive_mode_(false) {
+DependencyResolver::DependencyResolver() : recursive_mode_(false), incremental_parser_(nullptr) {
     // 初始化仓库映射
     repositories_ = get_builtin_repos();
+    
+    // 初始化增量解析器
+    incremental_parser_ = new IncrementalParser();
+    incremental_parser_->initialize();
+}
+
+DependencyResolver::~DependencyResolver() {
+    if (incremental_parser_) {
+        incremental_parser_->shutdown();
+        delete incremental_parser_;
+        incremental_parser_ = nullptr;
+    }
 }
 
 bool DependencyResolver::resolve_package(const std::string& package, const std::string& version) {
     LOG(INFO) << "Resolving package: " << package << (version.empty() ? "" : "@" + version);
+    
+    // 如果启用了增量解析，使用增量解析器
+    if (incremental_parser_ && incremental_parser_->get_config().enable_incremental) {
+        return incremental_parser_->parse_package(package, version);
+    }
     
     // 检查包是否已经解析
     if (is_package_resolved(package)) {
@@ -403,6 +421,28 @@ bool DependencyResolver::validate_package(const std::string& package, const std:
     }
     
     return true;
+}
+
+bool DependencyResolver::enable_incremental_parsing(bool enable) {
+    if (incremental_parser_) {
+        auto config = incremental_parser_->get_config();
+        config.enable_incremental = enable;
+        incremental_parser_->set_config(config);
+        LOG(INFO) << "Incremental parsing " << (enable ? "enabled" : "disabled");
+        return true;
+    }
+    return false;
+}
+
+bool DependencyResolver::is_incremental_parsing_enabled() const {
+    if (incremental_parser_) {
+        return incremental_parser_->get_config().enable_incremental;
+    }
+    return false;
+}
+
+IncrementalParser* DependencyResolver::get_incremental_parser() const {
+    return incremental_parser_;
 }
 
 } // namespace Paker 
