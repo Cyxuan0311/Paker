@@ -22,6 +22,7 @@ add_executable(PakerUnitTests
     unit/test_memory_management.cpp
     unit/test_service_architecture.cpp
     unit/test_incremental_parser.cpp
+    unit/test_async_io.cpp
 )
 
 # 集成测试
