@@ -8,6 +8,7 @@
 #include "Paker/commands/rollback.h"
 #include "Paker/commands/warmup.h"
 #include "Paker/commands/incremental_parse.h"
+#include "Paker/commands/async_io.h"
 #include "Paker/core/utils.h"
 #include "Paker/core/output.h"
 #include "Paker/core/package_manager.h"
@@ -359,6 +360,32 @@ int run_cli(int argc, char* argv[]) {
     auto incremental_parse_validate = app.add_subcommand("incremental-parse-validate", "Validate incremental parse cache integrity");
     incremental_parse_validate->callback([]() {
         Paker::pm_incremental_parse_validate();
+    });
+    
+    // async I/O commands
+    auto async_io_stats = app.add_subcommand("async-io-stats", "Show async I/O statistics");
+    async_io_stats->callback([]() {
+        Paker::pm_async_io_stats();
+    });
+    
+    auto async_io_config = app.add_subcommand("async-io-config", "Show async I/O configuration");
+    async_io_config->callback([]() {
+        Paker::pm_async_io_config();
+    });
+    
+    auto async_io_test = app.add_subcommand("async-io-test", "Run async I/O tests");
+    async_io_test->callback([]() {
+        Paker::pm_async_io_test();
+    });
+    
+    auto async_io_benchmark = app.add_subcommand("async-io-benchmark", "Run async I/O benchmark");
+    async_io_benchmark->callback([]() {
+        Paker::pm_async_io_benchmark();
+    });
+    
+    auto async_io_optimize = app.add_subcommand("async-io-optimize", "Optimize async I/O performance");
+    async_io_optimize->callback([]() {
+        Paker::pm_async_io_optimize();
     });
     
     // cache-stats
