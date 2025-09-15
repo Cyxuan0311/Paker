@@ -2,9 +2,13 @@
 
 #include <string>
 #include <map>
+#include <memory>
 #include "dependency/dependency_graph.h"
 
 namespace Paker {
+
+// 前向声明
+class IncrementalParser;
 
 // 依赖解析器
 class DependencyResolver {
@@ -12,9 +16,11 @@ private:
     DependencyGraph graph_;
     std::map<std::string, std::string> repositories_;
     bool recursive_mode_;
+    IncrementalParser* incremental_parser_;
     
 public:
     DependencyResolver();
+    ~DependencyResolver();
     
     // 解析单个包的依赖
     bool resolve_package(const std::string& package, const std::string& version = "");
@@ -55,6 +61,13 @@ public:
     
     // 保存依赖到JSON文件
     bool save_dependencies_to_json(const std::string& json_file) const;
+    
+    // 增量解析功能
+    bool enable_incremental_parsing(bool enable = true);
+    bool is_incremental_parsing_enabled() const;
+    
+    // 获取增量解析器
+    IncrementalParser* get_incremental_parser() const;
     
 private:
     // 解析包的元数据
