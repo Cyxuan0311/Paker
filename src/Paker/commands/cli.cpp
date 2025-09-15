@@ -7,6 +7,7 @@
 #include "Paker/commands/cache.h"
 #include "Paker/commands/rollback.h"
 #include "Paker/commands/warmup.h"
+#include "Paker/commands/incremental_parse.h"
 #include "Paker/core/utils.h"
 #include "Paker/core/output.h"
 #include "Paker/core/package_manager.h"
@@ -327,6 +328,37 @@ int run_cli(int argc, char* argv[]) {
     auto warmup_config = app.add_subcommand("warmup-config", "Show cache warmup configuration");
     warmup_config->callback([]() {
         Paker::pm_warmup_config();
+    });
+    
+    // incremental parse commands
+    auto incremental_parse = app.add_subcommand("incremental-parse", "Start incremental dependency parsing");
+    incremental_parse->callback([]() {
+        Paker::pm_incremental_parse();
+    });
+    
+    auto incremental_parse_stats = app.add_subcommand("incremental-parse-stats", "Show incremental parse statistics");
+    incremental_parse_stats->callback([]() {
+        Paker::pm_incremental_parse_stats();
+    });
+    
+    auto incremental_parse_config = app.add_subcommand("incremental-parse-config", "Show incremental parse configuration");
+    incremental_parse_config->callback([]() {
+        Paker::pm_incremental_parse_config();
+    });
+    
+    auto incremental_parse_clear = app.add_subcommand("incremental-parse-clear-cache", "Clear incremental parse cache");
+    incremental_parse_clear->callback([]() {
+        Paker::pm_incremental_parse_clear_cache();
+    });
+    
+    auto incremental_parse_optimize = app.add_subcommand("incremental-parse-optimize", "Optimize incremental parse cache");
+    incremental_parse_optimize->callback([]() {
+        Paker::pm_incremental_parse_optimize();
+    });
+    
+    auto incremental_parse_validate = app.add_subcommand("incremental-parse-validate", "Validate incremental parse cache integrity");
+    incremental_parse_validate->callback([]() {
+        Paker::pm_incremental_parse_validate();
     });
     
     // cache-stats
