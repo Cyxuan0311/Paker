@@ -21,6 +21,7 @@ add_executable(PakerUnitTests
     unit/test_rollback.cpp
     unit/test_memory_management.cpp
     unit/test_service_architecture.cpp
+    unit/test_incremental_parser.cpp
 )
 
 # 集成测试
