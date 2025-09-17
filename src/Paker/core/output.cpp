@@ -14,47 +14,225 @@ bool Output::colored_output_ = true;
 bool Output::verbose_mode_ = false;
 
 // ProgressBar 实现
-ProgressBar::ProgressBar(int total, int width, const std::string& prefix, bool show_percentage)
-    : total_(total), current_(0), width_(width), prefix_(prefix), show_percentage_(show_percentage) {}
+ProgressBar::ProgressBar(int total, int width, const std::string& prefix, 
+                        bool show_percentage, bool show_eta, bool show_speed, ProgressStyle style)
+    : total_(total), current_(0), width_(width), prefix_(prefix), suffix_(""),
+      show_percentage_(show_percentage), show_eta_(show_eta), show_speed_(show_speed), style_(style),
+      start_time_(std::chrono::steady_clock::now()), last_update_time_(start_time_) {
+    recent_speeds_.reserve(SPEED_HISTORY_SIZE);
+}
 
 void ProgressBar::update(int current) {
-    current_ = current;
+    update(current, "");
+}
+
+void ProgressBar::update(int current, const std::string& custom_suffix) {
+    current_ = std::min(current, total_);
+    auto now = std::chrono::steady_clock::now();
+    
+    // 更新速度历史
+    if (current_ > 0) {
+        update_speed_history();
+    }
+    
+    last_update_time_ = now;
+    
     if (total_ <= 0) return;
     
-    float percentage = static_cast<float>(current_) / total_;
+    double percentage = static_cast<double>(current_) / total_;
     int filled_width = static_cast<int>(width_ * percentage);
     
     std::cout << "\r" << prefix_;
-    std::cout << "[";
     
-    for (int i = 0; i < width_; ++i) {
-        if (i < filled_width) {
-            std::cout << "=";
-        } else if (i == filled_width) {
-            std::cout << ">";
-        } else {
-            std::cout << " ";
+    // 根据样式绘制进度条
+    switch (style_) {
+        case ProgressStyle::BASIC: {
+            std::cout << "[";
+            for (int i = 0; i < width_; ++i) {
+                if (i < filled_width) {
+                    std::cout << "=";
+                } else if (i == filled_width) {
+                    std::cout << ">";
+                } else {
+                    std::cout << " ";
+                }
+            }
+            std::cout << "]";
+            break;
         }
+            
+        case ProgressStyle::BLOCK: {
+            std::cout << "[";
+            for (int i = 0; i < width_; ++i) {
+                if (i < filled_width) {
+                    std::cout << "█";
+                } else {
+                    std::cout << "░";
+                }
+            }
+            std::cout << "]";
+            break;
+        }
+            
+        case ProgressStyle::ROTATING: {
+            std::cout << "[";
+            for (int i = 0; i < width_; ++i) {
+                if (i < filled_width) {
+                    std::cout << "=";
+                } else if (i == filled_width) {
+                    std::cout << ">";
+                } else {
+                    std::cout << " ";
+                }
+            }
+            std::cout << "]";
+            // 添加旋转指示器
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_).count();
+            const char* spinners[] = {"⏳", "⏰", "⌛", "⏲️"};
+            std::cout << " " << spinners[(elapsed / 200) % 4];
+            break;
+        }
+            
+        case ProgressStyle::SMOOTH: {
+            std::cout << "[";
+            for (int i = 0; i < width_; ++i) {
+                if (i < filled_width) {
+                    std::cout << "█";
+                } else {
+                    std::cout << "░";
+                }
+            }
+            std::cout << "]";
+            if (filled_width < width_) {
+                std::cout << " █";
+            }
+            break;
+        }
+            
+        case ProgressStyle::MINIMAL:
+            // 最小样式不显示进度条
+            break;
     }
     
-    std::cout << "]";
-    
+    // 添加百分比
     if (show_percentage_) {
         std::cout << " " << std::fixed << std::setprecision(1) << (percentage * 100) << "%";
     }
     
+    // 添加计数
     std::cout << " (" << current_ << "/" << total_ << ")";
+    
+    // 添加ETA
+    if (show_eta_ && current_ > 0 && current_ < total_) {
+        double eta = get_eta_seconds();
+        if (eta > 0) {
+            std::cout << " ETA: " << format_eta(eta);
+        }
+    }
+    
+    // 添加速度
+    if (show_speed_ && current_ > 0) {
+        double speed = get_speed();
+        if (speed > 0) {
+            std::cout << " " << format_speed(speed);
+        }
+    }
+    
+    // 添加自定义后缀
+    if (!custom_suffix.empty()) {
+        std::cout << " " << custom_suffix;
+    } else if (!suffix_.empty()) {
+        std::cout << " " << suffix_;
+    }
+    
     std::cout.flush();
 }
 
 void ProgressBar::finish() {
+    finish("");
+}
+
+void ProgressBar::finish(const std::string& final_message) {
     update(total_);
+    if (!final_message.empty()) {
+        std::cout << " " << final_message;
+    }
     std::cout << std::endl;
 }
 
 void ProgressBar::reset(int total) {
     total_ = total;
     current_ = 0;
+    start_time_ = std::chrono::steady_clock::now();
+    last_update_time_ = start_time_;
+    recent_speeds_.clear();
+}
+
+double ProgressBar::get_percentage() const {
+    if (total_ <= 0) return 0.0;
+    return static_cast<double>(current_) / total_;
+}
+
+double ProgressBar::get_eta_seconds() const {
+    if (current_ <= 0 || current_ >= total_) return 0.0;
+    
+    double speed = calculate_smoothed_speed();
+    if (speed <= 0) return 0.0;
+    
+    int remaining = total_ - current_;
+    return remaining / speed;
+}
+
+double ProgressBar::get_speed() const {
+    return calculate_smoothed_speed();
+}
+
+std::string ProgressBar::format_eta(double seconds) const {
+    if (seconds < 60) {
+        return std::to_string(static_cast<int>(seconds)) + "s";
+    } else if (seconds < 3600) {
+        int minutes = static_cast<int>(seconds / 60);
+        int secs = static_cast<int>(seconds) % 60;
+        return std::to_string(minutes) + "m" + std::to_string(secs) + "s";
+    } else {
+        int hours = static_cast<int>(seconds / 3600);
+        int minutes = static_cast<int>((seconds - hours * 3600) / 60);
+        return std::to_string(hours) + "h" + std::to_string(minutes) + "m";
+    }
+}
+
+std::string ProgressBar::format_speed(double items_per_second) const {
+    if (items_per_second < 1) {
+        return std::to_string(static_cast<int>(items_per_second * 60)) + "/min";
+    } else if (items_per_second < 60) {
+        return std::to_string(static_cast<int>(items_per_second)) + "/s";
+    } else {
+        return std::to_string(static_cast<int>(items_per_second / 60)) + "/min";
+    }
+}
+
+double ProgressBar::calculate_smoothed_speed() const {
+    if (recent_speeds_.empty()) return 0.0;
+    
+    double sum = 0.0;
+    for (double speed : recent_speeds_) {
+        sum += speed;
+    }
+    return sum / recent_speeds_.size();
+}
+
+void ProgressBar::update_speed_history() {
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update_time_).count();
+    
+    if (elapsed > 0) {
+        double speed = static_cast<double>(current_) / std::chrono::duration_cast<std::chrono::seconds>(now - start_time_).count();
+        
+        recent_speeds_.push_back(speed);
+        if (recent_speeds_.size() > SPEED_HISTORY_SIZE) {
+            recent_speeds_.erase(recent_speeds_.begin());
+        }
+    }
 }
 
 // Table 实现
@@ -204,6 +382,27 @@ void Output::print_table(const Table& table) {
 
 void Output::print_progress_bar(ProgressBar& bar) {
     // ProgressBar 自己处理输出
+}
+
+// 便捷的进度条创建函数实现
+ProgressBar Output::create_progress_bar(int total, const std::string& task_name) {
+    std::string prefix = task_name.empty() ? "Progress: " : task_name + ": ";
+    return ProgressBar(total, 50, prefix, true, true, false, ProgressStyle::SMOOTH);
+}
+
+ProgressBar Output::create_download_progress(int total, const std::string& filename) {
+    std::string prefix = "Downloading " + (filename.empty() ? "file" : filename) + ": ";
+    return ProgressBar(total, 50, prefix, true, true, true, ProgressStyle::SMOOTH);
+}
+
+ProgressBar Output::create_install_progress(int total, const std::string& package_name) {
+    std::string prefix = "Installing " + (package_name.empty() ? "package" : package_name) + ": ";
+    return ProgressBar(total, 50, prefix, true, true, false, ProgressStyle::BLOCK);
+}
+
+ProgressBar Output::create_parse_progress(int total, const std::string& file_name) {
+    std::string prefix = "Parsing " + (file_name.empty() ? "file" : file_name) + ": ";
+    return ProgressBar(total, 50, prefix, true, true, false, ProgressStyle::ROTATING);
 }
 
 void Output::print_dependency_tree(const std::string& root, 
