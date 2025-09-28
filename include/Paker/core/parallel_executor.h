@@ -49,6 +49,42 @@ struct Task {
         : id(id), type(type), package_name(package_name), status(TaskStatus::PENDING) {}
 };
 
+// 系统负载指标
+struct SystemLoadMetrics {
+    double cpu_usage;
+    double memory_usage;
+    double disk_io_usage;
+    double network_usage;
+    size_t active_connections;
+    std::chrono::steady_clock::time_point timestamp;
+    
+    SystemLoadMetrics() : cpu_usage(0.0), memory_usage(0.0), disk_io_usage(0.0), 
+                         network_usage(0.0), active_connections(0) {}
+};
+
+// 自适应负载均衡器
+class AdaptiveLoadBalancer {
+private:
+    std::vector<SystemLoadMetrics> load_history_;
+    size_t max_history_size_;
+    double load_threshold_high_;
+    double load_threshold_low_;
+    size_t min_workers_;
+    size_t max_workers_;
+    std::chrono::milliseconds adjustment_interval_;
+    std::chrono::steady_clock::time_point last_adjustment_;
+    
+public:
+    AdaptiveLoadBalancer(size_t min_workers = 1, size_t max_workers = 16,
+                        double high_threshold = 0.8, double low_threshold = 0.3,
+                        std::chrono::milliseconds interval = std::chrono::milliseconds(5000));
+    
+    void update_load_metrics(const SystemLoadMetrics& metrics);
+    size_t calculate_optimal_workers() const;
+    bool should_adjust_workers() const;
+    double get_current_load() const;
+};
+
 // 并行执行器
 class ParallelExecutor {
 private:
@@ -60,6 +96,11 @@ private:
     std::atomic<size_t> active_tasks_;
     size_t max_workers_;
     size_t max_concurrent_tasks_;
+    
+    // 自适应负载均衡
+    std::unique_ptr<AdaptiveLoadBalancer> load_balancer_;
+    std::thread load_monitor_thread_;
+    std::atomic<bool> load_monitoring_enabled_;
     
     // 任务结果存储
     std::map<std::string, std::shared_ptr<Task>> completed_tasks_;
@@ -95,6 +136,17 @@ public:
     // 配置
     void set_max_workers(size_t max_workers);
     void set_max_concurrent_tasks(size_t max_concurrent_tasks);
+    
+    // 自适应负载均衡
+    void enable_adaptive_load_balancing(bool enable = true);
+    void update_system_metrics(const SystemLoadMetrics& metrics);
+    size_t get_optimal_worker_count() const;
+    
+private:
+    // 负载监控
+    void load_monitor_loop();
+    SystemLoadMetrics collect_system_metrics() const;
+    void adjust_worker_count();
     
 private:
     void worker_loop();
