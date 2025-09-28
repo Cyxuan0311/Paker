@@ -37,7 +37,52 @@ enum class CacheEvictionPolicy {
     LFU,                    // 最少使用频率
     SIZE_BASED,             // 基于大小
     TIME_BASED,             // 基于时间
-    HYBRID                  // 混合策略
+    HYBRID,                 // 混合策略
+    ADAPTIVE                // 自适应策略
+};
+
+// 访问模式分析
+struct AccessPattern {
+    std::string package_name;
+    size_t access_count;
+    std::chrono::steady_clock::time_point first_access;
+    std::chrono::steady_clock::time_point last_access;
+    double access_frequency;  // 访问频率（次/小时）
+    size_t total_size;
+    bool is_hot;             // 是否为热点数据
+    double priority_score;   // 优先级分数
+    
+    AccessPattern() : access_count(0), access_frequency(0.0), total_size(0), 
+                     is_hot(false), priority_score(0.0) {}
+};
+
+// 自适应缓存策略
+class AdaptiveCacheStrategy {
+private:
+    std::map<std::string, AccessPattern> access_patterns_;
+    mutable std::mutex patterns_mutex_;
+    std::chrono::steady_clock::time_point last_analysis_;
+    std::chrono::milliseconds analysis_interval_;
+    
+    // 策略参数
+    double hot_threshold_;      // 热点数据阈值
+    double cold_threshold_;     // 冷数据阈值
+    size_t min_retention_size_; // 最小保留大小
+    double size_weight_;        // 大小权重
+    double frequency_weight_;  // 频率权重
+    double recency_weight_;    // 最近性权重
+    
+public:
+    AdaptiveCacheStrategy(double hot_threshold = 0.8, double cold_threshold = 0.2,
+                         size_t min_retention = 100, double size_w = 0.3,
+                         double freq_w = 0.4, double rec_w = 0.3);
+    
+    void record_access(const std::string& package_name, size_t size);
+    void analyze_patterns();
+    double calculate_priority(const std::string& package_name) const;
+    bool should_evict(const std::string& package_name) const;
+    std::vector<std::string> get_eviction_candidates() const;
+    void update_strategy_parameters();
 };
 
 // 缓存统计
@@ -69,6 +114,9 @@ private:
     size_t max_cache_items_;
     std::chrono::hours max_age_;
     CacheEvictionPolicy eviction_policy_;
+    
+    // 自适应缓存策略
+    std::unique_ptr<AdaptiveCacheStrategy> adaptive_strategy_;
     
     // 统计信息
     mutable CacheStatistics statistics_;
@@ -132,6 +180,11 @@ public:
     void set_max_cache_items(size_t max_items) { max_cache_items_ = max_items; }
     void set_max_age(std::chrono::hours max_age) { max_age_ = max_age; }
     void set_eviction_policy(CacheEvictionPolicy policy) { eviction_policy_ = policy; }
+    
+    // 自适应缓存管理
+    void enable_adaptive_caching(bool enable = true);
+    void update_access_pattern(const std::string& package_name, size_t size);
+    void optimize_cache_strategy();
     
     // 统计信息
     CacheStatistics get_statistics() const;

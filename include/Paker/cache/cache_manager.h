@@ -6,6 +6,7 @@
 #include <memory>
 #include <chrono>
 #include <filesystem>
+#include "Paker/core/memory_pool.h"
 
 namespace Paker {
 
@@ -68,6 +69,11 @@ private:
     size_t max_cache_size_;
     size_t max_versions_per_package_;
     std::chrono::hours cleanup_interval_;
+    
+    // 内存管理
+    std::unique_ptr<SmartMemoryPool> memory_pool_;
+    bool compression_enabled_;
+    bool preallocation_enabled_;
     
 public:
     CacheManager();
@@ -146,6 +152,20 @@ private:
     bool install_shallow_clone(const std::string& repo_url, const std::string& cache_path, const std::string& version);
     bool install_archive_only(const std::string& repo_url, const std::string& cache_path, const std::string& version);
     bool install_compressed(const std::string& repo_url, const std::string& cache_path, const std::string& version);
+    
+    // 内存管理
+    void enable_compression(bool enable = true);
+    void enable_preallocation(bool enable = true);
+    void optimize_memory_usage();
+    void compress_cache_data();
+    size_t get_memory_usage() const;
+    std::string get_memory_report() const;
+    
+private:
+    // 压缩相关方法
+    bool compress_file_zlib(const std::string& input_path, const std::string& output_path);
+    bool decompress_file_zlib(const std::string& input_path, const std::string& output_path);
+    size_t calculate_file_size(const std::string& file_path) const;
 };
 
 // 全局缓存管理器实例
