@@ -4,21 +4,12 @@
 <p align="left">
   <img src="https://img.shields.io/badge/language-C%2B%2B17-blue.svg" alt="C++17">
   <img src="https://img.shields.io/badge/build-CMake-brightgreen.svg" alt="CMake">
-  <img src="https://img.shields.io/badge/cli-CLI11-orange.svg" alt="CLI11">
-  <img src="https://img.shields.io/badge/json-nlohmann--json-yellow.svg" alt="nlohmann/json">
-  <img src="https://img.shields.io/badge/log-glog-lightgrey.svg" alt="glog">
-  <img src="https://img.shields.io/badge/test-GoogleTest-red.svg" alt="GoogleTest">
-  <img src="https://img.shields.io/badge/feature-Record%20Tracking-purple.svg" alt="Record Tracking">
-  <img src="https://img.shields.io/badge/feature-Colorful%20CLI-cyan.svg" alt="Colorful CLI">
-  <img src="https://img.shields.io/badge/feature-Dependency%20Resolution-green.svg" alt="Dependency Resolution">
-  <img src="https://img.shields.io/badge/feature-Conflict%20Detection-red.svg" alt="Conflict Detection">
-  <img src="https://img.shields.io/badge/feature-Global%20Cache-blue.svg" alt="Global Cache">
-  <img src="https://img.shields.io/badge/feature-Cache%20Warmup-ff69b4.svg" alt="Cache Warmup">
-  <img src="https://img.shields.io/badge/feature-Incremental%20Parse-00ff7f.svg" alt="Incremental Parse">
-  <img src="https://img.shields.io/badge/feature-Async%20I%2FO-ff6b6b.svg" alt="Async I/O">
-  <img src="https://img.shields.io/badge/feature-Monitoring%20%26%20Diagnostics-orange.svg" alt="Monitoring & Diagnostics">
   <img src="https://img.shields.io/badge/architecture-Service%20Oriented-9cf.svg" alt="Service Oriented Architecture">
-  <img src="https://img.shields.io/badge/memory-Smart%20Pointers-brightgreen.svg" alt="Smart Pointers">
+  <img src="https://img.shields.io/badge/feature-Global%20Cache-blue.svg" alt="Global Cache">
+  <img src="https://img.shields.io/badge/feature-Async%20I%2FO-ff6b6b.svg" alt="Async I/O">
+  <img src="https://img.shields.io/badge/optimization-Smart%20Memory%20Pool-8B5CF6.svg" alt="Smart Memory Pool">
+  <img src="https://img.shields.io/badge/algorithm-Adaptive%20Load%20Balancing-EF4444.svg" alt="Adaptive Load Balancing">
+  <img src="https://img.shields.io/badge/performance-High%20Performance-EC4899.svg" alt="High Performance">
   <img src="https://img.shields.io/badge/threading-Thread%20Safe-blue.svg" alt="Thread Safe">
 </p>
 
@@ -79,90 +70,26 @@ Paker 采用现代化的服务导向架构（SOA）设计，具有以下特点�
 ## 目录结构
 ```
 Paker/
-├── include/
-│   └── Paker/           # Paker模块头文件
-│       ├── core/        # 核心功能模块
-│       │   ├── package_manager.h      # 包管理器主接口
-│       │   ├── utils.h                # 工具函数
-│       │   ├── output.h               # CLI输出系统
-│       │   ├── service_container.h    # 服务容器和依赖注入
-│       │   └── core_services.h        # 核心服务定义
-│       ├── dependency/  # 依赖管理模块
-│       │   ├── dependency_graph.h    # 依赖图数据结构
-│       │   ├── dependency_resolver.h # 依赖解析器
-│       │   ├── version_manager.h     # 版本管理
-│       │   └── sources.h             # 仓库管理
-│       ├── conflict/    # 冲突检测与解决模块
-│       │   ├── conflict_detector.h   # 冲突检测器
-│       │   └── conflict_resolver.h   # 冲突解决器
-│       ├── commands/    # 命令模块
-│       │   ├── install.h  # 安装命令
-│       │   ├── list.h     # 列表命令
-│       │   ├── lock.h     # 锁定命令
-│       │   ├── info.h     # 信息命令
-│       │   ├── update.h   # 更新命令
-│       │   ├── cli.h      # CLI接口
-│       │   ├── cache.h    # 缓存管理命令
-│       │   └── monitor.h  # 监控命令
-│       ├── monitor/       # 监控与诊断模块
-│       │   ├── performance_monitor.h # 性能监控
-│       │   ├── dependency_analyzer.h # 依赖分析
-│       │   └── diagnostic_tool.h     # 诊断工具
-│       └── cache/         # 缓存管理模块
-│           ├── cache_manager.h       # 缓存管理器
-│           ├── cache_config.h        # 缓存配置
-│           ├── cache_path_resolver.h # 路径解析器
-│           ├── cache_warmup.h        # 缓存预热服务
-│           └── cache_monitor.h       # 缓存监控
-├── src/
-│   └── Paker/           # Paker模块实现
-│       ├── core/        # 核心功能实现
-│       │   ├── package_manager.cpp
-│       │   ├── utils.cpp
-│       │   ├── output.cpp
-│       │   ├── service_container.cpp     # 服务容器实现
-│       │   └── core_services.cpp         # 核心服务实现
-│       ├── dependency/  # 依赖管理实现
-│       │   ├── dependency_graph.cpp
-│       │   ├── dependency_resolver.cpp
-│       │   ├── version_manager.cpp
-│       │   └── sources.cpp
-│       ├── conflict/    # 冲突检测与解决实现
-│       │   ├── conflict_detector.cpp
-│       │   └── conflict_resolver.cpp
-│       ├── commands/    # 命令实现
-│       │   ├── install.cpp
-│       │   ├── list.cpp
-│       │   ├── lock.cpp
-│       │   ├── info.cpp
-│       │   ├── update.cpp
-│       │   ├── cli.cpp
-│       │   ├── cache.cpp
-│       │   └── monitor.cpp
-│       ├── monitor/     # 监控与诊断实现
-│       │   ├── performance_monitor.cpp
-│       │   ├── dependency_analyzer.cpp
-│       │   └── diagnostic_tool.cpp
-│       └── cache/       # 缓存管理实现
-│           ├── cache_manager.cpp
-│           ├── cache_config.cpp
-│           ├── cache_path_resolver.cpp
-│           ├── cache_warmup.cpp      # 缓存预热服务
-│           └── cache_monitor.cpp
-├── test/
+├── include/Paker/        # 头文件
+│   ├── core/            # 核心功能
+│   ├── dependency/      # 依赖管理
+│   ├── conflict/        # 冲突检测与解决
+│   ├── commands/        # CLI命令
+│   ├── monitor/         # 监控与诊断
+│   └── cache/           # 缓存管理
+├── src/Paker/           # 源代码实现
+│   ├── core/            # 核心功能实现
+│   ├── dependency/      # 依赖管理实现
+│   ├── conflict/        # 冲突检测实现
+│   ├── commands/        # 命令实现
+│   ├── monitor/         # 监控实现
+│   └── cache/           # 缓存实现
+├── test/                # 测试文件
 │   ├── unit/            # 单元测试
-│   │   ├── test_package_manager.cpp
-│   │   ├── test_memory_management.cpp
-│   │   ├── test_service_architecture.cpp
-│   │   └── ...          # 其他单元测试
 │   └── integration/     # 集成测试
-├── scripts/             # 构建和测试脚本
-├── docs/                # 文档目录
-│   ├── README.md                    # 文档中心首页
-│   ├── COMMAND_LINE_USAGE.md        # 命令行使用指南
-│   ├── COMMAND_REFERENCE.md         # 命令参考表
-│   └── FEATURES.md                  # 功能特性详解
-└── CMakeLists.txt
+├── scripts/             # 构建脚本
+├── docs/                # 项目文档
+└── CMakeLists.txt       # 构建配置
 ```
 
 ## 📚 文档
@@ -654,18 +581,23 @@ Paker 集成了强大的包安装记录功能，可以精确跟踪每个安装�
 - [nlohmann/json](https://github.com/nlohmann/json) (已集成头文件) - JSON处理
 - [glog](https://github.com/google/glog) - 日志记录
 - [GoogleTest](https://github.com/google/googletest) - 单元测试框架
+- [CURL](https://curl.se/) - 网络下载和HTTP客户端
+- [OpenSSL](https://www.openssl.org/) - 加密和哈希计算
+- [zlib](https://zlib.net/) - 数据压缩和解压缩
 
 ### 系统依赖
 - **C++17 编译器**：支持现代C++特性
 - **CMake 3.10+**：构建系统
-- **OpenSSL**：加密和哈希计算
 - **Git**：版本控制操作
+- **POSIX兼容系统**：Linux、macOS、WSL等
 
 ### 架构特性
 - **智能指针**：C++17标准库智能指针
 - **线程支持**：C++17标准库线程和同步原语
 - **服务容器**：自定义依赖注入容器
 - **RAII模式**：自动资源管理
+- **内存池**：自定义智能内存池
+- **零拷贝I/O**：mmap和优化的网络传输
 
 ## 性能优化
 
