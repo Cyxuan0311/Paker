@@ -29,10 +29,10 @@
 ./Paker add fmt
 
 # 并行安装多个包（性能优化）
-./Paker add-parallel fmt spdlog nlohmann-json
+./Paker add-p fmt spdlog nlohmann-json
 
 # 递归添加依赖
-./Paker add-recursive fmt
+./Paker add-r fmt
 
 # 移除依赖包
 ./Paker remove fmt
@@ -53,10 +53,10 @@
 ### 依赖源管理
 ```bash
 # 添加自定义依赖源
-./Paker add-remote mylib https://github.com/example/mylib.git
+./Paker remote-add mylib https://github.com/example/mylib.git
 
 # 移除自定义依赖源
-./Paker remove-remote mylib
+./Paker remote-rm mylib
 ```
 
 ### 版本管理
@@ -74,7 +74,7 @@
 ./Paker lock
 
 # 按锁文件安装依赖
-./Paker install-lock
+./Paker install-l
 ```
 
 ### 清理操作
@@ -88,16 +88,16 @@
 ### 依赖解析与冲突处理
 ```bash
 # 解析项目依赖树
-./Paker resolve-dependencies
+./Paker resolve
 
 # 检查依赖冲突
-./Paker check-conflicts
+./Paker check
 
 # 解决依赖冲突
-./Paker resolve-conflicts
+./Paker fix
 
 # 验证依赖完整性
-./Paker validate-dependencies
+./Paker validate
 ```
 
 ### 包安装记录
@@ -123,28 +123,28 @@
 ./Paker cache-status
 
 # 自动优化缓存性能和存储
-./Paker cache-optimize
+./Paker cache-opt
 
 # 直接安装包到全局缓存
-./Paker cache-install fmt
+./Paker cache-add fmt
 
 # 清理未使用的包和旧版本
-./Paker cache-cleanup
+./Paker cache-clean
 ```
 
 ### LRU智能缓存管理
 ```bash
 # 初始化LRU智能缓存管理器
-./Paker cache-init-lru
+./Paker cache-lru
 
 # 显示LRU缓存详细统计
 ./Paker cache-lru-stats
 
 # 执行智能缓存清理策略
-./Paker cache-smart-cleanup
+./Paker cache-smart
 
 # 获取缓存优化建议
-./Paker cache-optimization-advice
+./Paker cache-advice
 ```
 
 ## 缓存预热命令
@@ -169,22 +169,22 @@
 ### 增量解析操作
 ```bash
 # 启动增量依赖解析
-./Paker incremental-parse
+./Paker parse
 
 # 显示增量解析统计信息
-./Paker incremental-parse-stats
+./Paker parse-stats
 
 # 显示增量解析配置
-./Paker incremental-parse-config
+./Paker parse-config
 
 # 清理增量解析缓存
-./Paker incremental-parse-clear-cache
+./Paker parse-clear-cache
 
 # 优化增量解析缓存
-./Paker incremental-parse-optimize
+./Paker parse-optimize
 
 # 验证增量解析缓存完整性
-./Paker incremental-parse-validate
+./Paker parse-validate
 ```
 
 ## 异步I/O命令
@@ -192,19 +192,59 @@
 ### 异步I/O操作
 ```bash
 # 显示异步I/O统计信息
-./Paker async-io-stats
+./Paker io-stats
 
 # 显示异步I/O配置
-./Paker async-io-config
+./Paker io-config
 
 # 运行异步I/O测试
-./Paker async-io-test
+./Paker io-test
 
 # 运行异步I/O性能基准测试
-./Paker async-io-benchmark
+./Paker io-bench
 
 # 优化异步I/O性能
-./Paker async-io-optimize
+./Paker io-opt
+```
+
+## 内存管理命令
+
+### 内存统计与优化
+```bash
+# 显示内存使用统计
+./Paker mem-stats
+
+# 优化内存使用
+./Paker mem-opt
+
+# 启用内存压缩
+./Paker mem-compress
+
+# 配置内存池参数
+./Paker mem-pool
+
+# 生成详细内存报告
+./Paker mem-report
+```
+
+## 自适应算法命令
+
+### 自适应算法管理
+```bash
+# 显示自适应算法状态
+./Paker adaptive-status
+
+# 配置自适应参数
+./Paker adaptive-config
+
+# 分析系统负载模式
+./Paker adaptive-analyze
+
+# 优化自适应策略
+./Paker adaptive-optimize
+
+# 生成自适应性能报告
+./Paker adaptive-report
 ```
 
 ## 监控与诊断命令
@@ -212,10 +252,10 @@
 ### 性能监控
 ```bash
 # 生成性能监控报告
-./Paker performance-report
+./Paker perf
 
 # 分析依赖树和版本分布
-./Paker analyze-dependencies
+./Paker analyze
 
 # 运行系统诊断检查
 ./Paker diagnose
@@ -226,25 +266,25 @@
 ### 回滚操作
 ```bash
 # 回滚包到指定版本
-./Paker rollback-to-version fmt 1.0.0
+./Paker rollback-v fmt 1.0.0
 
 # 回滚包到上一个版本
-./Paker rollback-to-previous fmt
+./Paker rollback-p fmt
 
 # 回滚所有包到指定时间点
-./Paker rollback-to-timestamp "2024-01-15 10:30:00"
+./Paker rollback-t "2024-01-15 10:30:00"
 ```
 
 ### 版本历史管理
 ```bash
 # 显示包的版本历史记录
-./Paker history-show fmt
+./Paker history fmt
 
 # 列出可回滚的版本
-./Paker rollback-list fmt
+./Paker rollback-l fmt
 
 # 检查回滚操作的安全性
-./Paker rollback-check fmt 1.0.0
+./Paker rollback-c fmt 1.0.0
 ```
 
 ## CLI选项
@@ -277,16 +317,16 @@
 ./Paker init
 
 # 2. 添加自定义依赖源
-./Paker add-remote mylib https://github.com/example/mylib.git
+./Paker remote-add mylib https://github.com/example/mylib.git
 
 # 3. 添加依赖包（推荐使用并行安装）
-./Paker add-parallel fmt spdlog nlohmann-json
+./Paker add-p fmt spdlog nlohmann-json
 
 # 4. 解析项目依赖
-./Paker resolve-dependencies
+./Paker resolve
 
 # 5. 检查依赖冲突
-./Paker check-conflicts
+./Paker check
 
 # 6. 查看依赖列表
 ./Paker list
@@ -295,7 +335,7 @@
 ./Paker tree
 
 # 8. 验证依赖完整性
-./Paker validate-dependencies
+./Paker validate
 
 # 9. 锁定依赖版本
 ./Paker lock
@@ -304,11 +344,11 @@
 ### 高级功能示例
 ```bash
 # 递归安装依赖
-./Paker add-recursive mylib
+./Paker add-r mylib
 
 # 检测并解决冲突
-./Paker check-conflicts
-./Paker resolve-conflicts
+./Paker check
+./Paker fix
 
 # 升级所有依赖
 ./Paker upgrade
@@ -332,15 +372,15 @@
 ./Paker cache-status
 
 # 优化缓存
-./Paker cache-optimize
+./Paker cache-opt
 
 # 清理缓存
-./Paker cache-cleanup
+./Paker cache-clean
 
 # LRU智能缓存管理
-./Paker cache-init-lru
+./Paker cache-lru
 ./Paker cache-lru-stats
-./Paker cache-smart-cleanup
+./Paker cache-smart
 ```
 
 ### 性能优化示例
@@ -351,23 +391,23 @@
 ./Paker warmup-stats
 
 # 增量解析
-./Paker incremental-parse
-./Paker incremental-parse-stats
-./Paker incremental-parse-optimize
+./Paker parse
+./Paker parse-stats
+./Paker parse-optimize
 
 # 异步I/O测试
-./Paker async-io-test
-./Paker async-io-benchmark
-./Paker async-io-optimize
+./Paker io-test
+./Paker io-bench
+./Paker io-opt
 ```
 
 ### 监控与诊断示例
 ```bash
 # 生成性能报告
-./Paker performance-report
+./Paker perf
 
 # 分析依赖结构
-./Paker analyze-dependencies
+./Paker analyze
 
 # 运行系统诊断
 ./Paker diagnose
@@ -376,16 +416,16 @@
 ### 版本回滚示例
 ```bash
 # 回滚到指定版本
-./Paker rollback-to-version fmt 1.0.0
+./Paker rollback-v fmt 1.0.0
 
 # 回滚到上一个版本
-./Paker rollback-to-previous fmt
+./Paker rollback-p fmt
 
 # 显示版本历史
-./Paker history-show fmt
+./Paker history fmt
 
 # 检查回滚安全性
-./Paker rollback-check fmt 1.0.0
+./Paker rollback-c fmt 1.0.0
 ```
 
 ### 详细模式示例
@@ -432,6 +472,24 @@ my-project (1.0.0)
   Cache hit rate: 78%
   Total operations: 150
   Success rate: 98%
+```
+
+### 内存管理输出
+```
+💾 Memory Management Report:
+  Memory pool usage: 45.2 MB / 512 MB
+  Compression ratio: 65%
+  Zero-copy operations: 1,234
+  Memory efficiency: 87%
+```
+
+### 自适应算法输出
+```
+🧠 Adaptive Algorithm Status:
+  Load balancing: Active
+  Cache strategy: LRU + LFU hybrid
+  Retry mechanism: Adaptive
+  Preload prediction: 78% accuracy
 ```
 
 ## 注意事项

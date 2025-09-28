@@ -6,57 +6,57 @@
 |---------|------|------|------|
 | **项目初始化** | `init` | 初始化项目 | `./Paker init` |
 | **依赖管理** | `add <package>` | 添加依赖包 | `./Paker add fmt` |
-| | `add-parallel <pkg1> <pkg2>...` | 并行安装多个包 | `./Paker add-parallel fmt spdlog` |
-| | `add-recursive <package>` | 递归安装依赖 | `./Paker add-recursive mylib` |
+| | `add-p <pkg1> <pkg2>...` | 并行安装多个包 | `./Paker add-p fmt spdlog` |
+| | `add-r <package>` | 递归安装依赖 | `./Paker add-r mylib` |
 | | `remove <package>` | 移除依赖包 | `./Paker remove fmt` |
 | | `list` | 列出所有依赖 | `./Paker list` |
 | | `tree` | 显示依赖树 | `./Paker tree` |
 | | `search <package>` | 搜索依赖包 | `./Paker search fmt` |
 | | `info <package>` | 查看包信息 | `./Paker info fmt` |
-| **依赖源管理** | `add-remote <name> <url>` | 添加依赖源 | `./Paker add-remote mylib https://github.com/example/mylib.git` |
-| | `remove-remote <name>` | 移除依赖源 | `./Paker remove-remote mylib` |
+| **依赖源管理** | `remote-add <name> <url>` | 添加依赖源 | `./Paker remote-add mylib https://github.com/example/mylib.git` |
+| | `remote-rm <name>` | 移除依赖源 | `./Paker remote-rm mylib` |
 | **版本管理** | `upgrade` | 升级所有依赖 | `./Paker upgrade` |
 | | `upgrade <package>` | 升级指定依赖 | `./Paker upgrade fmt` |
 | | `update` | 同步本地依赖 | `./Paker update` |
 | | `lock` | 锁定依赖版本 | `./Paker lock` |
-| | `install-lock` | 按锁文件安装 | `./Paker install-lock` |
-| **依赖解析** | `resolve-dependencies` | 解析项目依赖 | `./Paker resolve-dependencies` |
-| | `check-conflicts` | 检查依赖冲突 | `./Paker check-conflicts` |
-| | `resolve-conflicts` | 解决依赖冲突 | `./Paker resolve-conflicts` |
-| | `validate-dependencies` | 验证依赖完整性 | `./Paker validate-dependencies` |
+| | `install-l` | 按锁文件安装 | `./Paker install-l` |
+| **依赖解析** | `resolve` | 解析项目依赖 | `./Paker resolve` |
+| | `check` | 检查依赖冲突 | `./Paker check` |
+| | `fix` | 解决依赖冲突 | `./Paker fix` |
+| | `validate` | 验证依赖完整性 | `./Paker validate` |
 | **缓存管理** | `cache-stats` | 显示缓存统计 | `./Paker cache-stats` |
 | | `cache-status` | 显示缓存状态 | `./Paker cache-status` |
-| | `cache-optimize` | 优化缓存 | `./Paker cache-optimize` |
-| | `cache-install <package>` | 安装到缓存 | `./Paker cache-install fmt` |
-| | `cache-cleanup` | 清理缓存 | `./Paker cache-cleanup` |
-| **LRU缓存** | `cache-init-lru` | 初始化LRU缓存 | `./Paker cache-init-lru` |
+| | `cache-opt` | 优化缓存 | `./Paker cache-opt` |
+| | `cache-add <package>` | 安装到缓存 | `./Paker cache-add fmt` |
+| | `cache-clean` | 清理缓存 | `./Paker cache-clean` |
+| **LRU缓存** | `cache-lru` | 初始化LRU缓存 | `./Paker cache-lru` |
 | | `cache-lru-stats` | LRU缓存统计 | `./Paker cache-lru-stats` |
-| | `cache-smart-cleanup` | 智能缓存清理 | `./Paker cache-smart-cleanup` |
-| | `cache-optimization-advice` | 缓存优化建议 | `./Paker cache-optimization-advice` |
+| | `cache-smart` | 智能缓存清理 | `./Paker cache-smart` |
+| | `cache-advice` | 缓存优化建议 | `./Paker cache-advice` |
 | **缓存预热** | `warmup` | 启动缓存预热 | `./Paker warmup` |
 | | `warmup-analyze` | 分析项目依赖 | `./Paker warmup-analyze` |
 | | `warmup-stats` | 预热统计信息 | `./Paker warmup-stats` |
 | | `warmup-config` | 预热配置 | `./Paker warmup-config` |
-| **增量解析** | `incremental-parse` | 启动增量解析 | `./Paker incremental-parse` |
-| | `incremental-parse-stats` | 解析统计信息 | `./Paker incremental-parse-stats` |
-| | `incremental-parse-config` | 解析配置 | `./Paker incremental-parse-config` |
-| | `incremental-parse-clear-cache` | 清理解析缓存 | `./Paker incremental-parse-clear-cache` |
-| | `incremental-parse-optimize` | 优化解析缓存 | `./Paker incremental-parse-optimize` |
-| | `incremental-parse-validate` | 验证解析缓存 | `./Paker incremental-parse-validate` |
-| **异步I/O** | `async-io-stats` | 异步I/O统计 | `./Paker async-io-stats` |
-| | `async-io-config` | 异步I/O配置 | `./Paker async-io-config` |
-| | `async-io-test` | 异步I/O测试 | `./Paker async-io-test` |
-| | `async-io-benchmark` | 异步I/O基准测试 | `./Paker async-io-benchmark` |
-| | `async-io-optimize` | 异步I/O优化 | `./Paker async-io-optimize` |
-| **监控诊断** | `performance-report` | 性能报告 | `./Paker performance-report` |
-| | `analyze-dependencies` | 依赖分析 | `./Paker analyze-dependencies` |
+| **增量解析** | `parse` | 启动增量解析 | `./Paker parse` |
+| | `parse-stats` | 解析统计信息 | `./Paker parse-stats` |
+| | `parse-config` | 解析配置 | `./Paker parse-config` |
+| | `parse-clear` | 清理解析缓存 | `./Paker parse-clear` |
+| | `parse-opt` | 优化解析缓存 | `./Paker parse-opt` |
+| | `parse-validate` | 验证解析缓存 | `./Paker parse-validate` |
+| **异步I/O** | `io-stats` | 异步I/O统计 | `./Paker io-stats` |
+| | `io-config` | 异步I/O配置 | `./Paker io-config` |
+| | `io-test` | 异步I/O测试 | `./Paker io-test` |
+| | `io-bench` | 异步I/O基准测试 | `./Paker io-bench` |
+| | `io-opt` | 异步I/O优化 | `./Paker io-opt` |
+| **监控诊断** | `perf` | 性能报告 | `./Paker perf` |
+| | `analyze` | 依赖分析 | `./Paker analyze` |
 | | `diagnose` | 系统诊断 | `./Paker diagnose` |
-| **版本回滚** | `rollback-to-version <pkg> <ver>` | 回滚到指定版本 | `./Paker rollback-to-version fmt 1.0.0` |
-| | `rollback-to-previous <pkg>` | 回滚到上一版本 | `./Paker rollback-to-previous fmt` |
-| | `rollback-to-timestamp <time>` | 回滚到时间点 | `./Paker rollback-to-timestamp "2024-01-15 10:30:00"` |
-| | `history-show <pkg>` | 显示版本历史 | `./Paker history-show fmt` |
-| | `rollback-list <pkg>` | 列出可回滚版本 | `./Paker rollback-list fmt` |
-| | `rollback-check <pkg> <ver>` | 检查回滚安全性 | `./Paker rollback-check fmt 1.0.0` |
+| **版本回滚** | `rollback-v <pkg> <ver>` | 回滚到指定版本 | `./Paker rollback-v fmt 1.0.0` |
+| | `rollback-p <pkg>` | 回滚到上一版本 | `./Paker rollback-p fmt` |
+| | `rollback-t <time>` | 回滚到时间点 | `./Paker rollback-t "2024-01-15 10:30:00"` |
+| | `history <pkg>` | 显示版本历史 | `./Paker history fmt` |
+| | `rollback-l <pkg>` | 列出可回滚版本 | `./Paker rollback-l fmt` |
+| | `rollback-c <pkg> <ver>` | 检查回滚安全性 | `./Paker rollback-c fmt 1.0.0` |
 | **安装记录** | `record-show <pkg>` | 显示包安装记录 | `./Paker record-show fmt` |
 | | `record-list` | 列出所有包记录 | `./Paker record-list` |
 | | `record-files <pkg>` | 获取包文件列表 | `./Paker record-files fmt` |
@@ -89,6 +89,8 @@
 ./Paker incremental-parse
 ./Paker async-io-test
 ./Paker cache-optimize
+./Paker mem-opt
+./Paker adaptive-optimize
 ```
 
 ### 故障排除流程
@@ -150,6 +152,17 @@
 # 性能问题
 ./Paker performance-report
 ./Paker diagnose
+
+# 内存管理
+./Paker mem-stats
+./Paker mem-opt
+./Paker mem-compress
+./Paker mem-report
+
+# 自适应算法
+./Paker adaptive-status
+./Paker adaptive-config
+./Paker adaptive-optimize
 
 # 版本问题
 ./Paker rollback-list <package>
