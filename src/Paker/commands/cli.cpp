@@ -40,7 +40,7 @@ int run_cli(int argc, char* argv[]) {
 
     // add-remote
     std::string remote_name, remote_url;
-    auto add_remote_cmd = app.add_subcommand("add-remote", "Add or update a custom dependency source");
+    auto add_remote_cmd = app.add_subcommand("remote-add", "Add or update a custom dependency source");
     add_remote_cmd->add_option("name", remote_name, "Remote name")->required();
     add_remote_cmd->add_option("url", remote_url, "Remote url")->required();
     add_remote_cmd->callback([&]() {
@@ -49,7 +49,7 @@ int run_cli(int argc, char* argv[]) {
 
     // remove-remote
     std::string remove_name;
-    auto remove_remote_cmd = app.add_subcommand("remove-remote", "Remove a custom dependency source");
+    auto remove_remote_cmd = app.add_subcommand("remote-rm", "Remove a custom dependency source");
     remove_remote_cmd->add_option("name", remove_name, "Remote name")->required();
     remove_remote_cmd->callback([&]() {
         remove_remote(remove_name);
@@ -92,7 +92,7 @@ int run_cli(int argc, char* argv[]) {
 
     // add-parallel
     std::vector<std::string> add_parallel_pkgs;
-    auto add_parallel = app.add_subcommand("add-parallel", "Add multiple dependencies in parallel");
+    auto add_parallel = app.add_subcommand("add-p", "Add multiple dependencies in parallel");
     add_parallel->add_option("packages", add_parallel_pkgs, "Package names")->required();
     add_parallel->callback([&]() {
         pm_add_parallel(add_parallel_pkgs);
@@ -114,7 +114,7 @@ int run_cli(int argc, char* argv[]) {
 
     // add-recursive
     std::string add_rec_pkg;
-    auto add_rec = app.add_subcommand("add-recursive", "Recursively add a dependency and its dependencies");
+    auto add_rec = app.add_subcommand("add-r", "Recursively add a dependency and its dependencies");
     add_rec->add_option("package", add_rec_pkg, "Package name to add recursively")->required();
     add_rec->callback([&]() {
         pm_add_recursive(add_rec_pkg);
@@ -133,7 +133,7 @@ int run_cli(int argc, char* argv[]) {
     });
 
     // install-lock
-    auto install_lock = app.add_subcommand("install-lock", "Install dependencies from Paker.lock");
+    auto install_lock = app.add_subcommand("install-l", "Install dependencies from Paker.lock");
     install_lock->callback([]() {
         pm_install_lock();
     });
@@ -175,32 +175,32 @@ int run_cli(int argc, char* argv[]) {
     });
 
     // resolve-dependencies
-    auto resolve_deps = app.add_subcommand("resolve-dependencies", "Resolve project dependencies");
+    auto resolve_deps = app.add_subcommand("resolve", "Resolve project dependencies");
     resolve_deps->callback([]() {
         pm_resolve_dependencies();
     });
 
     // check-conflicts
-    auto check_conflicts = app.add_subcommand("check-conflicts", "Check for dependency conflicts");
+    auto check_conflicts = app.add_subcommand("check", "Check for dependency conflicts");
     check_conflicts->callback([]() {
         pm_check_conflicts();
     });
 
     // resolve-conflicts
-    auto resolve_conflicts = app.add_subcommand("resolve-conflicts", "Resolve dependency conflicts");
+    auto resolve_conflicts = app.add_subcommand("fix", "Resolve dependency conflicts");
     resolve_conflicts->callback([]() {
         pm_resolve_conflicts();
     });
 
     // validate-dependencies
-    auto validate_deps = app.add_subcommand("validate-dependencies", "Validate dependencies");
+    auto validate_deps = app.add_subcommand("validate", "Validate dependencies");
     validate_deps->callback([]() {
         pm_validate_dependencies();
     });
 
     // performance-report
     std::string perf_output;
-    auto perf_report = app.add_subcommand("performance-report", "Generate performance report");
+    auto perf_report = app.add_subcommand("perf", "Generate performance report");
     perf_report->add_option("-o,--output", perf_output, "Output file (optional)");
     perf_report->callback([&]() {
         Paker::pm_performance_report(perf_output);
@@ -208,7 +208,7 @@ int run_cli(int argc, char* argv[]) {
 
     // analyze-dependencies
     std::string analyze_output;
-    auto analyze_deps = app.add_subcommand("analyze-dependencies", "Analyze dependencies");
+    auto analyze_deps = app.add_subcommand("analyze", "Analyze dependencies");
     analyze_deps->add_option("-o,--output", analyze_output, "Output file (optional)");
     analyze_deps->callback([&]() {
         Paker::pm_analyze_dependencies(analyze_output);
@@ -240,7 +240,7 @@ int run_cli(int argc, char* argv[]) {
     std::string cache_pkg, cache_version;
     
     // cache-install
-    auto cache_install = app.add_subcommand("cache-install", "Install package to global cache");
+    auto cache_install = app.add_subcommand("cache-add", "Install package to global cache");
     cache_install->add_option("package", cache_pkg, "Package name")->required();
     cache_install->add_option("version", cache_version, "Package version (optional)");
     cache_install->callback([&]() {
@@ -248,7 +248,7 @@ int run_cli(int argc, char* argv[]) {
     });
     
     // cache-remove
-    auto cache_remove = app.add_subcommand("cache-remove", "Remove package from global cache");
+    auto cache_remove = app.add_subcommand("cache-rm", "Remove package from global cache");
     cache_remove->add_option("package", cache_pkg, "Package name")->required();
     cache_remove->add_option("version", cache_version, "Package version (optional)");
     cache_remove->callback([&]() {
@@ -269,13 +269,13 @@ int run_cli(int argc, char* argv[]) {
     });
     
     // cache-cleanup
-    auto cache_cleanup = app.add_subcommand("cache-cleanup", "Clean up unused packages from cache");
+    auto cache_cleanup = app.add_subcommand("cache-clean", "Clean up unused packages from cache");
     cache_cleanup->callback([]() {
         Paker::pm_cache_cleanup();
     });
 
     // LRU缓存管理命令
-    auto cache_init_lru = app.add_subcommand("cache-init-lru", "Initialize LRU cache manager");
+    auto cache_init_lru = app.add_subcommand("cache-lru", "Initialize LRU cache manager");
     cache_init_lru->callback([]() {
         Paker::pm_cache_init_lru();
     });
@@ -290,22 +290,22 @@ int run_cli(int argc, char* argv[]) {
         Paker::pm_cache_lru_status();
     });
 
-    auto cache_smart_cleanup = app.add_subcommand("cache-smart-cleanup", "Perform smart cache cleanup");
+    auto cache_smart_cleanup = app.add_subcommand("cache-smart", "Perform smart cache cleanup");
     cache_smart_cleanup->callback([]() {
         Paker::pm_cache_smart_cleanup();
     });
 
-    auto cache_most_accessed = app.add_subcommand("cache-most-accessed", "Show most accessed packages");
+    auto cache_most_accessed = app.add_subcommand("cache-top", "Show most accessed packages");
     cache_most_accessed->callback([]() {
         Paker::pm_cache_most_accessed();
     });
 
-    auto cache_oldest_items = app.add_subcommand("cache-oldest-items", "Show oldest cached items");
+    auto cache_oldest_items = app.add_subcommand("cache-old", "Show oldest cached items");
     cache_oldest_items->callback([]() {
         Paker::pm_cache_oldest_items();
     });
 
-    auto cache_optimization_advice = app.add_subcommand("cache-optimization-advice", "Get cache optimization advice");
+    auto cache_optimization_advice = app.add_subcommand("cache-advice", "Get cache optimization advice");
     cache_optimization_advice->callback([]() {
         Paker::pm_cache_optimization_advice();
     });
@@ -332,58 +332,58 @@ int run_cli(int argc, char* argv[]) {
     });
     
     // incremental parse commands
-    auto incremental_parse = app.add_subcommand("incremental-parse", "Start incremental dependency parsing");
+    auto incremental_parse = app.add_subcommand("parse", "Start incremental dependency parsing");
     incremental_parse->callback([]() {
         Paker::pm_incremental_parse();
     });
     
-    auto incremental_parse_stats = app.add_subcommand("incremental-parse-stats", "Show incremental parse statistics");
+    auto incremental_parse_stats = app.add_subcommand("parse-stats", "Show incremental parse statistics");
     incremental_parse_stats->callback([]() {
         Paker::pm_incremental_parse_stats();
     });
     
-    auto incremental_parse_config = app.add_subcommand("incremental-parse-config", "Show incremental parse configuration");
+    auto incremental_parse_config = app.add_subcommand("parse-config", "Show incremental parse configuration");
     incremental_parse_config->callback([]() {
         Paker::pm_incremental_parse_config();
     });
     
-    auto incremental_parse_clear = app.add_subcommand("incremental-parse-clear-cache", "Clear incremental parse cache");
+    auto incremental_parse_clear = app.add_subcommand("parse-clear", "Clear incremental parse cache");
     incremental_parse_clear->callback([]() {
         Paker::pm_incremental_parse_clear_cache();
     });
     
-    auto incremental_parse_optimize = app.add_subcommand("incremental-parse-optimize", "Optimize incremental parse cache");
+    auto incremental_parse_optimize = app.add_subcommand("parse-opt", "Optimize incremental parse cache");
     incremental_parse_optimize->callback([]() {
         Paker::pm_incremental_parse_optimize();
     });
     
-    auto incremental_parse_validate = app.add_subcommand("incremental-parse-validate", "Validate incremental parse cache integrity");
+    auto incremental_parse_validate = app.add_subcommand("parse-validate", "Validate incremental parse cache integrity");
     incremental_parse_validate->callback([]() {
         Paker::pm_incremental_parse_validate();
     });
     
     // async I/O commands
-    auto async_io_stats = app.add_subcommand("async-io-stats", "Show async I/O statistics");
+    auto async_io_stats = app.add_subcommand("io-stats", "Show async I/O statistics");
     async_io_stats->callback([]() {
         Paker::pm_async_io_stats();
     });
     
-    auto async_io_config = app.add_subcommand("async-io-config", "Show async I/O configuration");
+    auto async_io_config = app.add_subcommand("io-config", "Show async I/O configuration");
     async_io_config->callback([]() {
         Paker::pm_async_io_config();
     });
     
-    auto async_io_test = app.add_subcommand("async-io-test", "Run async I/O tests");
+    auto async_io_test = app.add_subcommand("io-test", "Run async I/O tests");
     async_io_test->callback([]() {
         Paker::pm_async_io_test();
     });
     
-    auto async_io_benchmark = app.add_subcommand("async-io-benchmark", "Run async I/O benchmark");
+    auto async_io_benchmark = app.add_subcommand("io-bench", "Run async I/O benchmark");
     async_io_benchmark->callback([]() {
         Paker::pm_async_io_benchmark();
     });
     
-    auto async_io_optimize = app.add_subcommand("async-io-optimize", "Optimize async I/O performance");
+    auto async_io_optimize = app.add_subcommand("io-opt", "Optimize async I/O performance");
     async_io_optimize->callback([]() {
         Paker::pm_async_io_optimize();
     });
@@ -401,7 +401,7 @@ int run_cli(int argc, char* argv[]) {
     });
     
     // cache-optimize
-    auto cache_optimize = app.add_subcommand("cache-optimize", "Optimize cache performance and storage");
+    auto cache_optimize = app.add_subcommand("cache-opt", "Optimize cache performance and storage");
     cache_optimize->callback([]() {
         Paker::pm_cache_optimize();
     });
@@ -453,7 +453,7 @@ int run_cli(int argc, char* argv[]) {
     bool force_rollback = false;
     
     // rollback-to-version
-    auto rollback_version_cmd = app.add_subcommand("rollback-to-version", "Rollback package to specific version");
+    auto rollback_version_cmd = app.add_subcommand("rollback-v", "Rollback package to specific version");
     rollback_version_cmd->add_option("package", rollback_pkg, "Package name")->required();
     rollback_version_cmd->add_option("version", rollback_version, "Target version")->required();
     rollback_version_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
@@ -462,7 +462,7 @@ int run_cli(int argc, char* argv[]) {
     });
     
     // rollback-to-previous
-    auto rollback_previous_cmd = app.add_subcommand("rollback-to-previous", "Rollback package to previous version");
+    auto rollback_previous_cmd = app.add_subcommand("rollback-p", "Rollback package to previous version");
     rollback_previous_cmd->add_option("package", rollback_pkg, "Package name")->required();
     rollback_previous_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
     rollback_previous_cmd->callback([&]() {
@@ -470,7 +470,7 @@ int run_cli(int argc, char* argv[]) {
     });
     
     // rollback-to-timestamp
-    auto rollback_timestamp_cmd = app.add_subcommand("rollback-to-timestamp", "Rollback all packages to specific timestamp");
+    auto rollback_timestamp_cmd = app.add_subcommand("rollback-t", "Rollback all packages to specific timestamp");
     rollback_timestamp_cmd->add_option("timestamp", rollback_timestamp, "Target timestamp (YYYY-MM-DD HH:MM:SS)")->required();
     rollback_timestamp_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
     rollback_timestamp_cmd->callback([&]() {
@@ -478,21 +478,21 @@ int run_cli(int argc, char* argv[]) {
     });
     
     // history-show
-    auto history_show_cmd = app.add_subcommand("history-show", "Show version history");
+    auto history_show_cmd = app.add_subcommand("history", "Show version history");
     history_show_cmd->add_option("package", rollback_pkg, "Package name (optional)");
     history_show_cmd->callback([&]() {
         Paker::pm_history_show(rollback_pkg);
     });
     
     // rollback-list
-    auto rollback_list_cmd = app.add_subcommand("rollback-list", "List rollbackable versions for a package");
+    auto rollback_list_cmd = app.add_subcommand("rollback-l", "List rollbackable versions for a package");
     rollback_list_cmd->add_option("package", rollback_pkg, "Package name")->required();
     rollback_list_cmd->callback([&]() {
         Paker::pm_rollback_list(rollback_pkg);
     });
     
     // rollback-check
-    auto rollback_check_cmd = app.add_subcommand("rollback-check", "Check rollback safety for a package");
+    auto rollback_check_cmd = app.add_subcommand("rollback-c", "Check rollback safety for a package");
     rollback_check_cmd->add_option("package", rollback_pkg, "Package name")->required();
     rollback_check_cmd->add_option("version", rollback_version, "Target version")->required();
     rollback_check_cmd->callback([&]() {
@@ -501,7 +501,7 @@ int run_cli(int argc, char* argv[]) {
     
     // history-cleanup
     size_t max_entries = 50;
-    auto history_cleanup_cmd = app.add_subcommand("history-cleanup", "Clean up old history records");
+    auto history_cleanup_cmd = app.add_subcommand("history-clean", "Clean up old history records");
     history_cleanup_cmd->add_option("max_entries", max_entries, "Maximum entries to keep (default: 50)");
     history_cleanup_cmd->callback([&]() {
         Paker::pm_history_cleanup(max_entries);
@@ -509,7 +509,7 @@ int run_cli(int argc, char* argv[]) {
     
     // history-export
     std::string export_path;
-    auto history_export_cmd = app.add_subcommand("history-export", "Export history records");
+    auto history_export_cmd = app.add_subcommand("history-exp", "Export history records");
     history_export_cmd->add_option("path", export_path, "Export file path")->required();
     history_export_cmd->callback([&]() {
         Paker::pm_history_export(export_path);
@@ -517,7 +517,7 @@ int run_cli(int argc, char* argv[]) {
     
     // history-import
     std::string import_path;
-    auto history_import_cmd = app.add_subcommand("history-import", "Import history records");
+    auto history_import_cmd = app.add_subcommand("history-imp", "Import history records");
     history_import_cmd->add_option("path", import_path, "Import file path")->required();
     history_import_cmd->callback([&]() {
         Paker::pm_history_import(import_path);

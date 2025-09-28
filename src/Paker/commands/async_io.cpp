@@ -330,16 +330,54 @@ void pm_async_io_optimize() {
         Output::info("  活跃操作: " + std::to_string(async_io_manager->get_active_operations()));
         Output::info("  成功率: " + std::to_string(async_io_manager->get_success_rate()) + "%");
         
-        // 优化建议
-        Output::info("💡 优化建议:");
-        if (async_io_manager->get_success_rate() < 95.0) {
-            Output::info("  ⚠️ 成功率较低，建议检查I/O操作和错误处理");
+        // 显示增强功能状态
+        Output::info("🚀 增强功能状态:");
+        Output::info("  自适应缓冲区: " + std::string(async_io_manager->is_adaptive_buffering_enabled() ? "✅ 启用" : "❌ 禁用"));
+        Output::info("  智能预读: " + std::string(async_io_manager->is_smart_pre_read_enabled() ? "✅ 启用" : "❌ 禁用"));
+        Output::info("  网络重试: " + std::string(async_io_manager->is_network_retry_enabled() ? "✅ 启用" : "❌ 禁用"));
+        Output::info("  批量优化: " + std::string(async_io_manager->is_batch_optimization_enabled() ? "✅ 启用" : "❌ 禁用"));
+        Output::info("  内存使用: " + std::to_string(async_io_manager->get_memory_usage() / 1024 / 1024) + " MB");
+        
+        // 获取优化建议
+        auto suggestions = async_io_manager->get_optimization_suggestions();
+        if (!suggestions.empty()) {
+            Output::info("💡 优化建议:");
+            for (const auto& suggestion : suggestions) {
+                Output::info("  • " + suggestion);
+            }
         }
-        if (async_io_manager->get_average_operation_time() > 500) {
-            Output::info("  ⚠️ 平均操作时间较长，建议优化文件系统或网络连接");
+        
+        // 应用优化建议
+        if (!suggestions.empty()) {
+            Output::info("🔧 应用优化建议...");
+            async_io_manager->apply_optimization_suggestions();
         }
-        if (async_io_manager->get_max_concurrent_operations() < std::thread::hardware_concurrency()) {
-            Output::info("  💡 可以增加最大并发操作数以提升性能");
+        
+        // 触发预读分析
+        if (async_io_manager->is_smart_pre_read_enabled()) {
+            Output::info("📖 执行智能预读分析...");
+            async_io_manager->trigger_pre_read_analysis();
+            
+            auto candidates = async_io_manager->get_pre_read_candidates();
+            if (!candidates.empty()) {
+                Output::info("  发现 " + std::to_string(candidates.size()) + " 个预读候选文件");
+            }
+        }
+        
+        // 处理批量操作
+        if (async_io_manager->is_batch_optimization_enabled()) {
+            Output::info("📦 处理批量操作优化...");
+            async_io_manager->process_pending_batches();
+        }
+        
+        // 显示详细性能报告
+        std::string detailed_report = async_io_manager->get_detailed_performance_report();
+        std::istringstream report_stream(detailed_report);
+        std::string line;
+        while (std::getline(report_stream, line)) {
+            if (!line.empty()) {
+                Output::info("  " + line);
+            }
         }
         
         Output::success("✅ 异步I/O性能优化完成！");
@@ -347,6 +385,94 @@ void pm_async_io_optimize() {
     } catch (const std::exception& e) {
         LOG(ERROR) << "Async I/O optimization failed: " << e.what();
         Output::error("异步I/O优化失败: " + std::string(e.what()));
+    }
+}
+
+void pm_async_io_enhanced_features() {
+    LOG(INFO) << "Displaying enhanced async I/O features";
+    
+    auto* async_io_manager = get_async_io_manager();
+    if (!async_io_manager) {
+        Output::error("异步I/O管理器未初始化");
+        return;
+    }
+    
+    try {
+        Output::info("🚀 增强异步I/O功能展示");
+        Output::info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
+        // 动态缓冲区管理
+        Output::info("📊 动态缓冲区管理:");
+        Output::info("  自适应缓冲区: " + std::string(async_io_manager->is_adaptive_buffering_enabled() ? "✅ 启用" : "❌ 禁用"));
+        Output::info("  内存使用: " + std::to_string(async_io_manager->get_memory_usage() / 1024 / 1024) + " MB");
+        
+        // 显示各种缓冲区配置
+        for (int i = 0; i < 4; ++i) {
+            BufferType type = static_cast<BufferType>(i);
+            auto config = async_io_manager->get_buffer_config(type);
+            std::string type_name;
+            switch (type) {
+                case BufferType::FILE_READ: type_name = "文件读取"; break;
+                case BufferType::FILE_WRITE: type_name = "文件写入"; break;
+                case BufferType::NETWORK_DOWNLOAD: type_name = "网络下载"; break;
+                case BufferType::NETWORK_UPLOAD: type_name = "网络上传"; break;
+            }
+            Output::info("  " + type_name + ": " + std::to_string(config.initial_size / 1024) + "KB");
+        }
+        
+        // 智能预读策略
+        Output::info("📖 智能预读策略:");
+        Output::info("  智能预读: " + std::string(async_io_manager->is_smart_pre_read_enabled() ? "✅ 启用" : "❌ 禁用"));
+        
+        auto candidates = async_io_manager->get_pre_read_candidates();
+        if (!candidates.empty()) {
+            Output::info("  预读候选: " + std::to_string(candidates.size()) + " 个文件");
+            for (size_t i = 0; i < std::min(candidates.size(), static_cast<size_t>(5)); ++i) {
+                Output::info("    • " + candidates[i]);
+            }
+            if (candidates.size() > 5) {
+                Output::info("    ... 还有 " + std::to_string(candidates.size() - 5) + " 个文件");
+            }
+        } else {
+            Output::info("  暂无预读候选文件");
+        }
+        
+        // 网络重试策略
+        Output::info("🌐 网络重试策略:");
+        Output::info("  网络重试: " + std::string(async_io_manager->is_network_retry_enabled() ? "✅ 启用" : "❌ 禁用"));
+        
+        auto retry_config = async_io_manager->get_retry_config();
+        Output::info("  最大重试次数: " + std::to_string(retry_config.max_retries));
+        Output::info("  初始延迟: " + std::to_string(retry_config.initial_delay.count()) + "ms");
+        Output::info("  退避因子: " + std::to_string(retry_config.backoff_factor));
+        Output::info("  最大延迟: " + std::to_string(retry_config.max_delay.count()) + "ms");
+        
+        // 批量处理优化
+        Output::info("📦 批量处理优化:");
+        Output::info("  批量优化: " + std::string(async_io_manager->is_batch_optimization_enabled() ? "✅ 启用" : "❌ 禁用"));
+        
+        // 性能统计
+        Output::info("📈 性能统计:");
+        Output::info("  平均吞吐量: " + std::to_string(async_io_manager->get_average_throughput()) + " MB/s");
+        Output::info("  缓存命中率: " + std::to_string(async_io_manager->get_cache_hit_rate()) + "%");
+        Output::info("  总处理字节: " + std::to_string(async_io_manager->get_total_bytes_processed() / 1024 / 1024) + " MB");
+        
+        // 优化建议
+        auto suggestions = async_io_manager->get_optimization_suggestions();
+        if (!suggestions.empty()) {
+            Output::info("💡 优化建议:");
+            for (const auto& suggestion : suggestions) {
+                Output::info("  • " + suggestion);
+            }
+        } else {
+            Output::info("  ✅ 当前配置已优化");
+        }
+        
+        Output::success("🎉 增强功能展示完成！");
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Failed to display enhanced features: " << e.what();
+        Output::error("显示增强功能失败: " + std::string(e.what()));
     }
 }
 
