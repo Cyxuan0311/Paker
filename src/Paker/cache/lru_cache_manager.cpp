@@ -25,7 +25,8 @@ LRUCacheManager::LRUCacheManager(const std::string& cache_directory,
     , max_cache_items_(max_cache_items)
     , max_age_(max_age)
     , eviction_policy_(policy)
-    , cache_directory_(cache_directory) {
+    , cache_directory_(cache_directory)
+    , adaptive_strategy_(std::make_unique<AdaptiveCacheStrategy>()) {
     
     LOG(INFO) << "LRUCacheManager initialized with max size: " << max_cache_size_ 
               << " bytes, max items: " << max_cache_items_;
@@ -100,6 +101,11 @@ bool LRUCacheManager::add_item(const std::string& package_name, const std::strin
         statistics_.total_items++;
         statistics_.total_size_bytes += item.size_bytes;
         statistics_.package_sizes[package_name] += item.size_bytes;
+        
+        // 记录访问模式
+        if (adaptive_strategy_) {
+            adaptive_strategy_->record_access(package_name, item.size_bytes);
+        }
         
         LOG(INFO) << "Added cache item: " << key << " (size: " << item.size_bytes << " bytes)";
         return true;
@@ -1032,6 +1038,162 @@ bool initialize_lru_cache_manager(const std::string& cache_directory,
 void cleanup_lru_cache_manager() {
     g_smart_cache_cleaner.reset();
     g_lru_cache_manager.reset();
+}
+
+// AdaptiveCacheStrategy 实现
+AdaptiveCacheStrategy::AdaptiveCacheStrategy(double hot_threshold, double cold_threshold,
+                                            size_t min_retention, double size_w,
+                                            double freq_w, double rec_w)
+    : analysis_interval_(std::chrono::milliseconds(30000))  // 30秒分析一次
+    , hot_threshold_(hot_threshold)
+    , cold_threshold_(cold_threshold)
+    , min_retention_size_(min_retention)
+    , size_weight_(size_w)
+    , frequency_weight_(freq_w)
+    , recency_weight_(rec_w) {
+}
+
+void AdaptiveCacheStrategy::record_access(const std::string& package_name, size_t size) {
+    std::lock_guard<std::mutex> lock(patterns_mutex_);
+    
+    auto now = std::chrono::steady_clock::now();
+    auto& pattern = access_patterns_[package_name];
+    
+    if (pattern.access_count == 0) {
+        pattern.package_name = package_name;
+        pattern.first_access = now;
+    }
+    
+    pattern.last_access = now;
+    pattern.access_count++;
+    pattern.total_size += size;
+    
+    // 计算访问频率（次/小时）
+    auto duration = std::chrono::duration_cast<std::chrono::hours>(now - pattern.first_access);
+    if (duration.count() > 0) {
+        pattern.access_frequency = static_cast<double>(pattern.access_count) / duration.count();
+    }
+}
+
+void AdaptiveCacheStrategy::analyze_patterns() {
+    std::lock_guard<std::mutex> lock(patterns_mutex_);
+    
+    auto now = std::chrono::steady_clock::now();
+    if (now - last_analysis_ < analysis_interval_) {
+        return;
+    }
+    
+    last_analysis_ = now;
+    
+    // 计算所有模式的优先级分数
+    for (auto& [name, pattern] : access_patterns_) {
+        // 基于访问频率、大小和最近性的综合评分
+        double frequency_score = std::min(1.0, pattern.access_frequency / 10.0); // 归一化频率
+        double size_score = std::min(1.0, static_cast<double>(pattern.total_size) / (1024 * 1024)); // 归一化大小
+        double recency_score = 1.0 - std::min(1.0, 
+            std::chrono::duration_cast<std::chrono::hours>(now - pattern.last_access).count() / 24.0); // 归一化最近性
+        
+        pattern.priority_score = frequency_weight_ * frequency_score + 
+                               size_weight_ * size_score + 
+                               recency_weight_ * recency_score;
+        
+        // 标记热点和冷数据
+        pattern.is_hot = pattern.priority_score > hot_threshold_;
+    }
+}
+
+double AdaptiveCacheStrategy::calculate_priority(const std::string& package_name) const {
+    std::lock_guard<std::mutex> lock(patterns_mutex_);
+    
+    auto it = access_patterns_.find(package_name);
+    if (it != access_patterns_.end()) {
+        return it->second.priority_score;
+    }
+    return 0.0;
+}
+
+bool AdaptiveCacheStrategy::should_evict(const std::string& package_name) const {
+    std::lock_guard<std::mutex> lock(patterns_mutex_);
+    
+    auto it = access_patterns_.find(package_name);
+    if (it != access_patterns_.end()) {
+        return it->second.priority_score < cold_threshold_;
+    }
+    return true; // 未知数据优先淘汰
+}
+
+std::vector<std::string> AdaptiveCacheStrategy::get_eviction_candidates() const {
+    std::lock_guard<std::mutex> lock(patterns_mutex_);
+    
+    std::vector<std::pair<std::string, double>> candidates;
+    for (const auto& [name, pattern] : access_patterns_) {
+        if (pattern.priority_score < cold_threshold_) {
+            candidates.emplace_back(name, pattern.priority_score);
+        }
+    }
+    
+    // 按优先级分数排序（分数低的优先淘汰）
+    std::sort(candidates.begin(), candidates.end(),
+              [](const auto& a, const auto& b) { return a.second < b.second; });
+    
+    std::vector<std::string> result;
+    for (const auto& [name, score] : candidates) {
+        result.push_back(name);
+    }
+    return result;
+}
+
+void AdaptiveCacheStrategy::update_strategy_parameters() {
+    std::lock_guard<std::mutex> lock(patterns_mutex_);
+    
+    // 基于访问模式动态调整策略参数
+    size_t total_patterns = access_patterns_.size();
+    if (total_patterns < min_retention_size_) {
+        return; // 数据不足，不调整
+    }
+    
+    // 计算热点数据比例
+    size_t hot_count = 0;
+    for (const auto& [name, pattern] : access_patterns_) {
+        if (pattern.is_hot) {
+            hot_count++;
+        }
+    }
+    
+    double hot_ratio = static_cast<double>(hot_count) / total_patterns;
+    
+    // 根据热点数据比例调整阈值
+    if (hot_ratio > 0.3) {
+        // 热点数据较多，提高阈值
+        hot_threshold_ = std::min(0.9, hot_threshold_ + 0.05);
+        cold_threshold_ = std::max(0.1, cold_threshold_ - 0.05);
+    } else if (hot_ratio < 0.1) {
+        // 热点数据较少，降低阈值
+        hot_threshold_ = std::max(0.5, hot_threshold_ - 0.05);
+        cold_threshold_ = std::min(0.5, cold_threshold_ + 0.05);
+    }
+}
+
+// LRUCacheManager 自适应缓存方法实现
+void LRUCacheManager::enable_adaptive_caching(bool enable) {
+    if (enable && !adaptive_strategy_) {
+        adaptive_strategy_ = std::make_unique<AdaptiveCacheStrategy>();
+    } else if (!enable) {
+        adaptive_strategy_.reset();
+    }
+}
+
+void LRUCacheManager::update_access_pattern(const std::string& package_name, size_t size) {
+    if (adaptive_strategy_) {
+        adaptive_strategy_->record_access(package_name, size);
+    }
+}
+
+void LRUCacheManager::optimize_cache_strategy() {
+    if (adaptive_strategy_) {
+        adaptive_strategy_->analyze_patterns();
+        adaptive_strategy_->update_strategy_parameters();
+    }
 }
 
 } // namespace Paker

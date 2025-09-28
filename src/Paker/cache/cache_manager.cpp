@@ -2,6 +2,7 @@
 #include "Paker/cache/cache_path_resolver.h"
 #include "Paker/core/output.h"
 #include "Paker/core/utils.h"
+#include "Paker/core/memory_pool.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <zlib.h>
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -24,7 +26,16 @@ CacheManager::CacheManager()
     , version_storage_(VersionStorage::SHALLOW_CLONE)
     , max_cache_size_(10ULL * 1024 * 1024 * 1024)  // 10GB
     , max_versions_per_package_(3)
-    , cleanup_interval_(std::chrono::hours(24 * 7)) {  // 7天
+    , cleanup_interval_(std::chrono::hours(24 * 7))  // 7天
+    , memory_pool_(std::make_unique<SmartMemoryPool>(256 * 1024 * 1024))  // 256MB内存池
+    , compression_enabled_(true)
+    , preallocation_enabled_(true) {
+    
+    // 初始化内存池
+    if (memory_pool_) {
+        memory_pool_->initialize();
+        memory_pool_->enable_preallocation(true);
+    }
 }
 
 CacheManager::~CacheManager() {
@@ -699,6 +710,249 @@ bool CacheManager::load_configuration(const std::string& config_path) {
         LOG(ERROR) << "Error loading configuration: " << e.what();
         return false;
     }
+}
+
+// 内存管理方法实现
+void CacheManager::enable_compression(bool enable) {
+    compression_enabled_ = enable;
+    LOG(INFO) << "Cache compression " << (enable ? "enabled" : "disabled");
+}
+
+void CacheManager::enable_preallocation(bool enable) {
+    preallocation_enabled_ = enable;
+    if (memory_pool_) {
+        memory_pool_->enable_preallocation(enable);
+    }
+    LOG(INFO) << "Memory preallocation " << (enable ? "enabled" : "disabled");
+}
+
+void CacheManager::optimize_memory_usage() {
+    LOG(INFO) << "Optimizing memory usage...";
+    
+    if (memory_pool_) {
+        memory_pool_->optimize();
+        memory_pool_->cleanup();
+    }
+    
+    // 压缩缓存数据
+    if (compression_enabled_) {
+        compress_cache_data();
+    }
+    
+    LOG(INFO) << "Memory optimization completed";
+}
+
+void CacheManager::compress_cache_data() {
+    if (!compression_enabled_) {
+        return;
+    }
+    
+    LOG(INFO) << "Compressing cache data...";
+    
+    size_t compressed_count = 0;
+    size_t total_savings = 0;
+    
+    for (auto& [package_name, versions] : package_index_) {
+        for (auto& [version, cache_info] : versions) {
+            if (cache_info.is_active && !cache_info.cache_path.empty()) {
+                std::string compressed_path = cache_info.cache_path + ".compressed";
+                
+                // 使用zlib压缩
+                if (compress_file_zlib(cache_info.cache_path, compressed_path)) {
+                    // 计算压缩率
+                    size_t original_size = cache_info.size_bytes;
+                    size_t compressed_size = calculate_file_size(compressed_path);
+                    
+                    if (compressed_size < original_size) {
+                        // 替换原文件
+                        std::remove(cache_info.cache_path.c_str());
+                        std::rename(compressed_path.c_str(), cache_info.cache_path.c_str());
+                        
+                        cache_info.size_bytes = compressed_size;
+                        compressed_count++;
+                        total_savings += (original_size - compressed_size);
+                        
+                        LOG(INFO) << "Compressed " << package_name << "@" << version 
+                                  << ": " << original_size << " -> " << compressed_size << " bytes";
+                    } else {
+                        // 压缩效果不好，删除压缩文件
+                        std::remove(compressed_path.c_str());
+                    }
+                }
+            }
+        }
+    }
+    
+    LOG(INFO) << "Compression completed: " << compressed_count << " files, " 
+              << total_savings << " bytes saved";
+}
+
+size_t CacheManager::get_memory_usage() const {
+    size_t usage = 0;
+    
+    if (memory_pool_) {
+        usage += memory_pool_->get_current_usage();
+    }
+    
+    // 计算缓存数据内存使用
+    for (const auto& [package_name, versions] : package_index_) {
+        for (const auto& [version, cache_info] : versions) {
+            usage += cache_info.size_bytes;
+        }
+    }
+    
+    return usage;
+}
+
+std::string CacheManager::get_memory_report() const {
+    std::ostringstream ss;
+    
+    ss << "=== Cache Memory Report ===\n";
+    ss << "Total cache size: " << get_cache_size() << " bytes\n";
+    ss << "Memory pool usage: ";
+    
+    if (memory_pool_) {
+        auto stats = memory_pool_->get_statistics();
+        ss << stats.current_usage << " bytes\n";
+        ss << "Memory pool peak: " << stats.peak_usage << " bytes\n";
+        ss << "Allocations: " << stats.allocation_count << "\n";
+        ss << "Fragmentation: " << stats.fragmentation_ratio << "\n";
+    } else {
+        ss << "Not initialized\n";
+    }
+    
+    ss << "Compression: " << (compression_enabled_ ? "enabled" : "disabled") << "\n";
+    ss << "Preallocation: " << (preallocation_enabled_ ? "enabled" : "disabled") << "\n";
+    
+    return ss.str();
+}
+
+// 辅助方法实现
+bool CacheManager::compress_file_zlib(const std::string& input_path, const std::string& output_path) {
+    try {
+        std::ifstream input(input_path, std::ios::binary);
+        if (!input.is_open()) {
+            return false;
+        }
+        
+        // 读取文件内容
+        input.seekg(0, std::ios::end);
+        size_t file_size = input.tellg();
+        input.seekg(0, std::ios::beg);
+        
+        std::vector<char> buffer(file_size);
+        input.read(buffer.data(), file_size);
+        input.close();
+        
+        // 计算压缩后大小
+        uLong compressed_size = compressBound(file_size);
+        std::vector<char> compressed_buffer(compressed_size);
+        
+        // 执行压缩
+        int result = compress2(
+            reinterpret_cast<Bytef*>(compressed_buffer.data()), &compressed_size,
+            reinterpret_cast<const Bytef*>(buffer.data()), file_size,
+            Z_BEST_COMPRESSION);
+        
+        if (result != Z_OK) {
+            return false;
+        }
+        
+        // 写入压缩文件
+        std::ofstream output(output_path, std::ios::binary);
+        if (!output.is_open()) {
+            return false;
+        }
+        
+        // 写入原始大小和压缩大小
+        output.write(reinterpret_cast<const char*>(&file_size), sizeof(file_size));
+        output.write(reinterpret_cast<const char*>(&compressed_size), sizeof(compressed_size));
+        output.write(compressed_buffer.data(), compressed_size);
+        output.close();
+        
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Compression failed: " << e.what();
+        return false;
+    }
+}
+
+bool CacheManager::decompress_file_zlib(const std::string& input_path, const std::string& output_path) {
+    try {
+        std::ifstream input(input_path, std::ios::binary);
+        if (!input.is_open()) {
+            return false;
+        }
+        
+        // 读取原始大小和压缩大小
+        size_t original_size, compressed_size;
+        input.read(reinterpret_cast<char*>(&original_size), sizeof(original_size));
+        input.read(reinterpret_cast<char*>(&compressed_size), sizeof(compressed_size));
+        
+        // 读取压缩数据
+        std::vector<char> compressed_buffer(compressed_size);
+        input.read(compressed_buffer.data(), compressed_size);
+        input.close();
+        
+        // 解压缩
+        std::vector<char> decompressed_buffer(original_size);
+        uLong decompressed_size = original_size;
+        int result = uncompress(
+            reinterpret_cast<Bytef*>(decompressed_buffer.data()), &decompressed_size,
+            reinterpret_cast<const Bytef*>(compressed_buffer.data()), compressed_size);
+        
+        if (result != Z_OK || decompressed_size != original_size) {
+            return false;
+        }
+        
+        // 写入解压缩文件
+        std::ofstream output(output_path, std::ios::binary);
+        if (!output.is_open()) {
+            return false;
+        }
+        
+        output.write(decompressed_buffer.data(), original_size);
+        output.close();
+        
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Decompression failed: " << e.what();
+        return false;
+    }
+}
+
+size_t CacheManager::calculate_file_size(const std::string& file_path) const {
+    try {
+        std::ifstream file(file_path, std::ios::binary | std::ios::ate);
+        if (!file.is_open()) {
+            return 0;
+        }
+        return file.tellg();
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Failed to calculate file size: " << e.what();
+        return 0;
+    }
+}
+
+size_t CacheManager::get_cache_size() const {
+    size_t total_size = 0;
+    
+    // 计算所有缓存目录的总大小
+    std::vector<std::string> cache_paths = {global_cache_path_, user_cache_path_, project_cache_path_};
+    
+    for (const auto& cache_path : cache_paths) {
+        if (!cache_path.empty() && std::filesystem::exists(cache_path)) {
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(cache_path)) {
+                if (entry.is_regular_file()) {
+                    total_size += entry.file_size();
+                }
+            }
+        }
+    }
+    
+    return total_size;
 }
 
 } // namespace Paker 
