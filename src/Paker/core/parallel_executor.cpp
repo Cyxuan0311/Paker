@@ -16,7 +16,9 @@ ParallelExecutor::ParallelExecutor(size_t max_workers, size_t max_concurrent_tas
     : stop_flag_(false)
     , active_tasks_(0)
     , max_workers_(max_workers == 0 ? std::thread::hardware_concurrency() : max_workers)
-    , max_concurrent_tasks_(max_concurrent_tasks) {
+    , max_concurrent_tasks_(max_concurrent_tasks)
+    , load_balancer_(std::make_unique<AdaptiveLoadBalancer>(1, max_workers_))
+    , load_monitoring_enabled_(false) {
     
     if (max_workers_ == 0) {
         max_workers_ = 1; // 至少一个工作线程
@@ -43,6 +45,11 @@ bool ParallelExecutor::start() {
         workers_.emplace_back(&ParallelExecutor::worker_loop, this);
     }
     
+    // 启动负载监控线程
+    if (load_monitoring_enabled_) {
+        load_monitor_thread_ = std::thread(&ParallelExecutor::load_monitor_loop, this);
+    }
+    
     LOG(INFO) << "Started " << max_workers_ << " worker threads";
     return true;
 }
@@ -54,6 +61,11 @@ void ParallelExecutor::stop() {
     
     stop_flag_ = true;
     queue_cv_.notify_all();
+    
+    // 等待负载监控线程结束
+    if (load_monitor_thread_.joinable()) {
+        load_monitor_thread_.join();
+    }
     
     // 等待所有工作线程结束
     for (auto& worker : workers_) {
@@ -438,6 +450,138 @@ void cleanup_parallel_executor() {
     if (g_parallel_executor) {
         g_parallel_executor->stop();
         g_parallel_executor.reset();
+    }
+}
+
+// AdaptiveLoadBalancer 实现
+AdaptiveLoadBalancer::AdaptiveLoadBalancer(size_t min_workers, size_t max_workers,
+                                         double high_threshold, double low_threshold,
+                                         std::chrono::milliseconds interval)
+    : max_history_size_(100)
+    , load_threshold_high_(high_threshold)
+    , load_threshold_low_(low_threshold)
+    , min_workers_(min_workers)
+    , max_workers_(max_workers)
+    , adjustment_interval_(interval) {
+}
+
+void AdaptiveLoadBalancer::update_load_metrics(const SystemLoadMetrics& metrics) {
+    load_history_.push_back(metrics);
+    if (load_history_.size() > max_history_size_) {
+        load_history_.erase(load_history_.begin());
+    }
+}
+
+size_t AdaptiveLoadBalancer::calculate_optimal_workers() const {
+    if (load_history_.empty()) {
+        return min_workers_;
+    }
+    
+    // 计算平均负载
+    double avg_load = 0.0;
+    for (const auto& metrics : load_history_) {
+        avg_load += (metrics.cpu_usage + metrics.memory_usage + metrics.disk_io_usage) / 3.0;
+    }
+    avg_load /= load_history_.size();
+    
+    // 根据负载调整工作线程数
+    if (avg_load > load_threshold_high_) {
+        return std::min(max_workers_, static_cast<size_t>(max_workers_ * 0.8));
+    } else if (avg_load < load_threshold_low_) {
+        return std::max(min_workers_, static_cast<size_t>(max_workers_ * 1.2));
+    }
+    
+    return max_workers_;
+}
+
+bool AdaptiveLoadBalancer::should_adjust_workers() const {
+    auto now = std::chrono::steady_clock::now();
+    return (now - last_adjustment_) >= adjustment_interval_;
+}
+
+double AdaptiveLoadBalancer::get_current_load() const {
+    if (load_history_.empty()) {
+        return 0.0;
+    }
+    
+    const auto& latest = load_history_.back();
+    return (latest.cpu_usage + latest.memory_usage + latest.disk_io_usage) / 3.0;
+}
+
+// ParallelExecutor 自适应负载均衡方法实现
+void ParallelExecutor::enable_adaptive_load_balancing(bool enable) {
+    load_monitoring_enabled_ = enable;
+    if (enable && is_running() && !load_monitor_thread_.joinable()) {
+        load_monitor_thread_ = std::thread(&ParallelExecutor::load_monitor_loop, this);
+    }
+}
+
+void ParallelExecutor::update_system_metrics(const SystemLoadMetrics& metrics) {
+    if (load_balancer_) {
+        load_balancer_->update_load_metrics(metrics);
+    }
+}
+
+size_t ParallelExecutor::get_optimal_worker_count() const {
+    if (load_balancer_) {
+        return load_balancer_->calculate_optimal_workers();
+    }
+    return max_workers_;
+}
+
+void ParallelExecutor::load_monitor_loop() {
+    while (!stop_flag_) {
+        try {
+            auto metrics = collect_system_metrics();
+            update_system_metrics(metrics);
+            
+            if (load_balancer_ && load_balancer_->should_adjust_workers()) {
+                adjust_worker_count();
+            }
+            
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        } catch (const std::exception& e) {
+            LOG(ERROR) << "Error in load monitor loop: " << e.what();
+            std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        }
+    }
+}
+
+SystemLoadMetrics ParallelExecutor::collect_system_metrics() const {
+    SystemLoadMetrics metrics;
+    metrics.timestamp = std::chrono::steady_clock::now();
+    
+    // 简化的系统指标收集（实际实现中可以使用更精确的方法）
+    metrics.cpu_usage = 0.5; // 占位符，实际应从系统API获取
+    metrics.memory_usage = 0.3; // 占位符
+    metrics.disk_io_usage = 0.2; // 占位符
+    metrics.network_usage = 0.1; // 占位符
+    metrics.active_connections = active_tasks_.load();
+    
+    return metrics;
+}
+
+void ParallelExecutor::adjust_worker_count() {
+    if (!load_balancer_) {
+        return;
+    }
+    
+    size_t optimal_workers = load_balancer_->calculate_optimal_workers();
+    
+    if (optimal_workers != workers_.size()) {
+        LOG(INFO) << "Adjusting worker count from " << workers_.size() 
+                  << " to " << optimal_workers;
+        
+        if (optimal_workers > workers_.size()) {
+            // 增加工作线程
+            for (size_t i = workers_.size(); i < optimal_workers; ++i) {
+                workers_.emplace_back(&ParallelExecutor::worker_loop, this);
+            }
+        } else {
+            // 减少工作线程（通过停止标志让多余线程自然退出）
+            // 注意：这里需要更复杂的实现来安全地减少线程
+            LOG(INFO) << "Worker count adjustment to " << optimal_workers << " requested";
+        }
     }
 }
 
