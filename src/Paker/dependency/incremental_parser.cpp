@@ -2,6 +2,7 @@
 #include "Paker/core/utils.h"
 #include "Paker/core/package_manager.h"
 #include "Paker/dependency/sources.h"
+#include "Paker/simd/simd_hash.h"
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -283,24 +284,8 @@ std::string IncrementalParser::calculate_dependency_hash(const std::string& pack
             return "";
         }
         
-        std::ifstream file(manifest_path);
-        std::string content((std::istreambuf_iterator<char>(file)),
-                           std::istreambuf_iterator<char>());
-        
-        // 计算SHA256哈希
-        unsigned char hash[SHA256_DIGEST_LENGTH];
-        SHA256_CTX sha256;
-        SHA256_Init(&sha256);
-        SHA256_Update(&sha256, content.c_str(), content.length());
-        SHA256_Final(hash, &sha256);
-        
-        // 转换为十六进制字符串
-        std::stringstream ss;
-        for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-            ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
-        }
-        
-        return ss.str();
+        // 使用SIMD优化的哈希计算
+        return SIMDHashCalculator::sha256_simd_file(manifest_path);
         
     } catch (const std::exception& e) {
         LOG(WARNING) << "Failed to calculate dependency hash: " << e.what();
