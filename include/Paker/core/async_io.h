@@ -1,23 +1,12 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <memory>
+#include "Paker/common.h"
 #include <future>
-#include <functional>
 #include <queue>
-#include <mutex>
 #include <condition_variable>
 #include <thread>
 #include <atomic>
-#include <chrono>
-#include <filesystem>
 #include <unordered_map>
-#include <map>
-#include <algorithm>
-#include <numeric>
-#include <memory>
-#include <functional>
 
 namespace Paker {
 

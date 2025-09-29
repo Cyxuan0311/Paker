@@ -1,12 +1,7 @@
 #pragma once
 
-#include <memory>
-#include <vector>
-#include <mutex>
-#include <atomic>
+#include "Paker/common.h"
 #include <unordered_map>
-#include <chrono>
-#include <thread>
 
 namespace Paker {
 
