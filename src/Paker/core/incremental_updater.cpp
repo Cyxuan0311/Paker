@@ -1,5 +1,6 @@
 #include "Paker/core/incremental_updater.h"
 #include "Paker/core/output.h"
+#include "Paker/simd/simd_hash.h"
 #include <glog/logging.h>
 #include <fstream>
 #include <sstream>
@@ -46,28 +47,8 @@ bool IncrementalUpdater::initialize() {
 
 std::string IncrementalUpdater::calculate_file_hash(const std::string& file_path) const {
     try {
-        std::ifstream file(file_path, std::ios::binary);
-        if (!file) {
-            return "";
-        }
-        
-        SHA256_CTX sha256;
-        SHA256_Init(&sha256);
-        
-        char buffer[8192];
-        while (file.read(buffer, sizeof(buffer)) || file.gcount() > 0) {
-            SHA256_Update(&sha256, buffer, file.gcount());
-        }
-        
-        unsigned char hash[SHA256_DIGEST_LENGTH];
-        SHA256_Final(hash, &sha256);
-        
-        std::ostringstream ss;
-        for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-            ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
-        }
-        
-        return ss.str();
+        // 使用SIMD优化的哈希计算
+        return SIMDHashCalculator::sha256_simd_file(file_path);
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to calculate hash for " << file_path << ": " << e.what();
@@ -77,27 +58,8 @@ std::string IncrementalUpdater::calculate_file_hash(const std::string& file_path
 
 std::string IncrementalUpdater::calculate_directory_hash(const std::string& dir_path) const {
     try {
-        std::vector<FileInfo> files = scan_directory(dir_path);
-        std::ostringstream ss;
-        
-        for (const auto& file : files) {
-            ss << file.path << ":" << file.hash << ":" << file.size << ";";
-        }
-        
-        std::string content = ss.str();
-        SHA256_CTX sha256;
-        SHA256_Init(&sha256);
-        SHA256_Update(&sha256, content.c_str(), content.length());
-        
-        unsigned char hash[SHA256_DIGEST_LENGTH];
-        SHA256_Final(hash, &sha256);
-        
-        std::ostringstream hash_ss;
-        for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-            hash_ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
-        }
-        
-        return hash_ss.str();
+        // 使用SIMD优化的目录哈希计算
+        return SIMDFileHasher::calculate_directory_sha256(dir_path);
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to calculate directory hash for " << dir_path << ": " << e.what();

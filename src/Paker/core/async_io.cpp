@@ -278,6 +278,22 @@ void AsyncNetworkDownloadOperation::execute() {
         // 设置缓冲区大小
         curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, static_cast<long>(download_buffer_size));
         
+        // 启用HTTP/2支持
+        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+        
+        // 启用TCP_NODELAY
+        curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
+        
+        // 启用连接复用
+        curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 0L);
+        curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 0L);
+        
+        // 设置DNS缓存
+        curl_easy_setopt(curl, CURLOPT_DNS_CACHE_TIMEOUT, 300L);
+        
+        // 启用管道化
+        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+        
         if (cancelled_) {
             curl_easy_cleanup(curl);
             set_status(IOOperationStatus::CANCELLED);
@@ -1034,7 +1050,22 @@ std::chrono::milliseconds AdaptiveRetryStrategy::calculate_retry_delay(const std
     double network_quality = get_network_quality(url);
     double quality_factor = 1.0 + (1.0 - network_quality) * 2.0; // 网络质量差时增加延迟
     
-    long delay_ms = static_cast<long>(base_delay_.count() * std::pow(adaptive_factor_, attempt) * quality_factor);
+    // 智能延迟计算
+    long base_delay = base_delay_.count();
+    
+    // 根据网络质量动态调整基础延迟
+    if (network_quality < 0.3) {
+        base_delay *= 2.0; // 网络质量差时加倍延迟
+    } else if (network_quality > 0.8) {
+        base_delay *= 0.5; // 网络质量好时减半延迟
+    }
+    
+    // 指数退避 + 抖动
+    long delay_ms = static_cast<long>(base_delay * std::pow(adaptive_factor_, attempt) * quality_factor);
+    
+    // 添加随机抖动避免雷群效应
+    double jitter = 1.0 + (static_cast<double>(rand()) / RAND_MAX - 0.5) * 0.2; // ±10%抖动
+    delay_ms = static_cast<long>(delay_ms * jitter);
     
     // 限制最大延迟
     return std::chrono::milliseconds(std::min(delay_ms, 30000L));
@@ -1054,10 +1085,39 @@ bool AdaptiveRetryStrategy::should_retry(const std::string& url, int http_code, 
     // 检查网络质量
     double network_quality = get_network_quality(url);
     
-    // 网络质量差时减少重试次数
-    size_t max_retries = network_quality > 0.5 ? 3 : 1;
+    // 智能重试策略
+    size_t max_retries = 3; // 默认最大重试次数
     
-    return attempt < max_retries;
+    // 根据网络质量动态调整重试次数
+    if (network_quality < 0.2) {
+        max_retries = 1; // 网络质量极差，只重试1次
+    } else if (network_quality < 0.5) {
+        max_retries = 2; // 网络质量差，重试2次
+    } else if (network_quality > 0.8) {
+        max_retries = 5; // 网络质量好，可以重试更多次
+    }
+    
+    // 根据HTTP状态码调整重试策略
+    if (http_code == 429) { // 限流
+        max_retries = std::min(max_retries, size_t(2)); // 限流时减少重试
+    } else if (http_code >= 500) { // 服务器错误
+        max_retries = std::min(max_retries, size_t(3)); // 服务器错误时正常重试
+    }
+    
+    // 检查是否超过最大重试次数
+    if (attempt >= max_retries) {
+        return false;
+    }
+    
+    // 检查重试间隔是否合理（避免过于频繁的重试）
+    if (attempt > 0) {
+        auto delay = calculate_retry_delay(url, attempt - 1);
+        if (delay.count() < 100) { // 延迟太短，可能网络有问题
+            return false;
+        }
+    }
+    
+    return true;
 }
 
 void AdaptiveRetryStrategy::update_strategy_parameters() {
