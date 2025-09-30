@@ -170,63 +170,36 @@ uint32_t SIMDHashCalculator::crc32_simd_file(const std::string& file_path) {
 }
 
 std::vector<std::string> SIMDHashCalculator::batch_sha256_simd(const std::vector<std::string>& data_list) {
-    std::vector<std::string> results;
-    results.reserve(data_list.size());
+    std::vector<std::string> results(data_list.size());
     
-    // 并行计算哈希
-    std::vector<std::future<std::string>> futures;
-    futures.reserve(data_list.size());
-    
-    for (const auto& data : data_list) {
-        futures.push_back(std::async(std::launch::async, [&data]() {
-            return sha256_simd(data);
-        }));
-    }
-    
-    for (auto& future : futures) {
-        results.push_back(future.get());
+    // 使用OpenMP并行计算哈希
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < data_list.size(); ++i) {
+        results[i] = sha256_simd(data_list[i]);
     }
     
     return results;
 }
 
 std::vector<std::string> SIMDHashCalculator::batch_md5_simd(const std::vector<std::string>& data_list) {
-    std::vector<std::string> results;
-    results.reserve(data_list.size());
+    std::vector<std::string> results(data_list.size());
     
-    // 并行计算哈希
-    std::vector<std::future<std::string>> futures;
-    futures.reserve(data_list.size());
-    
-    for (const auto& data : data_list) {
-        futures.push_back(std::async(std::launch::async, [&data]() {
-            return md5_simd(data);
-        }));
-    }
-    
-    for (auto& future : futures) {
-        results.push_back(future.get());
+    // 使用OpenMP并行计算哈希
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < data_list.size(); ++i) {
+        results[i] = md5_simd(data_list[i]);
     }
     
     return results;
 }
 
 std::vector<uint32_t> SIMDHashCalculator::batch_crc32_simd(const std::vector<std::string>& data_list) {
-    std::vector<uint32_t> results;
-    results.reserve(data_list.size());
+    std::vector<uint32_t> results(data_list.size());
     
-    // 并行计算哈希
-    std::vector<std::future<uint32_t>> futures;
-    futures.reserve(data_list.size());
-    
-    for (const auto& data : data_list) {
-        futures.push_back(std::async(std::launch::async, [&data]() {
-            return crc32_simd(data);
-        }));
-    }
-    
-    for (auto& future : futures) {
-        results.push_back(future.get());
+    // 使用OpenMP并行计算哈希
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < data_list.size(); ++i) {
+        results[i] = crc32_simd(data_list[i]);
     }
     
     return results;
@@ -605,20 +578,17 @@ uint32_t SIMDFileHasher::calculate_file_crc32(const std::string& file_path) {
 
 std::map<std::string, std::string> SIMDFileHasher::batch_calculate_sha256(const std::vector<std::string>& file_paths) {
     std::map<std::string, std::string> results;
+    std::vector<std::pair<std::string, std::string>> temp_results(file_paths.size());
     
-    // 并行计算
-    std::vector<std::future<std::pair<std::string, std::string>>> futures;
-    futures.reserve(file_paths.size());
-    
-    for (const auto& file_path : file_paths) {
-        futures.push_back(std::async(std::launch::async, [&file_path]() {
-            std::string hash = calculate_file_sha256(file_path);
-            return std::make_pair(file_path, hash);
-        }));
+    // 使用OpenMP并行计算
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < file_paths.size(); ++i) {
+        std::string hash = calculate_file_sha256(file_paths[i]);
+        temp_results[i] = std::make_pair(file_paths[i], hash);
     }
     
-    for (auto& future : futures) {
-        auto result = future.get();
+    // 收集结果
+    for (const auto& result : temp_results) {
         if (!result.second.empty()) {
             results[result.first] = result.second;
         }
@@ -629,20 +599,17 @@ std::map<std::string, std::string> SIMDFileHasher::batch_calculate_sha256(const 
 
 std::map<std::string, std::string> SIMDFileHasher::batch_calculate_md5(const std::vector<std::string>& file_paths) {
     std::map<std::string, std::string> results;
+    std::vector<std::pair<std::string, std::string>> temp_results(file_paths.size());
     
-    // 并行计算
-    std::vector<std::future<std::pair<std::string, std::string>>> futures;
-    futures.reserve(file_paths.size());
-    
-    for (const auto& file_path : file_paths) {
-        futures.push_back(std::async(std::launch::async, [&file_path]() {
-            std::string hash = calculate_file_md5(file_path);
-            return std::make_pair(file_path, hash);
-        }));
+    // 使用OpenMP并行计算
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < file_paths.size(); ++i) {
+        std::string hash = calculate_file_md5(file_paths[i]);
+        temp_results[i] = std::make_pair(file_paths[i], hash);
     }
     
-    for (auto& future : futures) {
-        auto result = future.get();
+    // 收集结果
+    for (const auto& result : temp_results) {
         if (!result.second.empty()) {
             results[result.first] = result.second;
         }
