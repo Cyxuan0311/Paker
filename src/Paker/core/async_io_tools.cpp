@@ -78,14 +78,45 @@ std::future<std::vector<std::string>> AsyncIOTools::read_multiple_text_files_asy
         std::vector<std::string> contents;
         contents.reserve(file_paths.size());
         
-        auto futures = manager.read_files_async(file_paths, true);
-        
-        for (auto& future : futures) {
-            auto result = future.get();
-            if (result && result->status == IOOperationStatus::COMPLETED) {
-                contents.push_back(result->content);
-            } else {
-                contents.push_back(""); // 失败时添加空字符串
+        // 使用OpenMP并行读取文件
+        #pragma omp parallel for schedule(dynamic)
+        for (size_t i = 0; i < file_paths.size(); ++i) {
+            try {
+                std::ifstream file(file_paths[i], std::ios::in);
+                if (file.is_open()) {
+                    std::string content;
+                    content.reserve(std::filesystem::file_size(file_paths[i]));
+                    
+                    std::string line;
+                    while (std::getline(file, line)) {
+                        content += line + "\n";
+                    }
+                    
+                    #pragma omp critical
+                    {
+                        if (contents.size() <= i) {
+                            contents.resize(i + 1);
+                        }
+                        contents[i] = std::move(content);
+                    }
+                } else {
+                    #pragma omp critical
+                    {
+                        if (contents.size() <= i) {
+                            contents.resize(i + 1);
+                        }
+                        contents[i] = "";
+                    }
+                }
+            } catch (const std::exception& e) {
+                LOG(ERROR) << "Failed to read file " << file_paths[i] << ": " << e.what();
+                #pragma omp critical
+                {
+                    if (contents.size() <= i) {
+                        contents.resize(i + 1);
+                    }
+                    contents[i] = "";
+                }
             }
         }
         
