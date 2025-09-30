@@ -6,6 +6,11 @@ set(CMAKE_CXX_STANDARD 17)
 # 启用预编译头文件
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O2")
 
+# 启用OpenMP支持
+if(OpenMP_CXX_FOUND)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+endif()
+
 # 检查编译器是否支持预编译头文件
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Winvalid-pch")
@@ -53,9 +58,13 @@ find_package(CURL REQUIRED)
 # 查找zlib库
 find_package(ZLIB REQUIRED)
 
+# 查找OpenMP库
+find_package(OpenMP REQUIRED)
+
 file(GLOB_RECURSE PAKER_SRCS src/Paker/*.cpp)
 file(GLOB RECORDER_SRCS src/Recorder/*.cpp)
 file(GLOB NETWORK_SRCS src/Paker/network/*.cpp)
+file(GLOB SIMD_SRCS src/Paker/simd/*.cpp)
 
 add_executable(Paker
     src/main.cpp
@@ -63,6 +72,7 @@ add_executable(Paker
     ${PAKER_SRCS}
     ${RECORDER_SRCS}
     ${NETWORK_SRCS}
+    ${SIMD_SRCS}
 )
 
 target_include_directories(Paker PRIVATE include include/Paker include/Recorder include/third_party)
@@ -72,7 +82,7 @@ target_precompile_headers(Paker PRIVATE include/Paker/pch.h)
 
 # 修复 std::filesystem 链接错误
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_link_libraries(Paker stdc++fs glog::glog OpenSSL::SSL OpenSSL::Crypto CURL::libcurl ZLIB::ZLIB)
+    target_link_libraries(Paker stdc++fs glog::glog OpenSSL::SSL OpenSSL::Crypto CURL::libcurl ZLIB::ZLIB OpenMP::OpenMP_CXX)
 else()
-    target_link_libraries(Paker glog::glog OpenSSL::SSL OpenSSL::Crypto CURL::libcurl ZLIB::ZLIB)
+    target_link_libraries(Paker glog::glog OpenSSL::SSL OpenSSL::Crypto CURL::libcurl ZLIB::ZLIB OpenMP::OpenMP_CXX)
 endif() 
