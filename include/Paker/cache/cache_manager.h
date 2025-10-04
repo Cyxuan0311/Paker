@@ -70,12 +70,18 @@ private:
     bool compression_enabled_;
     bool preallocation_enabled_;
     
+    // 状态管理
+    bool initialized_;
+    
 public:
     CacheManager();
     ~CacheManager();
     
     // 初始化缓存系统
     bool initialize(const std::string& config_path = "");
+    
+    // 检查是否已初始化
+    bool is_initialized() const { return initialized_; }
     
     // 缓存策略管理
     void set_cache_strategy(CacheStrategy strategy) { strategy_ = strategy; }
