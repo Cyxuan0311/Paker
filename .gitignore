@@ -19,11 +19,11 @@ cmake_install.cmake
 .idea/
 *.sublime*
 *.swp
+.paker
 
 # OS
 .DS_Store
 Thumbs.db
 
 # Others
-Paker.json 
 some_prompt.md
