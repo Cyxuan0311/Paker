@@ -88,13 +88,13 @@ DiagnosticResult DiagnosticTool::diagnose() {
 
 std::string DiagnosticTool::generate_diagnostic_report(const DiagnosticResult& result) {
     std::ostringstream report;
-    report << "🔍 Diagnostic Report\n";
+    report << " Diagnostic Report\n";
     report << "===================\n\n";
     
     report << "Summary: " << result.summary << "\n\n";
     
     if (result.issues.empty()) {
-        report << "✅ No issues found. Your project is healthy!\n";
+        report << "[OK] No issues found. Your project is healthy!\n";
         return report.str();
     }
     
@@ -392,7 +392,7 @@ bool DiagnosticTool::export_diagnostic_result(const DiagnosticResult& result, co
 std::string DiagnosticTool::format_level(DiagnosticLevel level) const {
     switch (level) {
         case DiagnosticLevel::CRITICAL: return "🚨 CRITICAL";
-        case DiagnosticLevel::ERROR: return "❌ ERROR";
+        case DiagnosticLevel::ERROR: return "[FAIL] ERROR";
         case DiagnosticLevel::WARNING: return "⚠️  WARNING";
         case DiagnosticLevel::INFO: return "ℹ️  INFO";
         default: return "UNKNOWN";

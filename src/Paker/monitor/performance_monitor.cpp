@@ -84,7 +84,7 @@ std::string PerformanceMonitor::generate_performance_report() const {
     }
     
     std::ostringstream report;
-    report << "📊 Performance Report\n";
+    report << " Performance Report\n";
     report << "====================\n\n";
     
     for (const auto& [category, metrics] : metrics_) {

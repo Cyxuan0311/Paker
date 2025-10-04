@@ -79,11 +79,11 @@ DependencyAnalysis DependencyAnalyzer::analyze() {
 
 std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysis& analysis) {
     std::ostringstream report;
-    report << "📋 Dependency Analysis Report\n";
+    report << "Dependency Analysis Report\n";
     report << "============================\n\n";
     
     // 基本统计
-    report << "📊 Basic Statistics\n";
+    report << " Basic Statistics\n";
     report << "-------------------\n";
     report << "Total packages: " << analysis.total_packages << "\n";
     report << "Direct dependencies: " << analysis.direct_dependencies << "\n";
@@ -93,7 +93,7 @@ std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysi
     
     // 版本分布
     if (!analysis.version_distribution.empty()) {
-        report << "📦 Version Distribution\n";
+        report << "Version Distribution\n";
         report << "------------------------\n";
         for (const auto& [package, versions] : analysis.version_distribution) {
             report << package << ":\n";
@@ -106,7 +106,7 @@ std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysi
     
     // 依赖深度
     if (!analysis.dependency_depth.empty()) {
-        report << "🌳 Dependency Depth\n";
+        report << "Dependency Depth\n";
         report << "--------------------\n";
         std::vector<std::pair<std::string, size_t>> sorted_depth;
         for (const auto& [package, depth] : analysis.dependency_depth) {
@@ -123,7 +123,7 @@ std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysi
     
     // 包大小
     if (!analysis.package_sizes.empty()) {
-        report << "💾 Package Sizes\n";
+        report << "Package Sizes\n";
         report << "----------------\n";
         std::vector<std::pair<std::string, size_t>> sorted_sizes;
         for (const auto& [package, size] : analysis.package_sizes) {
@@ -140,7 +140,7 @@ std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysi
     
     // 冲突详情
     if (!analysis.conflict_details.empty()) {
-        report << "⚠️  Version Conflicts\n";
+        report << "Version Conflicts\n";
         report << "--------------------\n";
         for (const auto& conflict : analysis.conflict_details) {
             report << conflict << "\n";
@@ -150,7 +150,7 @@ std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysi
     
     // 建议
     if (!analysis.recommendations.empty()) {
-        report << "💡 Recommendations\n";
+        report << "Recommendations\n";
         report << "------------------\n";
         for (const auto& recommendation : analysis.recommendations) {
             report << "- " << recommendation << "\n";
@@ -163,7 +163,7 @@ std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysi
 
 std::string DependencyAnalyzer::generate_dependency_tree_visualization() {
     std::ostringstream visualization;
-    visualization << "🌳 Dependency Tree Visualization\n";
+    visualization << "Dependency Tree Visualization\n";
     visualization << "================================\n\n";
     
     // 获取拓扑排序
@@ -282,18 +282,15 @@ size_t DependencyAnalyzer::get_package_size(const std::string& package) {
 }
 
 std::string DependencyAnalyzer::format_size(size_t bytes) const {
-    const char* units[] = {"B", "KB", "MB", "GB"};
-    int unit_index = 0;
-    double size = static_cast<double>(bytes);
-    
-    while (size >= 1024.0 && unit_index < 3) {
-        size /= 1024.0;
-        unit_index++;
+    if (bytes < 1024) {
+        return std::to_string(bytes) + " B";
+    } else if (bytes < 1024 * 1024) {
+        return std::to_string(bytes / 1024) + " KB";
+    } else if (bytes < 1024 * 1024 * 1024) {
+        return std::to_string(bytes / (1024 * 1024)) + " MB";
+    } else {
+        return std::to_string(bytes / (1024 * 1024 * 1024)) + " GB";
     }
-    
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2) << size << " " << units[unit_index];
-    return oss.str();
 }
 
 std::vector<std::string> DependencyAnalyzer::detect_potential_issues() {
