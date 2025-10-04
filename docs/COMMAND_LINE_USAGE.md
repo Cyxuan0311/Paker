@@ -5,14 +5,14 @@
 ## 目录
 
 - [基本命令](#基本命令)
-- [依赖管理命令](#依赖管理命令)
 - [缓存管理命令](#缓存管理命令)
-- [缓存预热命令](#缓存预热命令)
-- [增量解析命令](#增量解析命令)
-- [异步I/O命令](#异步io命令)
-- [监控与诊断命令](#监控与诊断命令)
-- [版本回滚命令](#版本回滚命令)
-- [CLI选项](#cli选项)
+- [性能监控命令](#性能监控命令)
+- [回滚管理命令](#回滚管理命令)
+- [历史管理命令](#历史管理命令)
+- [记录管理命令](#记录管理命令)
+- [高级功能命令](#高级功能命令)
+- [开发模式命令](#开发模式命令)
+- [全局选项](#全局选项)
 - [使用示例](#使用示例)
 
 ## 基本命令
@@ -55,7 +55,7 @@
 # 添加自定义依赖源
 ./Paker remote-add mylib https://github.com/example/mylib.git
 
-# 移除自定义依赖源
+# 移除依赖源
 ./Paker remote-rm mylib
 ```
 
@@ -67,27 +67,19 @@
 # 升级指定依赖
 ./Paker upgrade fmt
 
-# 同步/刷新依赖
+# 同步本地依赖
 ./Paker update
 
 # 锁定依赖版本
 ./Paker lock
 
-# 按锁文件安装依赖
+# 从锁文件安装
 ./Paker install-l
 ```
 
-### 清理操作
+### 依赖解析
 ```bash
-# 清理无用/损坏依赖
-./Paker clean
-```
-
-## 依赖管理命令
-
-### 依赖解析与冲突处理
-```bash
-# 解析项目依赖树
+# 解析项目依赖
 ./Paker resolve
 
 # 检查依赖冲突
@@ -100,308 +92,45 @@
 ./Paker validate
 ```
 
-### 包安装记录
-```bash
-# 显示指定包的安装记录
-./Paker record-show fmt
-
-# 列出所有包记录
-./Paker record-list
-
-# 获取包文件列表
-./Paker record-files fmt
-```
-
 ## 缓存管理命令
 
-### 基本缓存操作
+Paker 提供了统一的缓存管理命令，通过子命令和参数控制不同功能：
+
+### 缓存操作
 ```bash
-# 显示缓存统计信息
-./Paker cache-stats
-
-# 显示详细缓存状态和健康度
-./Paker cache-status
-
-# 自动优化缓存性能和存储
-./Paker cache-opt
-
-# 直接安装包到全局缓存
-./Paker cache-add fmt
-
-# 清理未使用的包和旧版本
-./Paker cache-clean
-```
-
-### LRU智能缓存管理
-```bash
-# 初始化LRU智能缓存管理器
-./Paker cache-lru
-
-# 显示LRU缓存详细统计
-./Paker cache-lru-stats
-
-# 执行智能缓存清理策略
-./Paker cache-smart
-
-# 获取缓存优化建议
-./Paker cache-advice
-```
-
-## 缓存预热命令
-
-### 缓存预热操作
-```bash
-# 启动缓存预热进程
-./Paker warmup
-
-# 分析项目依赖进行预热
-./Paker warmup-analyze
-
-# 显示缓存预热统计信息
-./Paker warmup-stats
-
-# 显示缓存预热配置
-./Paker warmup-config
-```
-
-## 增量解析命令
-
-### 增量解析操作
-```bash
-# 启动增量依赖解析
-./Paker parse
-
-# 显示增量解析统计信息
-./Paker parse-stats
-
-# 显示增量解析配置
-./Paker parse-config
-
-# 清理增量解析缓存
-./Paker parse-clear-cache
-
-# 优化增量解析缓存
-./Paker parse-optimize
-
-# 验证增量解析缓存完整性
-./Paker parse-validate
-```
-
-## 异步I/O命令
-
-### 异步I/O操作
-```bash
-# 显示异步I/O统计信息
-./Paker io-stats
-
-# 显示异步I/O配置
-./Paker io-config
-
-# 运行异步I/O测试
-./Paker io-test
-
-# 运行异步I/O性能基准测试
-./Paker io-bench
-
-# 优化异步I/O性能
-./Paker io-opt
-```
-
-## 内存管理命令
-
-### 内存统计与优化
-```bash
-# 显示内存使用统计
-./Paker mem-stats
-
-# 优化内存使用
-./Paker mem-opt
-
-# 启用内存压缩
-./Paker mem-compress
-
-# 配置内存池参数
-./Paker mem-pool
-
-# 生成详细内存报告
-./Paker mem-report
-```
-
-## 自适应算法命令
-
-### 自适应算法管理
-```bash
-# 显示自适应算法状态
-./Paker adaptive-status
-
-# 配置自适应参数
-./Paker adaptive-config
-
-# 分析系统负载模式
-./Paker adaptive-analyze
-
-# 优化自适应策略
-./Paker adaptive-optimize
-
-# 生成自适应性能报告
-./Paker adaptive-report
-```
-
-## 监控与诊断命令
-
-### 性能监控
-```bash
-# 生成性能监控报告
-./Paker perf
-
-# 分析依赖树和版本分布
-./Paker analyze
-
-# 运行系统诊断检查
-./Paker diagnose
-```
-
-## 版本回滚命令
-
-### 回滚操作
-```bash
-# 回滚包到指定版本
-./Paker rollback-v fmt 1.0.0
-
-# 回滚包到上一个版本
-./Paker rollback-p fmt
-
-# 回滚所有包到指定时间点
-./Paker rollback-t "2024-01-15 10:30:00"
-```
-
-### 版本历史管理
-```bash
-# 显示包的版本历史记录
-./Paker history fmt
-
-# 列出可回滚的版本
-./Paker rollback-l fmt
-
-# 检查回滚操作的安全性
-./Paker rollback-c fmt 1.0.0
-```
-
-## CLI选项
-
-### 全局选项
-```bash
-# 禁用彩色输出
-./Paker --no-color <command>
-
-# 启用详细模式（显示调试信息）
-./Paker -v <command>
-./Paker --verbose <command>
-
-# 组合使用
-./Paker --no-color -v <command>
-```
-
-### 输出格式
-- **INFO**: 蓝色 - 一般信息
-- **SUCCESS**: 绿色 - 成功信息  
-- **WARNING**: 黄色 - 警告信息
-- **ERROR**: 红色加粗 - 错误信息
-- **DEBUG**: 灰色 - 调试信息（仅在详细模式下显示）
-
-## 使用示例
-
-### 基本工作流程
-```bash
-# 1. 初始化项目
-./Paker init
-
-# 2. 添加自定义依赖源
-./Paker remote-add mylib https://github.com/example/mylib.git
-
-# 3. 添加依赖包（推荐使用并行安装）
-./Paker add-p fmt spdlog nlohmann-json
-
-# 4. 解析项目依赖
-./Paker resolve
-
-# 5. 检查依赖冲突
-./Paker check
-
-# 6. 查看依赖列表
-./Paker list
-
-# 7. 查看依赖树
-./Paker tree
-
-# 8. 验证依赖完整性
-./Paker validate
-
-# 9. 锁定依赖版本
-./Paker lock
-```
-
-### 高级功能示例
-```bash
-# 递归安装依赖
-./Paker add-r mylib
-
-# 检测并解决冲突
-./Paker check
-./Paker fix
-
-# 升级所有依赖
-./Paker upgrade
-
-# 搜索可用包
-./Paker search json
-
-# 查看包详细信息
-./Paker info fmt
-
-# 同步本地依赖
-./Paker update
-
-# 清理无用包
-./Paker clean
-```
-
-### 缓存管理示例
-```bash
-# 查看缓存状态
-./Paker cache-status
-
-# 优化缓存
-./Paker cache-opt
+# 安装包到缓存
+./Paker cache add fmt
+./Paker cache add fmt 8.1.1
+
+# 从缓存删除包
+./Paker cache remove fmt
+./Paker cache remove fmt 8.1.1
+
+# 显示缓存状态
+./Paker cache status
+./Paker cache status --detailed
 
 # 清理缓存
-./Paker cache-clean
-
-# LRU智能缓存管理
-./Paker cache-lru
-./Paker cache-lru-stats
-./Paker cache-smart
+./Paker cache clean
+./Paker cache clean --smart
+./Paker cache clean --force
 ```
 
-### 性能优化示例
+### LRU缓存管理
 ```bash
-# 缓存预热
-./Paker warmup-analyze
-./Paker warmup
-./Paker warmup-stats
+# 初始化LRU缓存
+./Paker cache lru
 
-# 增量解析
-./Paker parse
-./Paker parse-stats
-./Paker parse-optimize
+# 显示LRU统计
+./Paker cache lru --stats
 
-# 异步I/O测试
-./Paker io-test
-./Paker io-bench
-./Paker io-opt
+# 显示LRU状态
+./Paker cache lru --status
 ```
 
-### 监控与诊断示例
+## 性能监控命令
+
+### 性能报告
 ```bash
 # 生成性能报告
 ./Paker perf
@@ -413,110 +142,316 @@
 ./Paker diagnose
 ```
 
-### 版本回滚示例
+### 监控管理
+```bash
+# 启用性能监控
+./Paker monitor-enable
+
+# 清除监控数据
+./Paker monitor-clear
+```
+
+## 回滚管理命令
+
+Paker 提供了强大的版本回滚功能，支持多种回滚策略：
+
+### 基本回滚操作
 ```bash
 # 回滚到指定版本
-./Paker rollback-v fmt 1.0.0
+./Paker rollback fmt 1.0.0
 
-# 回滚到上一个版本
-./Paker rollback-p fmt
+# 回滚到上一版本
+./Paker rollback --previous fmt
 
-# 显示版本历史
-./Paker history fmt
+# 回滚到指定时间点
+./Paker rollback --timestamp "2024-01-15 10:30:00"
+```
+
+### 回滚信息查询
+```bash
+# 列出可回滚版本
+./Paker rollback --list fmt
 
 # 检查回滚安全性
-./Paker rollback-c fmt 1.0.0
+./Paker rollback --check fmt 1.0.0
+
+# 显示回滚统计
+./Paker rollback --stats
 ```
 
-### 详细模式示例
+### 强制回滚
 ```bash
-# 使用详细模式查看安装过程
-./Paker -v add fmt
-
-# 禁用彩色输出（适用于脚本或管道）
-./Paker --no-color list | grep "installed"
-
-# 组合使用
-./Paker --no-color -v search json
+# 强制回滚（跳过安全检查）
+./Paker rollback fmt 1.0.0 --force
+./Paker rollback --previous fmt --force
 ```
 
-## 命令输出示例
+## 历史管理命令
 
-### 依赖列表输出
-```
-Package │ Version │ Status
-fmt     │ 9.1.0   │ installed
-spdlog  │ 1.11.0  │ installed
-```
+### 历史记录查看
+```bash
+# 显示所有历史记录
+./Paker history
 
-### 依赖树输出
-```
-my-project (1.0.0)
-├── fmt (9.1.0)
-└── spdlog (1.11.0)
-    └── fmt (9.1.0)
+# 显示指定包的历史记录
+./Paker history fmt
 ```
 
-### 缓存统计输出
-```
-📊 Cache Statistics:
-  Total packages: 15
-  Total size: 2.3 GB
-  Cache hit rate: 85%
+### 历史记录管理
+```bash
+# 清理历史记录
+./Paker history --clean
+./Paker history --clean --max-entries 50
+
+# 导出历史记录
+./Paker history --export backup.json
+
+# 导入历史记录
+./Paker history --import backup.json
 ```
 
-### 性能报告输出
-```
-📈 Performance Report:
-  Average install time: 2.3s
-  Cache hit rate: 78%
-  Total operations: 150
-  Success rate: 98%
+## 记录管理命令
+
+### 安装记录查看
+```bash
+# 显示所有包记录
+./Paker record --list
+
+# 显示指定包记录
+./Paker record fmt
+
+# 显示包文件列表
+./Paker record --files fmt
 ```
 
-### 内存管理输出
-```
-💾 Memory Management Report:
-  Memory pool usage: 45.2 MB / 512 MB
-  Compression ratio: 65%
-  Zero-copy operations: 1,234
-  Memory efficiency: 87%
+## 高级功能命令
+
+### 增量解析
+```bash
+# 启动增量解析
+./Paker parse
+
+# 显示解析统计
+./Paker parse --stats
+
+# 显示解析配置
+./Paker parse --config
+
+# 清除解析缓存
+./Paker parse --clear
+
+# 优化解析缓存
+./Paker parse --opt
+
+# 验证解析缓存
+./Paker parse --validate
 ```
 
-### 自适应算法输出
-```
-🧠 Adaptive Algorithm Status:
-  Load balancing: Active
-  Cache strategy: LRU + LFU hybrid
-  Retry mechanism: Adaptive
-  Preload prediction: 78% accuracy
+### 异步I/O管理
+```bash
+# 显示I/O统计
+./Paker io --stats
+
+# 显示I/O配置
+./Paker io --config
+
+# 运行I/O测试
+./Paker io --test
+
+# 运行I/O基准测试
+./Paker io --bench
+
+# 优化I/O性能
+./Paker io --opt
 ```
 
-## 注意事项
+### 缓存预热
+```bash
+# 启动缓存预热
+./Paker warmup
 
-1. **全局缓存模式**：Paker 默认启用全局缓存模式，多项目共享包，节省空间和时间
-2. **并行安装**：推荐使用 `add-parallel` 命令安装多个包，性能更优
-3. **依赖冲突**：定期运行 `check-conflicts` 和 `resolve-conflicts` 确保依赖一致性
-4. **缓存管理**：定期运行 `cache-optimize` 和 `cache-cleanup` 保持缓存健康
-5. **性能监控**：使用 `performance-report` 和 `diagnose` 监控系统性能
-6. **版本控制**：使用 `lock` 命令锁定依赖版本，确保项目稳定性
+# 分析项目依赖
+./Paker warmup-analyze
+
+# 显示预热统计
+./Paker warmup-stats
+
+# 显示预热配置
+./Paker warmup-config
+```
+
+## 开发模式命令
+
+开发模式提供了高级功能，需要 `--dev` 标志：
+
+### 缓存迁移
+```bash
+# 迁移到缓存模式
+./Paker --dev cache-migrate
+./Paker --dev cache-migrate /path/to/project
+```
+
+### 高级测试
+```bash
+# I/O性能测试
+./Paker --dev io --test
+
+# 解析缓存验证
+./Paker --dev parse --validate
+```
+
+## 全局选项
+
+### 基本选项
+```bash
+# 禁用彩色输出
+./Paker --no-color list
+
+# 显示版本信息
+./Paker --version
+
+# 显示帮助信息
+./Paker --help
+```
+
+### 开发模式
+```bash
+# 启用开发模式
+./Paker --dev --help
+./Paker --dev cache-migrate
+```
+
+## 使用示例
+
+### 项目初始化流程
+```bash
+# 1. 初始化项目
+./Paker init
+
+# 2. 添加依赖源
+./Paker remote-add mylib https://github.com/example/mylib.git
+
+# 3. 并行安装依赖
+./Paker add-p fmt spdlog nlohmann-json
+
+# 4. 解析依赖
+./Paker resolve
+
+# 5. 检查冲突
+./Paker check
+
+# 6. 锁定版本
+./Paker lock
+```
+
+### 性能优化流程
+```bash
+# 1. 分析项目依赖
+./Paker warmup-analyze
+
+# 2. 启动缓存预热
+./Paker warmup
+
+# 3. 优化解析缓存
+./Paker parse --opt
+
+# 4. 优化I/O性能
+./Paker io --opt
+
+# 5. 智能清理缓存
+./Paker cache clean --smart
+```
+
+### 故障排除流程
+```bash
+# 1. 运行系统诊断
+./Paker diagnose
+
+# 2. 检查依赖冲突
+./Paker check
+
+# 3. 查看缓存状态
+./Paker cache status --detailed
+
+# 4. 生成性能报告
+./Paker perf
+
+# 5. 分析依赖结构
+./Paker analyze
+```
+
+### 版本管理流程
+```bash
+# 1. 查看版本历史
+./Paker history fmt
+
+# 2. 检查回滚安全性
+./Paker rollback --check fmt 1.0.0
+
+# 3. 执行回滚
+./Paker rollback fmt 1.0.0
+
+# 4. 验证回滚结果
+./Paker list
+```
+
+## 输出格式说明
+
+### 颜色编码
+- 🔵 **蓝色**: 一般信息 (INFO)
+- 🟢 **绿色**: 成功信息 (SUCCESS)
+- 🟡 **黄色**: 警告信息 (WARNING)
+- 🔴 **红色**: 错误信息 (ERROR)
+
+### 表格格式
+- 自动列宽调整
+- 左对齐/右对齐支持
+- Unicode分隔线
+- 表头样式
+
+### 进度条
+- 实时进度显示
+- 百分比显示
+- 自定义宽度
+- 前缀文本支持
+
+## 性能优化建议
+
+1. **使用并行安装**: `add-p` 比单独 `add` 快2-5倍
+2. **启用缓存预热**: `warmup` 提升首次使用体验70%+
+3. **使用增量解析**: `parse` 提升解析速度60-80%
+4. **定期优化缓存**: `cache clean --smart` 保持最佳性能
+5. **监控系统性能**: `perf` 识别性能瓶颈
 
 ## 故障排除
 
-### 常见问题
-1. **依赖冲突**：使用 `check-conflicts` 检测，`resolve-conflicts` 解决
-2. **缓存问题**：使用 `cache-status` 检查，`cache-optimize` 优化
-3. **性能问题**：使用 `performance-report` 分析，`diagnose` 诊断
-4. **版本问题**：使用 `rollback-*` 命令回滚到稳定版本
-
-### 获取帮助
+### 常见问题解决
 ```bash
-# 查看命令帮助
+# 依赖冲突
+./Paker check
+./Paker fix
+
+# 缓存问题
+./Paker cache status
+./Paker cache clean --smart
+
+# 性能问题
+./Paker perf
+./Paker diagnose
+
+# 版本问题
+./Paker rollback --list <package>
+./Paker rollback --previous <package>
+```
+
+### 获取详细帮助
+```bash
+# 查看所有命令
 ./Paker --help
 
 # 查看特定命令帮助
 ./Paker <command> --help
 
-# 使用详细模式获取更多信息
-./Paker -v <command>
+# 开发模式命令
+./Paker --dev --help
 ```
