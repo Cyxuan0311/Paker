@@ -24,7 +24,8 @@ std::unique_ptr<IncrementalParser> g_incremental_parser = nullptr;
 IncrementalParser::IncrementalParser(const std::string& cache_directory)
     : cache_file_path_(cache_directory + "/parse_cache.json"), 
       active_tasks_(0) {
-    resolver_ = std::make_unique<DependencyResolver>();
+    // 注意：不在构造函数中初始化 resolver_，避免循环依赖
+    // resolver_ 将在首次使用时延迟初始化
 }
 
 IncrementalParser::~IncrementalParser() {
@@ -651,6 +652,21 @@ void cleanup_incremental_parser() {
 }
 
 IncrementalParser* get_incremental_parser() {
+    if (!g_incremental_parser) {
+        // 尝试初始化服务
+        if (initialize_paker_services()) {
+            // 服务初始化后，创建增量解析器
+            g_incremental_parser = std::make_unique<IncrementalParser>();
+            
+            // 确保依赖解析器可用
+            auto* resolver = get_dependency_resolver();
+            if (!resolver) {
+                LOG(ERROR) << "Dependency resolver not available for incremental parser";
+                g_incremental_parser.reset();
+                return nullptr;
+            }
+        }
+    }
     return g_incremental_parser.get();
 }
 

@@ -16,12 +16,17 @@ namespace fs = std::filesystem;
 namespace Paker {
 
 DependencyResolver::DependencyResolver() : recursive_mode_(false), incremental_parser_(nullptr) {
-    // 初始化仓库映射
-    repositories_ = get_builtin_repos();
-    
-    // 初始化增量解析器
-    incremental_parser_ = new IncrementalParser();
-    incremental_parser_->initialize();
+    try {
+        // 初始化仓库映射
+        repositories_ = get_builtin_repos();
+        
+        // 注意：不在构造函数中初始化 incremental_parser_，避免循环依赖
+        // incremental_parser_ 将在首次使用时延迟初始化
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error initializing DependencyResolver: " << e.what();
+        // 使用空的仓库映射作为后备
+        repositories_.clear();
+    }
 }
 
 DependencyResolver::~DependencyResolver() {
@@ -342,29 +347,39 @@ bool DependencyResolver::read_dependencies_from_cmake(std::ifstream& ifs, Depend
 }
 
 bool DependencyResolver::infer_dependencies_from_structure(const std::string& package_path, DependencyNode& node) {
-    // 从目录结构推断依赖（简化实现）
-    // 检查是否有第三方库目录
-    std::vector<std::string> third_party_dirs = {
-        "third_party",
-        "external",
-        "deps",
-        "dependencies",
-        "vendor"
-    };
-    
-    for (const auto& dir : third_party_dirs) {
-        fs::path third_party_path = fs::path(package_path) / dir;
-        if (fs::exists(third_party_path) && fs::is_directory(third_party_path)) {
-            for (const auto& entry : fs::directory_iterator(third_party_path)) {
-                if (entry.is_directory()) {
-                    std::string dep_name = entry.path().filename().string();
-                    node.dependencies.insert(dep_name);
+    try {
+        // 从目录结构推断依赖（简化实现）
+        // 检查是否有第三方库目录
+        std::vector<std::string> third_party_dirs = {
+            "third_party",
+            "external",
+            "deps",
+            "dependencies",
+            "vendor"
+        };
+        
+        for (const auto& dir : third_party_dirs) {
+            fs::path third_party_path = fs::path(package_path) / dir;
+            if (fs::exists(third_party_path) && fs::is_directory(third_party_path)) {
+                try {
+                    for (const auto& entry : fs::directory_iterator(third_party_path)) {
+                        if (entry.is_directory()) {
+                            std::string dep_name = entry.path().filename().string();
+                            node.dependencies.insert(dep_name);
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    LOG(WARNING) << "Error reading directory " << third_party_path << ": " << e.what();
+                    continue;
                 }
             }
         }
+        
+        return !node.dependencies.empty();
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error in infer_dependencies_from_structure: " << e.what();
+        return false;
     }
-    
-    return !node.dependencies.empty();
 }
 
 bool DependencyResolver::parse_version_constraints(const std::string& constraints_str,
