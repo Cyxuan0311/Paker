@@ -15,7 +15,9 @@ namespace Paker {
 }
 
 void pm_init();
+bool initialize_paker_services();  // 初始化所有Paker服务
 void pm_add(const std::string& pkg);
+void pm_add_url(const std::string& url);
 void pm_add_parallel(const std::vector<std::string>& packages);
 void pm_remove(const std::string& pkg);
 void pm_list();
