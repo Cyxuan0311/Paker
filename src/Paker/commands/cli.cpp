@@ -25,16 +25,15 @@ int run_cli(int argc, char* argv[]) {
 
     // 全局选项
     bool no_color = false;
-    bool verbose = false;
     bool version = false;
+    bool dev_mode = false;
     app.add_flag("--no-color", no_color, "Disable colored output");
-    app.add_flag("-v,--verbose", verbose, "Enable verbose output");
     app.add_flag("--version", version, "Show version information");
+    app.add_flag("--dev", dev_mode, "Enable development mode (show advanced commands)");
     
     // 设置输出选项
     app.preparse_callback([&](size_t) {
         Paker::Output::set_colored_output(!no_color);
-        Paker::Output::set_verbose_mode(verbose);
         
         // 处理版本信息
         if (version) {
@@ -43,13 +42,6 @@ int run_cli(int argc, char* argv[]) {
         }
     });
     
-    // 处理版本选项的回调
-    app.callback([&]() {
-        if (version) {
-            std::cout << Paker::Version::get_detailed_version() << std::endl;
-            exit(0);
-        }
-    });
 
     // init
     auto init = app.add_subcommand("init", "Initialize a new Paker project");
@@ -266,78 +258,64 @@ int run_cli(int argc, char* argv[]) {
         Paker::pm_monitor_clear();
     });
 
-    // cache commands
+    // 统一的缓存管理命令
     std::string cache_pkg, cache_version;
+    bool cache_smart = false, cache_force = false, cache_detailed = false;
+    bool cache_lru_stats = false, cache_lru_status = false;
     
-    // cache-install
-    auto cache_install = app.add_subcommand("cache-add", "Install package to global cache");
-    cache_install->add_option("package", cache_pkg, "Package name")->required();
-    cache_install->add_option("version", cache_version, "Package version (optional)");
-    cache_install->callback([&]() {
+    auto cache_cmd = app.add_subcommand("cache", "Cache management");
+    
+    // cache add <package> [version]
+    auto cache_add = cache_cmd->add_subcommand("add", "Install package to global cache");
+    cache_add->add_option("package", cache_pkg, "Package name")->required();
+    cache_add->add_option("version", cache_version, "Package version (optional)");
+    cache_add->callback([&]() {
         Paker::pm_cache_install(cache_pkg, cache_version);
     });
     
-    // cache-remove
-    auto cache_remove = app.add_subcommand("cache-rm", "Remove package from global cache");
+    // cache remove <package> [version]
+    auto cache_remove = cache_cmd->add_subcommand("remove", "Remove package from global cache");
     cache_remove->add_option("package", cache_pkg, "Package name")->required();
     cache_remove->add_option("version", cache_version, "Package version (optional)");
     cache_remove->callback([&]() {
         Paker::pm_cache_remove(cache_pkg, cache_version);
     });
     
-    // cache-list
-    auto cache_list = app.add_subcommand("cache-list", "List all cached packages");
-    cache_list->callback([]() {
-        Paker::pm_cache_list();
+    // cache status [--detailed]
+    auto cache_status = cache_cmd->add_subcommand("status", "Show cache status and statistics");
+    cache_status->add_flag("--detailed", cache_detailed, "Show detailed information");
+    cache_status->callback([&]() {
+        if (cache_detailed) {
+            Paker::pm_cache_status();
+        } else {
+            Paker::pm_cache_stats();
+        }
     });
     
-    // cache-info
-    auto cache_info = app.add_subcommand("cache-info", "Show cached package information");
-    cache_info->add_option("package", cache_pkg, "Package name")->required();
-    cache_info->callback([&]() {
-        Paker::pm_cache_info(cache_pkg);
+    // cache clean [--smart] [--force]
+    auto cache_clean = cache_cmd->add_subcommand("clean", "Clean up cache");
+    cache_clean->add_flag("--smart", cache_smart, "Use smart cleanup strategy");
+    cache_clean->add_flag("--force", cache_force, "Force cleanup without confirmation");
+    cache_clean->callback([&]() {
+        if (cache_smart) {
+            Paker::pm_cache_smart_cleanup();
+        } else {
+            Paker::pm_cache_cleanup();
+        }
     });
     
-    // cache-cleanup
-    auto cache_cleanup = app.add_subcommand("cache-clean", "Clean up unused packages from cache");
-    cache_cleanup->callback([]() {
-        Paker::pm_cache_cleanup();
-    });
-
-    // LRU缓存管理命令
-    auto cache_init_lru = app.add_subcommand("cache-lru", "Initialize LRU cache manager");
-    cache_init_lru->callback([]() {
-        Paker::pm_cache_init_lru();
-    });
-
-    auto cache_lru_stats = app.add_subcommand("cache-lru-stats", "Show LRU cache statistics");
-    cache_lru_stats->callback([]() {
-        Paker::pm_cache_lru_stats();
-    });
-
-    auto cache_lru_status = app.add_subcommand("cache-lru-status", "Show LRU cache status and health");
-    cache_lru_status->callback([]() {
-        Paker::pm_cache_lru_status();
-    });
-
-    auto cache_smart_cleanup = app.add_subcommand("cache-smart", "Perform smart cache cleanup");
-    cache_smart_cleanup->callback([]() {
-        Paker::pm_cache_smart_cleanup();
-    });
-
-    auto cache_most_accessed = app.add_subcommand("cache-top", "Show most accessed packages");
-    cache_most_accessed->callback([]() {
-        Paker::pm_cache_most_accessed();
-    });
-
-    auto cache_oldest_items = app.add_subcommand("cache-old", "Show oldest cached items");
-    cache_oldest_items->callback([]() {
-        Paker::pm_cache_oldest_items();
-    });
-
-    auto cache_optimization_advice = app.add_subcommand("cache-advice", "Get cache optimization advice");
-    cache_optimization_advice->callback([]() {
-        Paker::pm_cache_optimization_advice();
+    // cache lru [--stats] [--status]
+    auto cache_lru = cache_cmd->add_subcommand("lru", "LRU cache management");
+    cache_lru->add_flag("--stats", cache_lru_stats, "Show LRU statistics");
+    cache_lru->add_flag("--status", cache_lru_status, "Show LRU status");
+    cache_lru->callback([&]() {
+        if (cache_lru_stats) {
+            Paker::pm_cache_lru_stats();
+        } else if (cache_lru_status) {
+            Paker::pm_cache_lru_status();
+        } else {
+            Paker::pm_cache_init_lru();
+        }
     });
 
     // warmup commands
@@ -361,202 +339,161 @@ int run_cli(int argc, char* argv[]) {
         Paker::pm_warmup_config();
     });
     
-    // incremental parse commands
-    auto incremental_parse = app.add_subcommand("parse", "Start incremental dependency parsing");
-    incremental_parse->callback([]() {
-        Paker::pm_incremental_parse();
+    // 统一的增量解析命令
+    bool parse_stats = false, parse_config = false, parse_clear = false, parse_opt = false, parse_validate = false;
+    
+    auto parse_cmd = app.add_subcommand("parse", "Incremental dependency parsing");
+    parse_cmd->add_flag("--stats", parse_stats, "Show parse statistics");
+    parse_cmd->add_flag("--config", parse_config, "Show parse configuration");
+    parse_cmd->add_flag("--clear", parse_clear, "Clear parse cache");
+    parse_cmd->add_flag("--opt", parse_opt, "Optimize parse cache");
+    parse_cmd->add_flag("--validate", parse_validate, "Validate parse cache integrity");
+    parse_cmd->callback([&]() {
+        if (parse_stats) {
+            Paker::pm_incremental_parse_stats();
+        } else if (parse_config) {
+            Paker::pm_incremental_parse_config();
+        } else if (parse_clear) {
+            Paker::pm_incremental_parse_clear_cache();
+        } else if (parse_opt) {
+            Paker::pm_incremental_parse_optimize();
+        } else if (parse_validate) {
+            Paker::pm_incremental_parse_validate();
+        } else {
+            Paker::pm_incremental_parse();
+        }
     });
     
-    auto incremental_parse_stats = app.add_subcommand("parse-stats", "Show incremental parse statistics");
-    incremental_parse_stats->callback([]() {
-        Paker::pm_incremental_parse_stats();
+    // 统一的异步I/O命令
+    bool io_stats = false, io_config = false, io_test = false, io_bench = false, io_opt = false;
+    
+    auto io_cmd = app.add_subcommand("io", "Async I/O management");
+    io_cmd->add_flag("--stats", io_stats, "Show I/O statistics");
+    io_cmd->add_flag("--config", io_config, "Show I/O configuration");
+    io_cmd->add_flag("--test", io_test, "Run I/O tests");
+    io_cmd->add_flag("--bench", io_bench, "Run I/O benchmark");
+    io_cmd->add_flag("--opt", io_opt, "Optimize I/O performance");
+    io_cmd->callback([&]() {
+        if (io_stats) {
+            Paker::pm_async_io_stats();
+        } else if (io_config) {
+            Paker::pm_async_io_config();
+        } else if (io_test) {
+            Paker::pm_async_io_test();
+        } else if (io_bench) {
+            Paker::pm_async_io_benchmark();
+        } else if (io_opt) {
+            Paker::pm_async_io_optimize();
+        } else {
+            Paker::pm_async_io_stats(); // 默认显示统计信息
+        }
     });
     
-    auto incremental_parse_config = app.add_subcommand("parse-config", "Show incremental parse configuration");
-    incremental_parse_config->callback([]() {
-        Paker::pm_incremental_parse_config();
-    });
-    
-    auto incremental_parse_clear = app.add_subcommand("parse-clear", "Clear incremental parse cache");
-    incremental_parse_clear->callback([]() {
-        Paker::pm_incremental_parse_clear_cache();
-    });
-    
-    auto incremental_parse_optimize = app.add_subcommand("parse-opt", "Optimize incremental parse cache");
-    incremental_parse_optimize->callback([]() {
-        Paker::pm_incremental_parse_optimize();
-    });
-    
-    auto incremental_parse_validate = app.add_subcommand("parse-validate", "Validate incremental parse cache integrity");
-    incremental_parse_validate->callback([]() {
-        Paker::pm_incremental_parse_validate();
-    });
-    
-    // async I/O commands
-    auto async_io_stats = app.add_subcommand("io-stats", "Show async I/O statistics");
-    async_io_stats->callback([]() {
-        Paker::pm_async_io_stats();
-    });
-    
-    auto async_io_config = app.add_subcommand("io-config", "Show async I/O configuration");
-    async_io_config->callback([]() {
-        Paker::pm_async_io_config();
-    });
-    
-    auto async_io_test = app.add_subcommand("io-test", "Run async I/O tests");
-    async_io_test->callback([]() {
-        Paker::pm_async_io_test();
-    });
-    
-    auto async_io_benchmark = app.add_subcommand("io-bench", "Run async I/O benchmark");
-    async_io_benchmark->callback([]() {
-        Paker::pm_async_io_benchmark();
-    });
-    
-    auto async_io_optimize = app.add_subcommand("io-opt", "Optimize async I/O performance");
-    async_io_optimize->callback([]() {
-        Paker::pm_async_io_optimize();
-    });
-    
-    // cache-stats
-    auto cache_stats = app.add_subcommand("cache-stats", "Show cache statistics");
-    cache_stats->callback([]() {
-        Paker::pm_cache_stats();
-    });
-    
-    // cache-status
-    auto cache_status = app.add_subcommand("cache-status", "Show detailed cache status and health");
-    cache_status->callback([]() {
-        Paker::pm_cache_status();
-    });
-    
-    // cache-optimize
-    auto cache_optimize = app.add_subcommand("cache-opt", "Optimize cache performance and storage");
-    cache_optimize->callback([]() {
-        Paker::pm_cache_optimize();
-    });
-    
-    // cache-migrate
+    // cache-migrate (开发模式命令)
     std::string migrate_path;
     auto cache_migrate = app.add_subcommand("cache-migrate", "Migrate project from legacy mode to cache mode");
     cache_migrate->add_option("project_path", migrate_path, "Project path (optional, defaults to current directory)");
     cache_migrate->callback([&]() {
+        if (!dev_mode) {
+            std::cout << "This command is only available in development mode. Use --dev flag." << std::endl;
+            return;
+        }
         Paker::pm_cache_migrate(migrate_path);
     });
 
-    // record commands
+    // 统一的记录管理命令
     std::string record_pkg;
-    auto record_show = app.add_subcommand("record-show", "Show package installation record");
-    record_show->add_option("package", record_pkg, "Package name")->required();
-    record_show->callback([&]() {
+    bool record_list = false, record_files = false;
+    
+    auto record_cmd = app.add_subcommand("record", "Package installation records");
+    record_cmd->add_option("package", record_pkg, "Package name (optional)");
+    record_cmd->add_flag("--list", record_list, "List all packages");
+    record_cmd->add_flag("--files", record_files, "Show package files");
+    record_cmd->callback([&]() {
         Recorder::Record record(get_record_file_path());
-        if (record.isPackageInstalled(record_pkg)) {
-            record.showPackageFiles(record_pkg);
-        } else {
-            std::cout << "Package '" << record_pkg << "' not found in installation records." << std::endl;
-        }
-    });
-
-    auto record_list = app.add_subcommand("record-list", "List all installed packages with records");
-    record_list->callback([]() {
-        Recorder::Record record(get_record_file_path());
-        record.showAllPackages();
-    });
-
-    auto record_files = app.add_subcommand("record-files", "Get all files for a package");
-    record_files->add_option("package", record_pkg, "Package name")->required();
-    record_files->callback([&]() {
-        Recorder::Record record(get_record_file_path());
-        if (record.isPackageInstalled(record_pkg)) {
-            std::vector<std::string> files = record.getPackageFiles(record_pkg);
-            std::cout << "Files for package '" << record_pkg << "':" << std::endl;
-            for (const auto& file : files) {
-                std::cout << "  " << file << std::endl;
+        if (record_list) {
+            record.showAllPackages();
+        } else if (record_files && !record_pkg.empty()) {
+            if (record.isPackageInstalled(record_pkg)) {
+                std::vector<std::string> files = record.getPackageFiles(record_pkg);
+                std::cout << "Files for package '" << record_pkg << "':" << std::endl;
+                for (const auto& file : files) {
+                    std::cout << "  " << file << std::endl;
+                }
+            } else {
+                std::cout << "Package '" << record_pkg << "' not found in installation records." << std::endl;
+            }
+        } else if (!record_pkg.empty()) {
+            if (record.isPackageInstalled(record_pkg)) {
+                record.showPackageFiles(record_pkg);
+            } else {
+                std::cout << "Package '" << record_pkg << "' not found in installation records." << std::endl;
             }
         } else {
-            std::cout << "Package '" << record_pkg << "' not found in installation records." << std::endl;
+            record.showAllPackages();
         }
     });
 
-    // Rollback commands
+    // 统一的回滚管理命令
     std::string rollback_pkg, rollback_version, rollback_timestamp;
     bool force_rollback = false;
+    bool rollback_previous = false, rollback_timestamp_flag = false;
+    bool rollback_list = false, rollback_check = false, rollback_stats = false;
     
-    // rollback-to-version
-    auto rollback_version_cmd = app.add_subcommand("rollback-v", "Rollback package to specific version");
-    rollback_version_cmd->add_option("package", rollback_pkg, "Package name")->required();
-    rollback_version_cmd->add_option("version", rollback_version, "Target version")->required();
-    rollback_version_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
-    rollback_version_cmd->callback([&]() {
-        Paker::pm_rollback_to_version(rollback_pkg, rollback_version, force_rollback);
+    auto rollback_cmd = app.add_subcommand("rollback", "Package rollback management");
+    rollback_cmd->add_option("package", rollback_pkg, "Package name");
+    rollback_cmd->add_option("version", rollback_version, "Target version");
+    rollback_cmd->add_option("timestamp", rollback_timestamp, "Target timestamp (YYYY-MM-DD HH:MM:SS)");
+    rollback_cmd->add_flag("--previous", rollback_previous, "Rollback to previous version");
+    rollback_cmd->add_flag("--timestamp", rollback_timestamp_flag, "Rollback to timestamp");
+    rollback_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
+    rollback_cmd->add_flag("--list", rollback_list, "List rollbackable versions");
+    rollback_cmd->add_flag("--check", rollback_check, "Check rollback safety");
+    rollback_cmd->add_flag("--stats", rollback_stats, "Show rollback statistics");
+    rollback_cmd->callback([&]() {
+        if (rollback_list && !rollback_pkg.empty()) {
+            Paker::pm_rollback_list(rollback_pkg);
+        } else if (rollback_check && !rollback_pkg.empty() && !rollback_version.empty()) {
+            Paker::pm_rollback_check(rollback_pkg, rollback_version);
+        } else if (rollback_stats) {
+            Paker::pm_rollback_stats();
+        } else if (rollback_previous && !rollback_pkg.empty()) {
+            Paker::pm_rollback_to_previous(rollback_pkg, force_rollback);
+        } else if (rollback_timestamp_flag && !rollback_timestamp.empty()) {
+            Paker::pm_rollback_to_timestamp(rollback_timestamp, force_rollback);
+        } else if (!rollback_pkg.empty() && !rollback_version.empty()) {
+            Paker::pm_rollback_to_version(rollback_pkg, rollback_version, force_rollback);
+        } else {
+            std::cout << "Usage: rollback <package> [version] [options]" << std::endl;
+            std::cout << "       rollback --list <package>" << std::endl;
+            std::cout << "       rollback --check <package> <version>" << std::endl;
+            std::cout << "       rollback --stats" << std::endl;
+        }
     });
     
-    // rollback-to-previous
-    auto rollback_previous_cmd = app.add_subcommand("rollback-p", "Rollback package to previous version");
-    rollback_previous_cmd->add_option("package", rollback_pkg, "Package name")->required();
-    rollback_previous_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
-    rollback_previous_cmd->callback([&]() {
-        Paker::pm_rollback_to_previous(rollback_pkg, force_rollback);
-    });
-    
-    // rollback-to-timestamp
-    auto rollback_timestamp_cmd = app.add_subcommand("rollback-t", "Rollback all packages to specific timestamp");
-    rollback_timestamp_cmd->add_option("timestamp", rollback_timestamp, "Target timestamp (YYYY-MM-DD HH:MM:SS)")->required();
-    rollback_timestamp_cmd->add_flag("--force", force_rollback, "Force rollback (skip safety checks)");
-    rollback_timestamp_cmd->callback([&]() {
-        Paker::pm_rollback_to_timestamp(rollback_timestamp, force_rollback);
-    });
-    
-    // history-show
-    auto history_show_cmd = app.add_subcommand("history", "Show version history");
-    history_show_cmd->add_option("package", rollback_pkg, "Package name (optional)");
-    history_show_cmd->callback([&]() {
-        Paker::pm_history_show(rollback_pkg);
-    });
-    
-    // rollback-list
-    auto rollback_list_cmd = app.add_subcommand("rollback-l", "List rollbackable versions for a package");
-    rollback_list_cmd->add_option("package", rollback_pkg, "Package name")->required();
-    rollback_list_cmd->callback([&]() {
-        Paker::pm_rollback_list(rollback_pkg);
-    });
-    
-    // rollback-check
-    auto rollback_check_cmd = app.add_subcommand("rollback-c", "Check rollback safety for a package");
-    rollback_check_cmd->add_option("package", rollback_pkg, "Package name")->required();
-    rollback_check_cmd->add_option("version", rollback_version, "Target version")->required();
-    rollback_check_cmd->callback([&]() {
-        Paker::pm_rollback_check(rollback_pkg, rollback_version);
-    });
-    
-    // history-cleanup
+    // 统一的历史管理命令
+    std::string export_path, import_path;
+    bool history_clean = false, history_export = false, history_import = false;
     size_t max_entries = 50;
-    auto history_cleanup_cmd = app.add_subcommand("history-clean", "Clean up old history records");
-    history_cleanup_cmd->add_option("max_entries", max_entries, "Maximum entries to keep (default: 50)");
-    history_cleanup_cmd->callback([&]() {
-        Paker::pm_history_cleanup(max_entries);
-    });
     
-    // history-export
-    std::string export_path;
-    auto history_export_cmd = app.add_subcommand("history-exp", "Export history records");
-    history_export_cmd->add_option("path", export_path, "Export file path")->required();
-    history_export_cmd->callback([&]() {
-        Paker::pm_history_export(export_path);
-    });
-    
-    // history-import
-    std::string import_path;
-    auto history_import_cmd = app.add_subcommand("history-imp", "Import history records");
-    history_import_cmd->add_option("path", import_path, "Import file path")->required();
-    history_import_cmd->callback([&]() {
-        Paker::pm_history_import(import_path);
-    });
-    
-    // rollback-stats
-    auto rollback_stats_cmd = app.add_subcommand("rollback-stats", "Show rollback statistics");
-    rollback_stats_cmd->callback([]() {
-        Paker::pm_rollback_stats();
+    auto history_cmd = app.add_subcommand("history", "Version history management");
+    history_cmd->add_option("package", rollback_pkg, "Package name (optional)");
+    history_cmd->add_flag("--clean", history_clean, "Clean up old history records");
+    history_cmd->add_flag("--export", history_export, "Export history records");
+    history_cmd->add_flag("--import", history_import, "Import history records");
+    history_cmd->add_option("--export-path", export_path, "Export file path");
+    history_cmd->add_option("--import-path", import_path, "Import file path");
+    history_cmd->add_option("--max-entries", max_entries, "Maximum entries to keep (default: 50)");
+    history_cmd->callback([&]() {
+        if (history_clean) {
+            Paker::pm_history_cleanup(max_entries);
+        } else if (history_export && !export_path.empty()) {
+            Paker::pm_history_export(export_path);
+        } else if (history_import && !import_path.empty()) {
+            Paker::pm_history_import(import_path);
+        } else {
+            Paker::pm_history_show(rollback_pkg);
+        }
     });
     
     // version command
