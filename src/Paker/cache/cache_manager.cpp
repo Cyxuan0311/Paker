@@ -29,7 +29,8 @@ CacheManager::CacheManager()
     , cleanup_interval_(std::chrono::hours(24 * 7))  // 7天
     , memory_pool_(std::make_unique<SmartMemoryPool>(256 * 1024 * 1024))  // 256MB内存池
     , compression_enabled_(true)
-    , preallocation_enabled_(true) {
+    , preallocation_enabled_(true)
+    , initialized_(false) {
     
     // 初始化内存池
     if (memory_pool_) {
@@ -55,10 +56,23 @@ bool CacheManager::initialize(const std::string& config_path) {
         global_cache_path_ = "/usr/local/share/paker/cache";
         project_cache_path_ = ".paker/cache";
         
-        // 创建缓存目录
-        fs::create_directories(global_cache_path_);
-        fs::create_directories(user_cache_path_);
-        fs::create_directories(project_cache_path_);
+        // 尝试创建全局缓存目录（可能因权限问题失败）
+        try {
+            fs::create_directories(global_cache_path_);
+            LOG(INFO) << "Global cache directory created: " << global_cache_path_;
+        } catch (const std::exception& e) {
+            LOG(WARNING) << "Failed to create global cache directory (permission denied), will use user cache only";
+            global_cache_path_ = "";  // 禁用全局缓存
+        }
+        
+        // 创建用户和项目缓存目录（这些应该总是成功的）
+        try {
+            fs::create_directories(user_cache_path_);
+            fs::create_directories(project_cache_path_);
+        } catch (const std::exception& e) {
+            LOG(ERROR) << "Failed to create cache directories: " << e.what();
+            return false;
+        }
         
         // 加载配置
         if (!config_path.empty()) {
@@ -70,8 +84,13 @@ bool CacheManager::initialize(const std::string& config_path) {
             LOG(WARNING) << "Failed to load cache index, creating new one";
         }
         
+        // 标记为已初始化
+        initialized_ = true;
+        
         LOG(INFO) << "Cache manager initialized successfully";
-        LOG(INFO) << "Global cache: " << global_cache_path_;
+        if (!global_cache_path_.empty()) {
+            LOG(INFO) << "Global cache: " << global_cache_path_;
+        }
         LOG(INFO) << "User cache: " << user_cache_path_;
         LOG(INFO) << "Project cache: " << project_cache_path_;
         
@@ -79,6 +98,7 @@ bool CacheManager::initialize(const std::string& config_path) {
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to initialize cache manager: " << e.what();
+        initialized_ = false;
         return false;
     }
 }
