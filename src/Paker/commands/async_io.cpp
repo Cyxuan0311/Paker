@@ -2,6 +2,7 @@
 #include "Paker/core/async_io.h"
 #include "Paker/cache/async_cache_manager.h"
 #include "Paker/core/output.h"
+#include "Paker/core/package_manager.h"
 #include <glog/logging.h>
 #include <chrono>
 #include <random>
@@ -10,42 +11,65 @@
 
 namespace Paker {
 
+// 确保异步I/O管理器已初始化的辅助函数
+bool ensure_async_io_manager_initialized() {
+    auto* manager = get_async_io_manager();
+    if (manager) {
+        return true;
+    }
+    
+    // 尝试初始化服务
+    Output::info("Initializing async I/O manager...");
+    if (!initialize_paker_services()) {
+        Output::error("Failed to initialize services");
+        return false;
+    }
+    
+    // 再次检查
+    manager = get_async_io_manager();
+    if (!manager) {
+        Output::error("Async I/O manager service not available");
+        return false;
+    }
+    
+    return true;
+}
+
 void pm_async_io_stats() {
     LOG(INFO) << "Displaying async I/O statistics";
+    
+    if (!ensure_async_io_manager_initialized()) {
+        return;
+    }
     
     auto* async_io_manager = get_async_io_manager();
     auto* async_cache_manager = get_async_cache_manager();
     
-    if (!async_io_manager) {
-        Output::error("异步I/O管理器未初始化");
-        return;
-    }
-    
     try {
-        Output::info("⚡ 异步I/O统计信息");
+        Output::info(" Async I/O Statistics");
         Output::info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         
         // 异步I/O统计
-        Output::info("📊 异步I/O统计:");
-        Output::info("  总操作数: " + std::to_string(async_io_manager->get_total_operations()));
-        Output::info("  已完成操作: " + std::to_string(async_io_manager->get_completed_operations()));
-        Output::info("  失败操作: " + std::to_string(async_io_manager->get_failed_operations()));
-        Output::info("  活跃操作: " + std::to_string(async_io_manager->get_active_operations()));
-        Output::info("  队列大小: " + std::to_string(async_io_manager->get_queue_size()));
-        Output::info("  成功率: " + std::to_string(async_io_manager->get_success_rate()) + "%");
-        Output::info("  平均操作时间: " + std::to_string(async_io_manager->get_average_operation_time()) + "ms");
+        Output::info(" Async I/O Statistics:");
+        Output::info("  Total operations: " + std::to_string(async_io_manager->get_total_operations()));
+        Output::info("  Completed operations: " + std::to_string(async_io_manager->get_completed_operations()));
+        Output::info("  Failed operations: " + std::to_string(async_io_manager->get_failed_operations()));
+        Output::info("  Active operations: " + std::to_string(async_io_manager->get_active_operations()));
+        Output::info("  Queue size: " + std::to_string(async_io_manager->get_queue_size()));
+        Output::info("  Success rate: " + std::to_string(async_io_manager->get_success_rate()) + "%");
+        Output::info("  Average operation time: " + std::to_string(async_io_manager->get_average_operation_time()) + "ms");
         
         // 异步缓存统计
         if (async_cache_manager) {
-            Output::info("💾 异步缓存统计:");
-            Output::info("  总读取: " + std::to_string(async_cache_manager->get_total_reads()));
-            Output::info("  总写入: " + std::to_string(async_cache_manager->get_total_writes()));
-            Output::info("  缓存命中: " + std::to_string(async_cache_manager->get_cache_hits()));
-            Output::info("  缓存未命中: " + std::to_string(async_cache_manager->get_cache_misses()));
-            Output::info("  缓存命中率: " + std::to_string(async_cache_manager->get_cache_hit_rate()) + "%");
-            Output::info("  异步操作: " + std::to_string(async_cache_manager->get_async_operations()));
-            Output::info("  平均读取时间: " + std::to_string(async_cache_manager->get_average_read_time()) + "ms");
-            Output::info("  平均写入时间: " + std::to_string(async_cache_manager->get_average_write_time()) + "ms");
+            Output::info(" Async Cache Statistics:");
+            Output::info("  Total reads: " + std::to_string(async_cache_manager->get_total_reads()));
+            Output::info("  Total writes: " + std::to_string(async_cache_manager->get_total_writes()));
+            Output::info("  Cache hits: " + std::to_string(async_cache_manager->get_cache_hits()));
+            Output::info("  Cache misses: " + std::to_string(async_cache_manager->get_cache_misses()));
+            Output::info("  Cache hit rate: " + std::to_string(async_cache_manager->get_cache_hit_rate()) + "%");
+            Output::info("  Async operations: " + std::to_string(async_cache_manager->get_async_operations()));
+            Output::info("  Average read time: " + std::to_string(async_cache_manager->get_average_read_time()) + "ms");
+            Output::info("  Average write time: " + std::to_string(async_cache_manager->get_average_write_time()) + "ms");
         }
         
         // 显示详细报告
@@ -60,59 +84,59 @@ void pm_async_io_stats() {
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to get async I/O statistics: " << e.what();
-        Output::error("获取统计信息失败: " + std::string(e.what()));
+        Output::error("Failed to get statistics: " + std::string(e.what()));
     }
 }
 
 void pm_async_io_config() {
     LOG(INFO) << "Displaying async I/O configuration";
     
-    auto* async_io_manager = get_async_io_manager();
-    if (!async_io_manager) {
-        Output::error("异步I/O管理器未初始化");
+    if (!ensure_async_io_manager_initialized()) {
         return;
     }
     
+    auto* async_io_manager = get_async_io_manager();
+    
     try {
-        Output::info("⚙️ 异步I/O配置");
+        Output::info(" Async I/O Configuration");
         Output::info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         
-        Output::info("🔧 线程配置:");
-        Output::info("  最大并发操作: " + std::to_string(async_io_manager->get_max_concurrent_operations()));
-        Output::info("  硬件并发数: " + std::to_string(std::thread::hardware_concurrency()));
+        Output::info(" Thread Configuration:");
+        Output::info("  Max concurrent operations: " + std::to_string(async_io_manager->get_max_concurrent_operations()));
+        Output::info("  Hardware concurrency: " + std::to_string(std::thread::hardware_concurrency()));
         
-        Output::info("📊 性能配置:");
-        Output::info("  当前队列大小: " + std::to_string(async_io_manager->get_queue_size()));
-        Output::info("  活跃操作数: " + std::to_string(async_io_manager->get_active_operations()));
+        Output::info(" Performance Configuration:");
+        Output::info("  Current queue size: " + std::to_string(async_io_manager->get_queue_size()));
+        Output::info("  Active operations: " + std::to_string(async_io_manager->get_active_operations()));
         
-        Output::info("💡 优化建议:");
+        Output::info(" Optimization Suggestions:");
         if (async_io_manager->get_queue_size() > 100) {
-            Output::info("  ⚠️ 队列积压较多，建议增加工作线程");
+            Output::info("  [WARN] Queue backlog is high, consider adding worker threads");
         }
         if (async_io_manager->get_success_rate() < 90.0) {
-            Output::info("  ⚠️ 成功率较低，建议检查I/O操作");
+            Output::info("  [WARN] Low success rate, consider checking I/O operations");
         }
         if (async_io_manager->get_average_operation_time() > 1000) {
-            Output::info("  ⚠️ 平均操作时间较长，建议优化I/O性能");
+            Output::info("  [WARN] Average operation time is long, consider optimizing I/O performance");
         }
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to get async I/O configuration: " << e.what();
-        Output::error("获取配置信息失败: " + std::string(e.what()));
+        Output::error("Failed to get configuration: " + std::string(e.what()));
     }
 }
 
 void pm_async_io_test() {
     LOG(INFO) << "Running async I/O test";
     
-    auto* async_io_manager = get_async_io_manager();
-    if (!async_io_manager) {
-        Output::error("异步I/O管理器未初始化");
+    if (!ensure_async_io_manager_initialized()) {
         return;
     }
     
+    auto* async_io_manager = get_async_io_manager();
+    
     try {
-        Output::info("🧪 开始异步I/O测试...");
+        Output::info("🧪 Starting async I/O test...");
         
         // 创建测试文件
         std::string test_content = "This is a test file for async I/O operations.\n";
@@ -122,31 +146,31 @@ void pm_async_io_test() {
         std::string test_file = "/tmp/paker_async_test.txt";
         
         // 测试异步写入
-        Output::info("📝 测试异步文件写入...");
+        Output::info("📝 Testing async file write...");
         auto write_future = async_io_manager->write_file_async(test_file, test_content);
         auto write_result = write_future.get();
         
         if (write_result && write_result->status == IOOperationStatus::COMPLETED) {
-            Output::success("✅ 异步写入测试通过");
-            Output::info("  写入字节数: " + std::to_string(write_result->bytes_written));
-            Output::info("  写入时间: " + std::to_string(write_result->duration.count()) + "ms");
+            Output::success("[OK] Async write test passed");
+            Output::info("  Bytes written: " + std::to_string(write_result->bytes_written));
+            Output::info("  Write time: " + std::to_string(write_result->duration.count()) + "ms");
         } else {
-            Output::error("❌ 异步写入测试失败");
+            Output::error("[FAIL] Async write test failed");
             return;
         }
         
         // 测试异步读取
-        Output::info("📖 测试异步文件读取...");
+        Output::info("📖 Testing async file read...");
         auto read_future = async_io_manager->read_file_async(test_file, true);
         auto read_result = read_future.get();
         
         if (read_result && read_result->status == IOOperationStatus::COMPLETED) {
-            Output::success("✅ 异步读取测试通过");
-            Output::info("  读取字节数: " + std::to_string(read_result->bytes_processed));
-            Output::info("  读取时间: " + std::to_string(read_result->duration.count()) + "ms");
-            Output::info("  内容匹配: " + std::string(read_result->content == test_content ? "✅ 是" : "❌ 否"));
+            Output::success("[OK] Async read test passed");
+            Output::info("  Bytes read: " + std::to_string(read_result->bytes_processed));
+            Output::info("  Read time: " + std::to_string(read_result->duration.count()) + "ms");
+            Output::info("  Content match: " + std::string(read_result->content == test_content ? "[OK] Yes" : "[FAIL] No"));
         } else {
-            Output::error("❌ 异步读取测试失败");
+            Output::error("[FAIL] Async read test failed");
             return;
         }
         
@@ -169,7 +193,7 @@ void pm_async_io_test() {
         for (auto& future : write_futures) {
             auto result = future.get();
             if (!result || result->status != IOOperationStatus::COMPLETED) {
-                Output::error("❌ 批量写入测试失败");
+                Output::error("[FAIL] 批量写入测试失败");
                 return;
             }
         }
@@ -179,7 +203,7 @@ void pm_async_io_test() {
         for (auto& future : read_futures) {
             auto result = future.get();
             if (!result || result->status != IOOperationStatus::COMPLETED) {
-                Output::error("❌ 批量读取测试失败");
+                Output::error("[FAIL] 批量读取测试失败");
                 return;
             }
         }
@@ -187,7 +211,7 @@ void pm_async_io_test() {
         auto end_time = std::chrono::high_resolution_clock::now();
         auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
         
-        Output::success("✅ 批量操作测试通过");
+        Output::success("[OK] 批量操作测试通过");
         Output::info("  批量操作时间: " + std::to_string(total_time.count()) + "ms");
         Output::info("  平均每文件: " + std::to_string(total_time.count() / test_files.size()) + "ms");
         
@@ -208,11 +232,11 @@ void pm_async_io_test() {
 void pm_async_io_benchmark() {
     LOG(INFO) << "Running async I/O benchmark";
     
-    auto* async_io_manager = get_async_io_manager();
-    if (!async_io_manager) {
-        Output::error("异步I/O管理器未初始化");
+    if (!ensure_async_io_manager_initialized()) {
         return;
     }
+    
+    auto* async_io_manager = get_async_io_manager();
     
     try {
         Output::info("🏃 开始异步I/O性能基准测试...");
@@ -232,7 +256,7 @@ void pm_async_io_benchmark() {
         }
         
         // 异步I/O基准测试
-        Output::info("⚡ 异步I/O基准测试 (" + std::to_string(num_files) + " 文件)...");
+        Output::info(" 异步I/O基准测试 (" + std::to_string(num_files) + " 文件)...");
         auto async_start = std::chrono::high_resolution_clock::now();
         
         auto write_futures = async_io_manager->write_files_async(test_data);
@@ -271,7 +295,7 @@ void pm_async_io_benchmark() {
         auto sync_time = std::chrono::duration_cast<std::chrono::milliseconds>(sync_end - sync_start);
         
         // 显示结果
-        Output::info("📊 基准测试结果:");
+        Output::info(" 基准测试结果:");
         Output::info("  异步I/O时间: " + std::to_string(async_time.count()) + "ms");
         Output::info("  同步I/O时间: " + std::to_string(sync_time.count()) + "ms");
         
@@ -301,14 +325,14 @@ void pm_async_io_benchmark() {
 void pm_async_io_optimize() {
     LOG(INFO) << "Optimizing async I/O performance";
     
-    auto* async_io_manager = get_async_io_manager();
-    if (!async_io_manager) {
-        Output::error("异步I/O管理器未初始化");
+    if (!ensure_async_io_manager_initialized()) {
         return;
     }
     
+    auto* async_io_manager = get_async_io_manager();
+    
     try {
-        Output::info("🔧 开始异步I/O性能优化...");
+        Output::info(" 开始异步I/O性能优化...");
         
         // 清理队列
         size_t queue_size = async_io_manager->get_queue_size();
@@ -325,23 +349,23 @@ void pm_async_io_optimize() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
         // 显示优化后的状态
-        Output::info("📊 优化后状态:");
-        Output::info("  队列大小: " + std::to_string(async_io_manager->get_queue_size()));
-        Output::info("  活跃操作: " + std::to_string(async_io_manager->get_active_operations()));
-        Output::info("  成功率: " + std::to_string(async_io_manager->get_success_rate()) + "%");
+        Output::info(" 优化后状态:");
+        Output::info("  Queue size: " + std::to_string(async_io_manager->get_queue_size()));
+        Output::info("  Active operations: " + std::to_string(async_io_manager->get_active_operations()));
+        Output::info("  Success rate: " + std::to_string(async_io_manager->get_success_rate()) + "%");
         
         // 显示增强功能状态
         Output::info("🚀 增强功能状态:");
-        Output::info("  自适应缓冲区: " + std::string(async_io_manager->is_adaptive_buffering_enabled() ? "✅ 启用" : "❌ 禁用"));
-        Output::info("  智能预读: " + std::string(async_io_manager->is_smart_pre_read_enabled() ? "✅ 启用" : "❌ 禁用"));
-        Output::info("  网络重试: " + std::string(async_io_manager->is_network_retry_enabled() ? "✅ 启用" : "❌ 禁用"));
-        Output::info("  批量优化: " + std::string(async_io_manager->is_batch_optimization_enabled() ? "✅ 启用" : "❌ 禁用"));
+        Output::info("  自适应缓冲区: " + std::string(async_io_manager->is_adaptive_buffering_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
+        Output::info("  智能预读: " + std::string(async_io_manager->is_smart_pre_read_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
+        Output::info("  网络重试: " + std::string(async_io_manager->is_network_retry_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
+        Output::info("  批量优化: " + std::string(async_io_manager->is_batch_optimization_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
         Output::info("  内存使用: " + std::to_string(async_io_manager->get_memory_usage() / 1024 / 1024) + " MB");
         
         // 获取优化建议
         auto suggestions = async_io_manager->get_optimization_suggestions();
         if (!suggestions.empty()) {
-            Output::info("💡 优化建议:");
+            Output::info(" Optimization Suggestions:");
             for (const auto& suggestion : suggestions) {
                 Output::info("  • " + suggestion);
             }
@@ -349,7 +373,7 @@ void pm_async_io_optimize() {
         
         // 应用优化建议
         if (!suggestions.empty()) {
-            Output::info("🔧 应用优化建议...");
+            Output::info(" 应用优化建议...");
             async_io_manager->apply_optimization_suggestions();
         }
         
@@ -380,7 +404,7 @@ void pm_async_io_optimize() {
             }
         }
         
-        Output::success("✅ 异步I/O性能优化完成！");
+        Output::success("[OK] 异步I/O性能优化完成！");
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Async I/O optimization failed: " << e.what();
@@ -391,19 +415,19 @@ void pm_async_io_optimize() {
 void pm_async_io_enhanced_features() {
     LOG(INFO) << "Displaying enhanced async I/O features";
     
-    auto* async_io_manager = get_async_io_manager();
-    if (!async_io_manager) {
-        Output::error("异步I/O管理器未初始化");
+    if (!ensure_async_io_manager_initialized()) {
         return;
     }
+    
+    auto* async_io_manager = get_async_io_manager();
     
     try {
         Output::info("🚀 增强异步I/O功能展示");
         Output::info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         
         // 动态缓冲区管理
-        Output::info("📊 动态缓冲区管理:");
-        Output::info("  自适应缓冲区: " + std::string(async_io_manager->is_adaptive_buffering_enabled() ? "✅ 启用" : "❌ 禁用"));
+        Output::info(" 动态缓冲区管理:");
+        Output::info("  自适应缓冲区: " + std::string(async_io_manager->is_adaptive_buffering_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
         Output::info("  内存使用: " + std::to_string(async_io_manager->get_memory_usage() / 1024 / 1024) + " MB");
         
         // 显示各种缓冲区配置
@@ -422,7 +446,7 @@ void pm_async_io_enhanced_features() {
         
         // 智能预读策略
         Output::info("📖 智能预读策略:");
-        Output::info("  智能预读: " + std::string(async_io_manager->is_smart_pre_read_enabled() ? "✅ 启用" : "❌ 禁用"));
+        Output::info("  智能预读: " + std::string(async_io_manager->is_smart_pre_read_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
         
         auto candidates = async_io_manager->get_pre_read_candidates();
         if (!candidates.empty()) {
@@ -439,7 +463,7 @@ void pm_async_io_enhanced_features() {
         
         // 网络重试策略
         Output::info("🌐 网络重试策略:");
-        Output::info("  网络重试: " + std::string(async_io_manager->is_network_retry_enabled() ? "✅ 启用" : "❌ 禁用"));
+        Output::info("  网络重试: " + std::string(async_io_manager->is_network_retry_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
         
         auto retry_config = async_io_manager->get_retry_config();
         Output::info("  最大重试次数: " + std::to_string(retry_config.max_retries));
@@ -449,23 +473,23 @@ void pm_async_io_enhanced_features() {
         
         // 批量处理优化
         Output::info("📦 批量处理优化:");
-        Output::info("  批量优化: " + std::string(async_io_manager->is_batch_optimization_enabled() ? "✅ 启用" : "❌ 禁用"));
+        Output::info("  批量优化: " + std::string(async_io_manager->is_batch_optimization_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
         
         // 性能统计
         Output::info("📈 性能统计:");
         Output::info("  平均吞吐量: " + std::to_string(async_io_manager->get_average_throughput()) + " MB/s");
-        Output::info("  缓存命中率: " + std::to_string(async_io_manager->get_cache_hit_rate()) + "%");
+        Output::info("  Cache hit rate: " + std::to_string(async_io_manager->get_cache_hit_rate()) + "%");
         Output::info("  总处理字节: " + std::to_string(async_io_manager->get_total_bytes_processed() / 1024 / 1024) + " MB");
         
         // 优化建议
         auto suggestions = async_io_manager->get_optimization_suggestions();
         if (!suggestions.empty()) {
-            Output::info("💡 优化建议:");
+            Output::info(" Optimization Suggestions:");
             for (const auto& suggestion : suggestions) {
                 Output::info("  • " + suggestion);
             }
         } else {
-            Output::info("  ✅ 当前配置已优化");
+            Output::info("  [OK] 当前配置已优化");
         }
         
         Output::success("🎉 增强功能展示完成！");

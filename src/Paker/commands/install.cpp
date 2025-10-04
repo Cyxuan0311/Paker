@@ -10,6 +10,7 @@
 #include "Paker/core/parallel_executor.h"
 #include "Paker/core/incremental_updater.h"
 #include "Paker/cache/lru_cache_manager.h"
+#include "Paker/dependency/sources.h"
 #include "Recorder/record.h"
 #include <filesystem>
 #include <fstream>
@@ -24,11 +25,20 @@ namespace fs = std::filesystem;
 
 // 辅助函数实现
 std::string get_repository_url(const std::string& package) {
-    const auto& repos = get_builtin_repos();
-    auto it = repos.find(package);
-    if (it != repos.end()) {
-        return it->second;
+    // 首先检查自定义远程源
+    auto custom_repos = get_custom_repos();
+    auto custom_it = custom_repos.find(package);
+    if (custom_it != custom_repos.end()) {
+        return custom_it->second;
     }
+    
+    // 然后检查内置仓库
+    const auto& builtin_repos = get_builtin_repos();
+    auto builtin_it = builtin_repos.find(package);
+    if (builtin_it != builtin_repos.end()) {
+        return builtin_it->second;
+    }
+    
     return "";
 }
 
@@ -122,49 +132,7 @@ void pm_add(const std::string& pkg_input) {
         return;
     }
     
-    std::ifstream ifs(json_file);
-    json j;
-    ifs >> j;
-    j["dependencies"][pkg] = version.empty() ? "*" : version;
-    std::ofstream ofs(json_file);
-    ofs << j.dump(4);
-    
-    LOG(INFO) << "Added dependency: " << pkg << (version.empty() ? "" : ("@" + version));
-    Paker::Output::success("Added dependency: " + pkg + (version.empty() ? "" : ("@" + version)));
-    
-    // 添加依赖冲突检测
-    Paker::DependencyResolver resolver;
-    if (!resolver.resolve_package(pkg, version)) {
-        Paker::Output::error("Failed to resolve package dependencies");
-        return;
-    }
-    
-    Paker::ConflictDetector detector(resolver.get_dependency_graph());
-    auto conflicts = detector.detect_all_conflicts();
-    
-    if (!conflicts.empty()) {
-        Paker::Output::warning("Dependency conflicts detected:");
-        Paker::Output::info(detector.generate_conflict_report(conflicts));
-        
-        // 询问用户是否自动解决
-        Paker::Output::info("Auto-resolve conflicts? [Y/n]: ");
-        std::string response;
-        std::getline(std::cin, response);
-        
-        if (response.empty() || response[0] == 'Y' || response[0] == 'y') {
-            Paker::ConflictResolver conflict_resolver(resolver.get_dependency_graph());
-            if (!conflict_resolver.auto_resolve_conflicts(conflicts)) {
-                Paker::Output::error("Failed to auto-resolve conflicts");
-                return;
-            }
-            Paker::Output::success("Conflicts resolved automatically");
-        } else {
-            Paker::Output::error("Please resolve conflicts before installing");
-            return;
-        }
-    }
-    
-    // 优先查找自定义源
+    // 首先查找仓库，在修改JSON文件之前
     #include "Paker/dependency/sources.h"
     auto all_repos = get_all_repos();
     auto it = all_repos.find(pkg);
@@ -175,6 +143,93 @@ void pm_add(const std::string& pkg_input) {
     }
     
     std::string repo_url = it->second;
+    
+    // 现在修改JSON文件（添加错误处理）
+    json j;
+    try {
+        std::ifstream ifs(json_file);
+        if (!ifs.is_open()) {
+            LOG(ERROR) << "Failed to open JSON file: " << json_file;
+            Paker::Output::error("Failed to open project configuration file");
+            return;
+        }
+        
+        ifs >> j;
+        ifs.close();
+        
+        // 验证JSON结构
+        if (!j.is_object()) {
+            LOG(ERROR) << "Invalid JSON structure in " << json_file;
+            Paker::Output::error("Invalid project configuration file");
+            return;
+        }
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Failed to parse JSON file: " << e.what();
+        Paker::Output::error("Failed to parse project configuration file");
+        return;
+    }
+    
+    // 确保dependencies字段存在
+    if (!j.contains("dependencies")) {
+        j["dependencies"] = json::object();
+    }
+    j["dependencies"][pkg] = version.empty() ? "*" : version;
+    
+    // 安全地写入JSON文件
+    try {
+        std::ofstream ofs(json_file);
+        if (!ofs.is_open()) {
+            LOG(ERROR) << "Failed to open JSON file for writing: " << json_file;
+            Paker::Output::error("Failed to save project configuration");
+            return;
+        }
+        ofs << j.dump(4);
+        ofs.close();
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Failed to write JSON file: " << e.what();
+        Paker::Output::error("Failed to save project configuration");
+        return;
+    }
+    
+    LOG(INFO) << "Added dependency: " << pkg << (version.empty() ? "" : ("@" + version));
+    Paker::Output::success("Added dependency: " + pkg + (version.empty() ? "" : ("@" + version)));
+    
+    // 添加依赖冲突检测（使用try-catch保护）
+    try {
+        Paker::DependencyResolver resolver;
+        if (!resolver.resolve_package(pkg, version)) {
+            LOG(WARNING) << "Failed to resolve package dependencies for " << pkg;
+            // 不返回，继续执行安装
+        } else {
+            Paker::ConflictDetector detector(resolver.get_dependency_graph());
+            auto conflicts = detector.detect_all_conflicts();
+            
+            if (!conflicts.empty()) {
+                Paker::Output::warning("Dependency conflicts detected:");
+                Paker::Output::info(detector.generate_conflict_report(conflicts));
+                
+                // 询问用户是否自动解决
+                Paker::Output::info("Auto-resolve conflicts? [Y/n]: ");
+                std::string response;
+                std::getline(std::cin, response);
+                
+                if (response.empty() || response[0] == 'Y' || response[0] == 'y') {
+                    Paker::ConflictResolver conflict_resolver(resolver.get_dependency_graph());
+                    if (!conflict_resolver.auto_resolve_conflicts(conflicts)) {
+                        Paker::Output::error("Failed to auto-resolve conflicts");
+                        return;
+                    }
+                    Paker::Output::success("Conflicts resolved automatically");
+                } else {
+                    Paker::Output::error("Please resolve conflicts before installing");
+                    return;
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        LOG(WARNING) << "Dependency resolution failed: " << e.what();
+        // 继续执行，不因依赖解析失败而停止安装
+    }
     
     // 默认使用全局缓存模式（除非明确禁用）
     bool use_cache_mode = Paker::g_cache_manager != nullptr;
@@ -300,6 +355,73 @@ void pm_add(const std::string& pkg_input) {
     PAKER_PERF_RECORD(Paker::MetricType::DISK_USAGE, pkg + "_size", static_cast<double>(total_size), "bytes");
 }
 
+void pm_add_url(const std::string& url) {
+    // 开始性能监控
+    PAKER_PERF_START("package_install_url");
+    
+    std::string json_file = get_json_file();
+    if (!fs::exists(json_file)) {
+        LOG(ERROR) << "Not a Paker project. Run 'paker init' first.";
+        Paker::Output::error("Not a Paker project. Run 'paker init' first.");
+        return;
+    }
+    
+    // 从URL提取包名（取最后一个路径部分，去掉.git后缀）
+    std::string pkg_name = url;
+    size_t last_slash = pkg_name.find_last_of('/');
+    if (last_slash != std::string::npos) {
+        pkg_name = pkg_name.substr(last_slash + 1);
+    }
+    if (pkg_name.size() >= 4 && pkg_name.substr(pkg_name.length() - 4) == ".git") {
+        pkg_name = pkg_name.substr(0, pkg_name.length() - 4);
+    }
+    
+    // 读取Paker.json
+    std::ifstream ifs(json_file);
+    json j;
+    ifs >> j;
+    
+    // 添加URL依赖
+    if (!j.contains("url_dependencies")) {
+        j["url_dependencies"] = json::object();
+    }
+    j["url_dependencies"][pkg_name] = url;
+    
+    // 写回文件
+    std::ofstream ofs(json_file);
+    ofs << j.dump(4);
+    
+    LOG(INFO) << "Added URL dependency: " << pkg_name << " -> " << url;
+    Paker::Output::success("Added URL dependency: " + pkg_name + " -> " + url);
+    
+    // 实际下载包
+    std::string target_path = get_package_install_path(pkg_name);
+    if (!fs::exists(target_path)) {
+        Paker::Output::info("Installing package: " + pkg_name);
+        
+        // 创建目标目录
+        fs::create_directories(target_path);
+        
+        // 使用git clone下载
+        std::string cmd = "git clone " + url + " " + target_path;
+        int result = system(cmd.c_str());
+        
+        if (result == 0) {
+            LOG(INFO) << "Successfully downloaded package: " << pkg_name;
+            Paker::Output::success("Successfully downloaded package: " + pkg_name);
+        } else {
+            LOG(ERROR) << "Failed to download package: " << pkg_name;
+            Paker::Output::error("Failed to download package: " + pkg_name);
+        }
+    } else {
+        LOG(INFO) << "Package already exists: " << pkg_name;
+        Paker::Output::info("Package already exists: " + pkg_name);
+    }
+    
+    // 结束性能监控
+    PAKER_PERF_END("package_install_url", Paker::MetricType::INSTALL_TIME);
+}
+
 void pm_remove(const std::string& pkg) {
     std::string json_file = get_json_file();
     if (!fs::exists(json_file)) {
@@ -307,11 +429,28 @@ void pm_remove(const std::string& pkg) {
         std::cout << "Not a Paker project. Run 'paker init' first.\n";
         return;
     }
+    
+    bool removed_from_dependencies = false;
+    bool removed_from_url_dependencies = false;
+    
     std::ifstream ifs(json_file);
     json j;
     ifs >> j;
+    
+    // 检查并移除dependencies中的包
     if (j["dependencies"].contains(pkg)) {
         j["dependencies"].erase(pkg);
+        removed_from_dependencies = true;
+    }
+    
+    // 检查并移除url_dependencies中的包
+    if (j.contains("url_dependencies") && j["url_dependencies"].contains(pkg)) {
+        j["url_dependencies"].erase(pkg);
+        removed_from_url_dependencies = true;
+    }
+    
+    // 如果从任何依赖字段中移除了包，更新JSON文件
+    if (removed_from_dependencies || removed_from_url_dependencies) {
         std::ofstream ofs(json_file);
         ofs << j.dump(4);
         LOG(INFO) << "Removed dependency: " << pkg;
@@ -354,15 +493,68 @@ void pm_remove(const std::string& pkg) {
             std::cout << "Deleted local package directory: packages/" << pkg << "\n";
         }
     } else {
-        LOG(WARNING) << "Dependency not found: " << pkg;
-        std::cout << "Dependency not found: " << pkg << "\n";
+        // 检查是否有已下载但未声明的包
+        fs::path pkg_dir = fs::path("packages") / pkg;
+        if (fs::exists(pkg_dir)) {
+            LOG(INFO) << "Removing downloaded package: " << pkg;
+            std::cout << "Removing downloaded package: " << pkg << "\n";
+            
+            // 使用Record类获取包的文件信息
+            Recorder::Record record(get_record_file_path());
+            if (record.isPackageInstalled(pkg)) {
+                std::vector<std::string> files = record.getPackageFiles(pkg);
+                std::string install_path = record.getPackageInstallPath(pkg);
+                
+                LOG(INFO) << "Found " << files.size() << " files to remove for package: " << pkg;
+                std::cout << "Found " << files.size() << " files to remove for package: " << pkg << "\n";
+                
+                // 删除记录的文件
+                for (const auto& file : files) {
+                    if (fs::exists(file)) {
+                        fs::remove(file);
+                        LOG(INFO) << "Removed file: " << file;
+                    }
+                }
+                
+                // 删除安装目录
+                if (!install_path.empty() && fs::exists(install_path)) {
+                    fs::remove_all(install_path);
+                    LOG(INFO) << "Removed install directory: " << install_path;
+                    std::cout << "Removed install directory: " << install_path << "\n";
+                }
+                
+                // 从记录中删除包
+                record.removePackageRecord(pkg);
+                LOG(INFO) << "Removed package record: " << pkg;
+            }
+            
+            // 删除本地包目录
+            fs::remove_all(pkg_dir);
+            LOG(INFO) << "Deleted local package directory: packages/" << pkg;
+            std::cout << "Deleted local package directory: packages/" << pkg << "\n";
+        } else {
+            LOG(WARNING) << "Dependency not found: " << pkg;
+            std::cout << "Dependency not found: " << pkg << "\n";
+        }
     }
 }
 
 static void add_recursive(const std::string& pkg, std::set<std::string>& installed) {
     if (installed.count(pkg)) return;
     installed.insert(pkg);
-    pm_add(pkg);
+    
+    // 检查是否是URL
+    if (pkg.find("http://") == 0 || 
+        pkg.find("https://") == 0 || 
+        pkg.find("git@") == 0 ||
+        pkg.find("git://") == 0) {
+        // 使用URL添加
+        pm_add_url(pkg);
+    } else {
+        // 使用普通添加
+        pm_add(pkg);
+    }
+    
     fs::path pkg_dir = fs::path("packages") / pkg;
     fs::path dep_json = pkg_dir / "Paker.json";
     if (!fs::exists(dep_json)) dep_json = pkg_dir / "paker.json";

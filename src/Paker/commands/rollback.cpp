@@ -257,7 +257,7 @@ void pm_rollback_check(const std::string& package_name, const std::string& targe
     bool is_safe = history_manager->can_safely_rollback(package_name, target_version);
     
     if (is_safe) {
-        Output::success("✅ Rollback is safe");
+        Output::success("[OK] Rollback is safe");
         Output::info("All safety checks passed");
     } else {
         Output::warning("⚠️  Rollback may not be safe");
@@ -271,11 +271,11 @@ void pm_rollback_check(const std::string& package_name, const std::string& targe
     // 检查版本是否存在
     auto versions = history_manager->get_rollbackable_versions(package_name);
     bool version_exists = std::find(versions.begin(), versions.end(), target_version) != versions.end();
-    Output::info("  Version exists: " + std::string(version_exists ? "✅" : "❌"));
+    Output::info("  Version exists: " + std::string(version_exists ? "[OK]" : "[FAIL]"));
     
     // 检查版本兼容性
     bool compatible = VersionManager::is_version_compatible(target_version, "current");
-    Output::info("  Version compatible: " + std::string(compatible ? "✅" : "❌"));
+    Output::info("  Version compatible: " + std::string(compatible ? "[OK]" : "[FAIL]"));
     
     // 检查备份可用性
     auto history = history_manager->get_package_history(package_name);
@@ -286,7 +286,7 @@ void pm_rollback_check(const std::string& package_name, const std::string& targe
             break;
         }
     }
-    Output::info("  Backup available: " + std::string(backup_available ? "✅" : "❌"));
+    Output::info("  Backup available: " + std::string(backup_available ? "[OK]" : "[FAIL]"));
 }
 
 void pm_history_cleanup(size_t max_entries) {
@@ -366,7 +366,7 @@ void pm_rollback_stats() {
     
     auto stats = history_manager->get_statistics();
     
-    Output::info("📊 Rollback Statistics");
+    Output::info(" Rollback Statistics");
     Output::info("=====================");
     Output::info("Total entries: " + std::to_string(stats.total_entries));
     Output::info("Total packages: " + std::to_string(stats.total_packages));

@@ -9,10 +9,13 @@
 #include "Paker/commands/warmup.h"
 #include "Paker/commands/incremental_parse.h"
 #include "Paker/commands/async_io.h"
+#include "Paker/commands/version.h"
+#include "Paker/commands/remove_project.h"
 #include "Paker/core/utils.h"
 #include "Paker/core/output.h"
 #include "Paker/core/package_manager.h"
 #include "Paker/dependency/sources.h"
+#include "Paker/version.h"
 #include "Recorder/record.h"
 #include <iostream>
 #include "third_party/CLI11.hpp"
@@ -23,13 +26,29 @@ int run_cli(int argc, char* argv[]) {
     // 全局选项
     bool no_color = false;
     bool verbose = false;
+    bool version = false;
     app.add_flag("--no-color", no_color, "Disable colored output");
     app.add_flag("-v,--verbose", verbose, "Enable verbose output");
+    app.add_flag("--version", version, "Show version information");
     
     // 设置输出选项
     app.preparse_callback([&](size_t) {
         Paker::Output::set_colored_output(!no_color);
         Paker::Output::set_verbose_mode(verbose);
+        
+        // 处理版本信息
+        if (version) {
+            std::cout << Paker::Version::get_detailed_version() << std::endl;
+            exit(0);
+        }
+    });
+    
+    // 处理版本选项的回调
+    app.callback([&]() {
+        if (version) {
+            std::cout << Paker::Version::get_detailed_version() << std::endl;
+            exit(0);
+        }
     });
 
     // init
@@ -58,18 +77,29 @@ int run_cli(int argc, char* argv[]) {
     // add
     std::string add_pkg;
     auto add = app.add_subcommand("add", "Add a dependency or project info");
-    add->add_option("package", add_pkg, "Package name to add");
+    add->add_option("package", add_pkg, "Package name or URL to add");
     add->callback([&]() {
         if (!add_pkg.empty()) {
-            auto custom_repos = get_custom_repos();
-            auto all_repos = get_all_repos();
-            if (custom_repos.count(add_pkg)) {
-                pm_add(add_pkg);
-            } else if (all_repos.count(add_pkg)) {
-                Paker::Output::info("Using built-in url: " + all_repos[add_pkg]);
-                pm_add(add_pkg);
+            // 检查是否是URL（以http://或https://或git@开头）
+            if (add_pkg.find("http://") == 0 || 
+                add_pkg.find("https://") == 0 || 
+                add_pkg.find("git@") == 0 ||
+                add_pkg.find("git://") == 0) {
+                // 直接使用URL添加
+                Paker::Output::info("Adding package from URL: " + add_pkg);
+                pm_add_url(add_pkg);
             } else {
-                Paker::Output::error("No url found for package: " + add_pkg + ". Please add a remote using 'add-remote'.");
+                // 从预配置的源添加
+                auto custom_repos = get_custom_repos();
+                auto all_repos = get_all_repos();
+                if (custom_repos.count(add_pkg)) {
+                    pm_add(add_pkg);
+                } else if (all_repos.count(add_pkg)) {
+                    Paker::Output::info("Using built-in url: " + all_repos[add_pkg]);
+                    pm_add(add_pkg);
+                } else {
+                    Paker::Output::error("No url found for package: " + add_pkg + ". Please add a remote using 'remote-add' or use a direct URL.");
+                }
             }
         }
     });
@@ -527,6 +557,40 @@ int run_cli(int argc, char* argv[]) {
     auto rollback_stats_cmd = app.add_subcommand("rollback-stats", "Show rollback statistics");
     rollback_stats_cmd->callback([]() {
         Paker::pm_rollback_stats();
+    });
+    
+    // version command
+    bool version_short = false;
+    bool version_build = false;
+    std::string version_check;
+    
+    auto version_cmd = app.add_subcommand("version", "Show version information");
+    version_cmd->add_flag("--short", version_short, "Show short version");
+    version_cmd->add_flag("--build", version_build, "Show build information");
+    version_cmd->add_option("--check", version_check, "Check version compatibility");
+    
+    version_cmd->callback([&]() {
+        if (version_short) {
+            Paker::pm_version_short();
+        } else if (version_build) {
+            Paker::pm_version_build();
+        } else if (!version_check.empty()) {
+            Paker::pm_version_check(version_check);
+        } else {
+            Paker::pm_version();
+        }
+    });
+
+    // remove project command
+    bool force_remove = false;
+    auto remove_project_cmd = app.add_subcommand("remove-project", "Remove Paker project completely");
+    remove_project_cmd->add_flag("--force", force_remove, "Force removal without confirmation");
+    remove_project_cmd->callback([&]() {
+        if (force_remove) {
+            Paker::pm_remove_project(true);
+        } else {
+            Paker::pm_remove_project_confirm();
+        }
     });
 
     CLI11_PARSE(app, argc, argv);

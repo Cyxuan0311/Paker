@@ -3,6 +3,7 @@
 #include "Paker/core/output.h"
 #include "Paker/core/utils.h"
 #include "Paker/dependency/sources.h"
+#include "Paker/core/package_manager.h"
 #include <glog/logging.h>
 #include <iomanip>
 #include <sstream>
@@ -12,26 +13,49 @@ namespace fs = std::filesystem;
 
 namespace Paker {
 
-// 格式化文件大小显示
-std::string format_size(size_t bytes) {
-    const char* units[] = {"B", "KB", "MB", "GB", "TB"};
-    int unit = 0;
-    double size = static_cast<double>(bytes);
-    
-    while (size >= 1024.0 && unit < 4) {
-        size /= 1024.0;
-        unit++;
+// 确保缓存管理器已初始化的辅助函数
+bool ensure_cache_manager_initialized() {
+    // 尝试初始化服务
+    if (!initialize_paker_services()) {
+        Output::error("Failed to initialize services");
+        return false;
     }
     
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(1) << size << " " << units[unit];
-    return oss.str();
+    // 检查服务是否可用
+    auto* cache_service = get_cache_manager();
+    if (!cache_service) {
+        Output::error("Cache manager service not available");
+        return false;
+    }
+    
+    // 设置全局缓存管理器
+    if (!g_cache_manager) {
+        g_cache_manager = std::make_unique<CacheManager>();
+        if (!g_cache_manager->initialize()) {
+            Output::error("Failed to initialize cache manager");
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// 格式化文件大小显示
+std::string format_size(size_t bytes) {
+    if (bytes < 1024) {
+        return std::to_string(bytes) + " B";
+    } else if (bytes < 1024 * 1024) {
+        return std::to_string(bytes / 1024) + " KB";
+    } else if (bytes < 1024 * 1024 * 1024) {
+        return std::to_string(bytes / (1024 * 1024)) + " MB";
+    } else {
+        return std::to_string(bytes / (1024 * 1024 * 1024)) + " GB";
+    }
 }
 
 int pm_cache_install(const std::string& package, const std::string& version) {
     try {
-        if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
+        if (!ensure_cache_manager_initialized()) {
             return 1;
         }
         
@@ -65,8 +89,7 @@ int pm_cache_install(const std::string& package, const std::string& version) {
 
 int pm_cache_remove(const std::string& package, const std::string& version) {
     try {
-        if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
+        if (!ensure_cache_manager_initialized()) {
             return 1;
         }
         
@@ -91,8 +114,14 @@ int pm_cache_remove(const std::string& package, const std::string& version) {
 int pm_cache_list() {
     try {
         if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
-            return 1;
+            g_cache_manager = std::make_unique<CacheManager>();
+        }
+        
+        if (!g_cache_manager->is_initialized()) {
+            if (!g_cache_manager->initialize()) {
+                Output::error("Failed to initialize cache manager");
+                return 1;
+            }
         }
         
         auto package_list = g_cache_manager->get_package_list();
@@ -114,7 +143,7 @@ int pm_cache_list() {
             Output::info("  " + package_name + ":");
             for (const auto& info : versions) {
                 std::ostringstream oss;
-                oss << "    " << info.version << " (" << format_size(info.size_bytes) << ")";
+                oss << "    " << info.version << " (" << Paker::format_size(info.size_bytes) << ")";
                 if (info.is_active) {
                     oss << " [active]";
                 }
@@ -134,8 +163,14 @@ int pm_cache_list() {
 int pm_cache_info(const std::string& package) {
     try {
         if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
-            return 1;
+            g_cache_manager = std::make_unique<CacheManager>();
+        }
+        
+        if (!g_cache_manager->is_initialized()) {
+            if (!g_cache_manager->initialize()) {
+                Output::error("Failed to initialize cache manager");
+                return 1;
+            }
         }
         
         auto package_list = g_cache_manager->get_package_list();
@@ -149,7 +184,7 @@ int pm_cache_info(const std::string& package) {
                 Output::info("  Version: " + info.version);
                 Output::info("  Cache path: " + info.cache_path);
                 Output::info("  Repository: " + info.repository_url);
-                Output::info("  Size: " + format_size(info.size_bytes));
+                Output::info("  Size: " + Paker::format_size(info.size_bytes));
                 Output::info("  Access count: " + std::to_string(info.access_count));
                 Output::info("  Active: " + std::string(info.is_active ? "yes" : "no"));
                 
@@ -182,8 +217,7 @@ int pm_cache_info(const std::string& package) {
 
 int pm_cache_cleanup() {
     try {
-        if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
+        if (!ensure_cache_manager_initialized()) {
             return 1;
         }
         
@@ -211,16 +245,15 @@ int pm_cache_cleanup() {
 
 int pm_cache_stats() {
     try {
-        if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
+        if (!ensure_cache_manager_initialized()) {
             return 1;
         }
         
         auto stats = g_cache_manager->get_cache_statistics();
         
-        Output::info("📊 Cache Statistics:");
+        Output::info(" Cache Statistics:");
         Output::info("  Total packages: " + std::to_string(stats.total_packages));
-        Output::info("  Total size: " + format_size(stats.total_size_bytes));
+        Output::info("  Total size: " + Paker::format_size(stats.total_size_bytes));
         Output::info("  Unused packages: " + std::to_string(stats.unused_packages));
         
         // 缓存路径信息
@@ -252,8 +285,7 @@ int pm_cache_stats() {
 
 int pm_cache_migrate(const std::string& project_path) {
     try {
-        if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
+        if (!ensure_cache_manager_initialized()) {
             return 1;
         }
         
@@ -278,8 +310,7 @@ int pm_cache_migrate(const std::string& project_path) {
 
 int pm_cache_config_set(const std::string& key, const std::string& value) {
     try {
-        if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
+        if (!ensure_cache_manager_initialized()) {
             return 1;
         }
         
@@ -298,8 +329,7 @@ int pm_cache_config_set(const std::string& key, const std::string& value) {
 
 int pm_cache_config_get(const std::string& key) {
     try {
-        if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
+        if (!ensure_cache_manager_initialized()) {
             return 1;
         }
         
@@ -318,8 +348,7 @@ int pm_cache_config_get(const std::string& key) {
 
 int pm_cache_config_list() {
     try {
-        if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
+        if (!ensure_cache_manager_initialized()) {
             return 1;
         }
         
@@ -341,19 +370,18 @@ int pm_cache_config_list() {
 
 int pm_cache_status() {
     try {
-        if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
+        if (!ensure_cache_manager_initialized()) {
             return 1;
         }
         
-        Output::info("🔍 Cache Status Report");
+        Output::info(" Cache Status Report");
         Output::info("=====================");
         
         // 基本状态
         auto stats = g_cache_manager->get_cache_statistics();
         Output::info("📦 Package Status:");
         Output::info("  Total packages: " + std::to_string(stats.total_packages));
-        Output::info("  Total size: " + format_size(stats.total_size_bytes));
+        Output::info("  Total size: " + Paker::format_size(stats.total_size_bytes));
         Output::info("  Unused packages: " + std::to_string(stats.unused_packages));
         
         // 缓存健康度
@@ -379,7 +407,7 @@ int pm_cache_status() {
                 Output::warning("  - " + issue);
             }
         } else {
-            Output::success("✅ Cache is healthy");
+            Output::success("[OK] Cache is healthy");
         }
         
         // 路径状态
@@ -404,8 +432,7 @@ int pm_cache_status() {
 
 int pm_cache_optimize() {
     try {
-        if (!g_cache_manager) {
-            Output::error("Cache manager not initialized");
+        if (!ensure_cache_manager_initialized()) {
             return 1;
         }
         

@@ -2,6 +2,7 @@
 #include "Paker/cache/lru_cache_manager.h"
 #include "Paker/core/output.h"
 #include "Paker/core/utils.h"
+#include "Paker/core/package_manager.h"
 #include <glog/logging.h>
 #include <iomanip>
 #include <sstream>
@@ -21,24 +22,27 @@ std::string get_cache_directory() {
 
 // 格式化字节数显示
 std::string format_bytes(size_t bytes) {
-    const char* units[] = {"B", "KB", "MB", "GB", "TB"};
-    int unit = 0;
-    double size = static_cast<double>(bytes);
-    
-    while (size >= 1024.0 && unit < 4) {
-        size /= 1024.0;
-        unit++;
+    if (bytes < 1024) {
+        return std::to_string(bytes) + " B";
+    } else if (bytes < 1024 * 1024) {
+        return std::to_string(bytes / 1024) + " KB";
+    } else if (bytes < 1024 * 1024 * 1024) {
+        return std::to_string(bytes / (1024 * 1024)) + " MB";
+    } else {
+        return std::to_string(bytes / (1024 * 1024 * 1024)) + " GB";
     }
-    
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(1) << size << " " << units[unit];
-    return oss.str();
 }
 
 // 初始化LRU缓存管理器
 void pm_cache_init_lru() {
     if (g_lru_cache_manager) {
         Output::warning("LRU cache manager is already initialized");
+        return;
+    }
+    
+    // 确保服务已初始化
+    if (!initialize_paker_services()) {
+        Output::error("Failed to initialize services");
         return;
     }
     
@@ -53,13 +57,18 @@ void pm_cache_init_lru() {
 // 显示LRU缓存统计
 void pm_cache_lru_stats() {
     if (!g_lru_cache_manager) {
-        Output::error("LRU cache manager not initialized. Run 'cache-init-lru' first.");
-        return;
+        // 尝试自动初始化
+        Output::info("Initializing LRU cache manager...");
+        pm_cache_init_lru();
+        if (!g_lru_cache_manager) {
+            Output::error("Failed to initialize LRU cache manager");
+            return;
+        }
     }
     
     auto stats = g_lru_cache_manager->get_statistics();
     
-    Output::info("📊 LRU Cache Statistics");
+    Output::info("LRU Cache Statistics");
     Output::info("========================");
     
     std::ostringstream ss;
@@ -76,7 +85,7 @@ void pm_cache_lru_stats() {
     
     // 显示包大小分布
     if (!stats.package_sizes.empty()) {
-        Output::info("\n📦 Package Size Distribution:");
+        Output::info("\nPackage Size Distribution:");
         for (const auto& [package, size] : stats.package_sizes) {
             Output::info("  " + package + ": " + format_bytes(size));
         }
@@ -86,8 +95,13 @@ void pm_cache_lru_stats() {
 // 显示LRU缓存状态
 void pm_cache_lru_status() {
     if (!g_lru_cache_manager) {
-        Output::error("LRU cache manager not initialized. Run 'cache-init-lru' first.");
-        return;
+        // 尝试自动初始化
+        Output::info("Initializing LRU cache manager...");
+        pm_cache_init_lru();
+        if (!g_lru_cache_manager) {
+            Output::error("Failed to initialize LRU cache manager");
+            return;
+        }
     }
     
     auto stats = g_lru_cache_manager->get_statistics();
@@ -95,19 +109,19 @@ void pm_cache_lru_status() {
     size_t item_count = g_lru_cache_manager->get_cache_items_count();
     double hit_rate = g_lru_cache_manager->get_hit_rate();
     
-    Output::info("🔍 LRU Cache Status Report");
+    Output::info("LRU Cache Status Report");
     Output::info("===========================");
     
     // 缓存健康度评估
     std::string health_status;
     if (hit_rate > 0.8) {
-        health_status = "🟢 Excellent";
+        health_status = "Excellent";
     } else if (hit_rate > 0.6) {
-        health_status = "🟡 Good";
+        health_status = "Good";
     } else if (hit_rate > 0.4) {
-        health_status = "🟠 Fair";
+        health_status = "Fair";
     } else {
-        health_status = "🔴 Poor";
+        health_status = "Poor";
     }
     
     std::ostringstream ss;
@@ -148,7 +162,7 @@ void pm_cache_smart_cleanup() {
     auto recommendation = g_smart_cache_cleaner->get_cleanup_recommendation();
     
     if (recommendation.type == SmartCacheCleaner::CleanupRecommendation::Type::NONE) {
-        Output::info("✅ No cleanup needed - cache is in good condition");
+        Output::info("No cleanup needed - cache is in good condition");
         return;
     }
     
@@ -168,25 +182,25 @@ void pm_cache_smart_cleanup() {
             break;
     }
     
-    Output::info("📋 Cleanup Recommendation: " + cleanup_type + " cleanup");
-    Output::info("📝 Reason: " + recommendation.reason);
-    Output::info("💾 Estimated space to free: " + format_bytes(recommendation.estimated_freed_space));
-    Output::info("📦 Items to remove: " + std::to_string(recommendation.items_to_remove.size()));
+    Output::info("Cleanup Recommendation: " + cleanup_type + " cleanup");
+    Output::info("Reason: " + recommendation.reason);
+    Output::info("Estimated space to free: " + format_bytes(recommendation.estimated_freed_space));
+    Output::info("Items to remove: " + std::to_string(recommendation.items_to_remove.size()));
     
     // 执行清理
     bool success = g_smart_cache_cleaner->perform_smart_cleanup();
     
     if (success) {
-        Output::success("✅ Smart cache cleanup completed successfully");
+        Output::success("Smart cache cleanup completed successfully");
         
         // 显示清理后的统计
         auto new_stats = g_lru_cache_manager->get_statistics();
-        Output::info("📊 After cleanup:");
+        Output::info("After cleanup:");
         Output::info("  Items: " + std::to_string(new_stats.total_items));
         Output::info("  Size: " + format_bytes(new_stats.total_size_bytes));
         Output::info("  Hit Rate: " + std::to_string(new_stats.hit_rate * 100) + "%");
     } else {
-        Output::error("❌ Smart cache cleanup failed");
+        Output::error("Smart cache cleanup failed");
     }
 }
 
@@ -204,7 +218,7 @@ void pm_cache_most_accessed() {
         return;
     }
     
-    Output::info("🔥 Most Accessed Packages");
+    Output::info("Most Accessed Packages");
     Output::info("=========================");
     
     // 按访问次数排序
@@ -239,7 +253,7 @@ void pm_cache_oldest_items() {
         return;
     }
     
-    Output::info("⏰ Oldest Cached Items");
+    Output::info("Oldest Cached Items");
     Output::info("======================");
     
     for (size_t i = 0; i < oldest_items.size(); ++i) {
@@ -287,33 +301,33 @@ void pm_cache_optimization_advice() {
     size_t item_count = g_lru_cache_manager->get_cache_items_count();
     double hit_rate = g_lru_cache_manager->get_hit_rate();
     
-    Output::info("💡 Cache Optimization Advice");
+    Output::info("Cache Optimization Advice");
     Output::info("=============================");
     
     std::vector<std::string> recommendations;
     
     // 基于命中率的建议
     if (hit_rate < 0.3) {
-        recommendations.push_back("🔴 Low hit rate (" + std::to_string(hit_rate * 100) + 
+        recommendations.push_back("Low hit rate (" + std::to_string(hit_rate * 100) + 
                                  "%): Consider increasing cache size or adjusting eviction policy");
     } else if (hit_rate < 0.6) {
-        recommendations.push_back("🟡 Moderate hit rate (" + std::to_string(hit_rate * 100) + 
+        recommendations.push_back("Moderate hit rate (" + std::to_string(hit_rate * 100) + 
                                  "%): Cache is working but could be improved");
     } else {
-        recommendations.push_back("🟢 Good hit rate (" + std::to_string(hit_rate * 100) + 
+        recommendations.push_back("Good hit rate (" + std::to_string(hit_rate * 100) + 
                                  "%): Cache is performing well");
     }
     
     // 基于大小的建议
     double size_gb = cache_size / (1024.0 * 1024.0 * 1024.0);
     if (size_gb > 5.0) {
-        recommendations.push_back("📦 Large cache size (" + std::to_string(size_gb) + 
+        recommendations.push_back("Large cache size (" + std::to_string(size_gb) + 
                                  " GB): Consider cleanup or size limits");
     }
     
     // 基于项目数量的建议
     if (item_count > 1000) {
-        recommendations.push_back("📋 Many cached items (" + std::to_string(item_count) + 
+        recommendations.push_back("Many cached items (" + std::to_string(item_count) + 
                                  "): Consider removing unused packages");
     }
     
@@ -323,14 +337,14 @@ void pm_cache_optimization_advice() {
                                           [](const auto& a, const auto& b) { return a.second < b.second; });
         
         if (max_access->second > 100) {
-            recommendations.push_back("🔥 High access package (" + max_access->first + 
+            recommendations.push_back("High access package (" + max_access->first + 
                                      "): Consider pinning frequently used packages");
         }
     }
     
     // 显示建议
     if (recommendations.empty()) {
-        Output::info("✅ Cache is optimally configured - no specific recommendations");
+        Output::info("Cache is optimally configured - no specific recommendations");
     } else {
         for (const auto& rec : recommendations) {
             Output::info(rec);
@@ -338,7 +352,7 @@ void pm_cache_optimization_advice() {
     }
     
     // 显示当前配置
-    Output::info("\n📊 Current Configuration:");
+    Output::info("\nCurrent Configuration:");
     Output::info("  Cache Size: " + format_bytes(cache_size));
     Output::info("  Item Count: " + std::to_string(item_count));
     Output::info("  Hit Rate: " + std::to_string(hit_rate * 100) + "%");
