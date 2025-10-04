@@ -1,0 +1,50 @@
+{
+  "name": "Paker",
+  "version": "0.1.0",
+  "description": "现代化 C++ 包管理器项目",
+  "author": "Paker Team",
+  "license": "MIT",
+  "dependencies": {
+    "fmt": "8.1.1",
+    "spdlog": "1.11.0",
+    "nlohmann-json": "3.11.2"
+  },
+  "devDependencies": {
+    "gtest": "1.13.0",
+    "benchmark": "1.8.3"
+  },
+  "remotes": [
+    {
+      "name": "github",
+      "url": "https://github.com",
+      "type": "git"
+    },
+    {
+      "name": "gitlab",
+      "url": "https://gitlab.com",
+      "type": "git"
+    }
+  ],
+  "scripts": {
+    "build": "cmake -B build && cmake --build build",
+    "test": "cd build && ctest",
+    "clean": "rm -rf build"
+  },
+  "cache": {
+    "enabled": true,
+    "directory": "~/.paker/cache",
+    "maxSize": "1GB",
+    "ttl": "7d"
+  },
+  "parallel": {
+    "enabled": true,
+    "maxThreads": 4,
+    "batchSize": 100
+  },
+  "optimization": {
+    "simd": true,
+    "openmp": true,
+    "lto": true,
+    "pch": true
+  }
+}
