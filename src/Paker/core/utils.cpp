@@ -11,7 +11,7 @@ std::string get_project_name() {
 }
 
 std::string get_json_file() {
-    return get_project_name() + ".json";
+    return "Paker.json";
 }
 
 std::pair<std::string, std::string> parse_name_version(const std::string& input) {

@@ -98,13 +98,13 @@ std::string RollbackUtils::generate_rollback_report(const RollbackResult& result
     report << "==================\n\n";
     
     // 基本信息
-    report << "Status: " << (result.success ? "✅ Success" : "❌ Failed") << "\n";
+    report << "Status: " << (result.success ? "[OK] Success" : "[FAIL] Failed") << "\n";
     report << "Duration: " << result.duration.count() << "ms\n";
     report << "Message: " << result.message << "\n\n";
     
     // 成功回滚的包
     if (!result.rolled_back_packages.empty()) {
-        report << "✅ Successfully Rolled Back:\n";
+        report << "[OK] Successfully Rolled Back:\n";
         for (const auto& pkg : result.rolled_back_packages) {
             report << "  - " << pkg << "\n";
         }
@@ -113,7 +113,7 @@ std::string RollbackUtils::generate_rollback_report(const RollbackResult& result
     
     // 失败的包
     if (!result.failed_packages.empty()) {
-        report << "❌ Failed to Rollback:\n";
+        report << "[FAIL] Failed to Rollback:\n";
         for (const auto& pkg : result.failed_packages) {
             report << "  - " << pkg << "\n";
         }

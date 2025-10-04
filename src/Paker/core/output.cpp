@@ -65,9 +65,9 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
             std::cout << "[";
             for (int i = 0; i < width_; ++i) {
                 if (i < filled_width) {
-                    std::cout << "█";
+                    std::cout << "#";
                 } else {
-                    std::cout << "░";
+                    std::cout << "-";
                 }
             }
             std::cout << "]";
@@ -88,7 +88,7 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
             std::cout << "]";
             // 添加旋转指示器
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_).count();
-            const char* spinners[] = {"⏳", "⏰", "⌛", "⏲️"};
+            const char* spinners[] = {"|", "/", "-", "\\"};
             std::cout << " " << spinners[(elapsed / 200) % 4];
             break;
         }
@@ -97,14 +97,14 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
             std::cout << "[";
             for (int i = 0; i < width_; ++i) {
                 if (i < filled_width) {
-                    std::cout << "█";
+                    std::cout << "#";
                 } else {
-                    std::cout << "░";
+                    std::cout << "-";
                 }
             }
             std::cout << "]";
             if (filled_width < width_) {
-                std::cout << " █";
+                std::cout << " #";
             }
             break;
         }

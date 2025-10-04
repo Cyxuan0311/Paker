@@ -17,30 +17,40 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
+// 初始化所有Paker服务的函数
+bool initialize_paker_services() {
+    try {
+        // 初始化服务管理器
+        if (!Paker::initialize_service_manager()) {
+            LOG(ERROR) << "Failed to initialize service manager";
+            return false;
+        }
+        
+        // 注册并初始化所有核心服务
+        if (!Paker::ServiceFactory::register_all_core_services()) {
+            LOG(ERROR) << "Failed to register core services";
+            return false;
+        }
+        
+        LOG(INFO) << "All Paker services initialized successfully";
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Exception during service initialization: " << e.what();
+        return false;
+    }
+}
+
 void pm_init() {
     std::string json_file = get_json_file();
     if (fs::exists(json_file)) {
-        LOG(INFO) << "Project already initialized.";
         Paker::Output::info("Project already initialized.");
+        // 即使项目已存在，也要确保服务已初始化
+        initialize_paker_services();
         return;
     }
     
-    // 初始化服务系统
-    if (!Paker::g_service_manager) {
-        if (!Paker::initialize_service_manager()) {
-            LOG(ERROR) << "Failed to initialize service manager";
-            Paker::Output::error("Failed to initialize service system");
-            return;
-        }
-        
-        // 注册所有核心服务
-        if (!Paker::ServiceFactory::register_all_core_services()) {
-            LOG(ERROR) << "Failed to register core services";
-            Paker::Output::error("Failed to initialize core services");
-            return;
-        }
-    }
-    
+    // 轻量级初始化 - 只创建必要的目录和文件
     std::string project_name = get_project_name();
     json j = {
         {"name", project_name},
@@ -48,22 +58,24 @@ void pm_init() {
         {"description", ""},
         {"dependencies", json::object()}
     };
+    
+    // 创建项目目录
+    fs::create_directories(".paker");
+    fs::create_directories(".paker/cache");
+    fs::create_directories(".paker/links");
+    
+    // 写入配置文件
     std::ofstream ofs(json_file);
     ofs << j.dump(4);
-    LOG(INFO) << "Initialized Paker project: " << project_name;
-    Paker::Output::success("Initialized Paker project: " + project_name);
     
-    // 通过服务获取缓存管理器
-    auto* cache_manager = Paker::get_cache_manager();
-    if (cache_manager) {
-        Paker::Output::success("Global cache system initialized (default mode)");
-        Paker::Output::info("Cache locations:");
-        Paker::Output::info("  - User cache: ~/.paker/cache");
-        Paker::Output::info("  - Global cache: /usr/local/share/paker/cache");
-        Paker::Output::info("  - Project links: .paker/links");
-    } else {
-        Paker::Output::warning("Failed to initialize global cache system, falling back to legacy mode");
+    // 初始化所有Paker服务
+    if (!initialize_paker_services()) {
+        Paker::Output::warning("Some services failed to initialize, but project was created successfully");
     }
+    
+    Paker::Output::success("Initialized Paker project: " + project_name);
+    Paker::Output::info("Project configuration: " + json_file);
+    Paker::Output::info("Cache directory: .paker/cache");
 }
 
 void pm_add_desc(const std::string& desc) {
@@ -106,6 +118,16 @@ void pm_resolve_dependencies() {
     LOG(INFO) << "Resolving project dependencies";
     Paker::Output::info("Resolving project dependencies...");
     
+    // 确保服务已初始化
+    if (!Paker::get_dependency_resolver()) {
+        Paker::Output::info("Initializing dependency resolver service...");
+        if (!initialize_paker_services()) {
+            LOG(ERROR) << "Failed to initialize services";
+            Paker::Output::error("Failed to initialize services");
+            return;
+        }
+    }
+    
     auto* resolver = Paker::get_dependency_resolver();
     if (!resolver) {
         LOG(ERROR) << "Dependency resolver service not available";
@@ -125,6 +147,16 @@ void pm_resolve_dependencies() {
 void pm_check_conflicts() {
     LOG(INFO) << "Checking for dependency conflicts";
     Paker::Output::info("Checking for dependency conflicts...");
+    
+    // 确保服务已初始化
+    if (!Paker::get_dependency_resolver()) {
+        Paker::Output::info("Initializing dependency resolver service...");
+        if (!initialize_paker_services()) {
+            LOG(ERROR) << "Failed to initialize services";
+            Paker::Output::error("Failed to initialize services");
+            return;
+        }
+    }
     
     auto* resolver = Paker::get_dependency_resolver();
     auto* graph = Paker::get_dependency_graph();
@@ -158,6 +190,16 @@ void pm_check_conflicts() {
 void pm_resolve_conflicts() {
     LOG(INFO) << "Resolving dependency conflicts";
     Paker::Output::info("Resolving dependency conflicts...");
+    
+    // 确保服务已初始化
+    if (!Paker::get_dependency_resolver()) {
+        Paker::Output::info("Initializing dependency resolver service...");
+        if (!initialize_paker_services()) {
+            LOG(ERROR) << "Failed to initialize services";
+            Paker::Output::error("Failed to initialize services");
+            return;
+        }
+    }
     
     auto* resolver = Paker::get_dependency_resolver();
     auto* graph = Paker::get_dependency_graph();
@@ -224,6 +266,16 @@ void pm_resolve_conflicts() {
 void pm_validate_dependencies() {
     LOG(INFO) << "Validating dependencies";
     Paker::Output::info("Validating dependencies...");
+    
+    // 确保服务已初始化
+    if (!Paker::get_dependency_resolver()) {
+        Paker::Output::info("Initializing dependency resolver service...");
+        if (!initialize_paker_services()) {
+            LOG(ERROR) << "Failed to initialize services";
+            Paker::Output::error("Failed to initialize services");
+            return;
+        }
+    }
     
     auto* resolver = Paker::get_dependency_resolver();
     auto* graph = Paker::get_dependency_graph();

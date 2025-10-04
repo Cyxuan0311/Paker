@@ -1,5 +1,6 @@
 #include "Paker/core/async_io.h"
 #include "Paker/core/memory_pool.h"
+#include "Paker/core/package_manager.h"
 #include <fstream>
 #include <sstream>
 #include <filesystem>
@@ -682,6 +683,13 @@ void cleanup_async_io_manager() {
 }
 
 AsyncIOManager* get_async_io_manager() {
+    if (!g_async_io_manager) {
+        // 尝试初始化服务
+        if (initialize_paker_services()) {
+            // 服务初始化后，创建异步I/O管理器
+            g_async_io_manager = std::make_unique<AsyncIOManager>();
+        }
+    }
     return g_async_io_manager.get();
 }
 
