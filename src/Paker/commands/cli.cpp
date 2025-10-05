@@ -11,6 +11,7 @@
 #include "Paker/commands/async_io.h"
 #include "Paker/commands/version.h"
 #include "Paker/commands/remove_project.h"
+#include "Paker/commands/suggestion.h"
 #include "Paker/core/utils.h"
 #include "Paker/core/output.h"
 #include "Paker/core/package_manager.h"
@@ -528,6 +529,23 @@ int run_cli(int argc, char* argv[]) {
         } else {
             Paker::pm_remove_project_confirm();
         }
+    });
+
+    // suggestion - 智能包推荐
+    std::string suggestion_category, suggestion_performance, suggestion_security;
+    bool suggestion_detailed = false, suggestion_auto_install = false;
+    std::string suggestion_export_path;
+    
+    auto suggestion = app.add_subcommand("suggestion", "Smart package recommendations based on project analysis");
+    suggestion->add_option("--category", suggestion_category, "Filter by category (web, desktop, embedded, game)");
+    suggestion->add_option("--performance", suggestion_performance, "Filter by performance level (low, medium, high)");
+    suggestion->add_option("--security", suggestion_security, "Filter by security level (low, medium, high)");
+    suggestion->add_flag("--detailed", suggestion_detailed, "Show detailed analysis and recommendations");
+    suggestion->add_flag("--auto-install", suggestion_auto_install, "Automatically install recommended packages");
+    suggestion->add_option("--export", suggestion_export_path, "Export analysis results to file");
+    suggestion->callback([&]() {
+        Paker::pm_smart_suggestion(suggestion_category, suggestion_performance, suggestion_security, 
+                                   suggestion_detailed, suggestion_auto_install, suggestion_export_path);
     });
 
     CLI11_PARSE(app, argc, argv);
