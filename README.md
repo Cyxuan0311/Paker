@@ -1,6 +1,6 @@
-# Paker
-
 <div align="center">
+
+# Paker ：A modern C++ package manager
 
 <img src="icon/logo.png" alt="Paker Logo" width="250" height="200">
 
@@ -15,18 +15,18 @@
 
 ## 项目简介
 
-**Paker** 是一个用 C++ 编写的现代化 C++ 包管理器，采用**服务导向架构**设计，支持**全局缓存模式**、**智能依赖管理**、**冲突检测与解决**、**性能监控和诊断工具**。具备精确的文件跟踪功能，确保依赖包的完整安装和清理。提供友好的彩色 CLI 输出，包括表格化显示、进度条和优化的依赖树可视化。
+**Paker** 是一个用 C++ 编写的现代化 C++ 包管理器，采用**服务导向架构**设计，支持**全局缓存模式**、**智能依赖管理**、**冲突检测与解决**、**性能监控和诊断工具**。具备精确的文件跟踪功能，确保依赖包的完整安装和清理。提供友好的彩色 CLI 输出，包括表格化显示、进度条和优化的依赖树可视化。**集成GitHub API智能推荐系统**，基于项目特征和GitHub热门项目提供个性化包推荐。
 
 ### 核心特性
 
 <div align="center">
 
-| **智能管理** | **高性能** | **开发友好** |
-|:---:|:---:|:---:|
-| 全局缓存模式 | 异步I/O操作 | 彩色CLI输出 |
-| 智能依赖解析 | 并行下载 | 表格化显示 |
-| 冲突检测解决 | 增量更新 | 进度条显示 |
-| 版本回滚系统 | 内存优化 | 依赖树可视化 |
+| **智能管理** | **高性能** | **开发友好** | **AI推荐** |
+|:---:|:---:|:---:|:---:|
+| 全局缓存模式 | 异步I/O操作 | 彩色CLI输出 | GitHub集成 |
+| 智能依赖解析 | 并行下载 | 表格化显示 | 智能推荐 |
+| 冲突检测解决 | 增量更新 | 进度条显示 | 项目分析 |
+| 版本回滚系统 | 内存优化 | 依赖树可视化 | 热门包推荐 |
 
 </div>
 
@@ -50,9 +50,16 @@
 - **预测性预加载**：基于依赖关系预测并预加载可能需要的包
 - **自适应重试机制**：根据网络状况调整重试次数和延迟时间
 
+### AI智能推荐
+- **GitHub项目分析**：自动检测和分析GitHub项目特征
+- **智能包推荐**：基于项目类型、依赖关系、性能需求等十二维度推荐
+- **热门包推荐**：基于GitHub stars和流行度推荐热门包
+- **相似项目分析**：查找相似项目并推荐其使用的包
+- **实时数据更新**：基于GitHub API实时获取最新推荐数据
+
 ## 性能指标
 
-<div align="center">
+
 
 | 优化项目 | 性能提升 | 说明 |
 |:---:|:---:|:---|
@@ -64,7 +71,7 @@
 | **内存优化** | **50-80%** | 智能内存池、零拷贝I/O |
 | **智能缓存** | **85%+** | LRU算法管理缓存命中率 |
 
-</div>
+
 
 ## 快速开始
 
@@ -101,6 +108,9 @@ Paker rollback fmt 1.0.0
 # 性能监控
 Paker perf
 Paker analyze
+
+# 智能推荐
+Paker suggestion
 ```
 
 ### 开发模式
@@ -167,7 +177,7 @@ Paker/
 
 ## 文档导航
 
-<div align="center">
+
 
 | 文档类型 | 文档名称 | 描述 |
 |:---:|:---:|:---|
@@ -177,8 +187,10 @@ Paker/
 | **架构优化** | [头文件优化](docs/HEADER_OPTIMIZATION.md) | 编译性能优化和头文件管理 |
 | **网络优化** | [网络优化](docs/NETWORK_OPTIMIZATION.md) | HTTP/2、连接池、CDN集成 |
 | **SIMD优化** | [SIMD优化](docs/SIMD_OPTIMIZATION.md) | SIMD指令集加速数据处理 |
+**智能补全** | [智能补全](docs/COMPLETION_GUIDE.md) | 智能命令补全系统(bash/zsh) |
+**智能推荐** | [智能推荐指南](docs/SUGGESTION_GUIDE.md) | GitHub集成的智能包推荐系统 |
 
-</div>
+
 
 ## 技术栈
 
@@ -186,12 +198,14 @@ Paker/
 
 | 依赖库 | 版本 | 用途 | 状态 |
 |:---:|:---:|:---:|:---:|
-| [CLI11](https://github.com/CLIUtils/CLI11) | 最新 | 命令行参数解析 | ✅ 已集成 |
-| [nlohmann/json](https://github.com/nlohmann/json) | 最新 | JSON处理 | ✅ 已集成 |
 | [glog](https://github.com/google/glog) | 最新 | 日志记录 | ✅ 必需 |
-| [CURL](https://curl.se/) | 最新 | 网络下载和HTTP客户端 | ✅ 必需 |
 | [OpenSSL](https://www.openssl.org/) | 最新 | 加密和哈希计算 | ✅ 必需 |
+| [CURL](https://curl.se/) | 最新 | 网络下载和HTTP客户端 | ✅ 必需 |
+| [jsoncpp](https://github.com/open-source-parsers/jsoncpp) | 最新 | JSON解析和GitHub API | ✅ 必需 |
 | [zlib](https://zlib.net/) | 最新 | 数据压缩和解压缩 | ✅ 必需 |
+| [OpenMP](https://www.openmp.org/) | 最新 | 并行计算支持 | ✅ 必需 |
+| stdc++fs | 内置 | std::filesystem支持 | ✅ 自动 |
+| SIMD指令集 | 自动检测 | SSE2/SSE4.2/AVX2/AVX512优化 | ✅ 可选 |
 
 ### 系统要求
 
@@ -204,6 +218,26 @@ Paker/
 
 ## 构建和测试
 
+### 安装依赖
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get update
+sudo apt-get install build-essential cmake libglog-dev libssl-dev libcurl4-openssl-dev libjsoncpp-dev zlib1g-dev libomp-dev
+```
+
+**CentOS/RHEL:**
+```bash
+sudo yum install gcc-c++ cmake glog-devel openssl-devel libcurl-devel jsoncpp-devel zlib-devel libomp-devel
+```
+
+**macOS:**
+```bash
+brew install cmake glog openssl curl jsoncpp zlib libomp
+```
+
+### 构建项目
+
 ```bash
 # 构建项目
 mkdir build && cd build
@@ -215,7 +249,19 @@ make -j4
 
 # 运行性能测试
 ./scripts/performance_test.sh
+
+
+### 智能命令提示
+
+# Bash 用户
+source scripts/completion/paker-completion.bash
+echo 'source /path/to/paker/scripts/completion/paker-completion.bash' >> ~/.bashrc
+
+# Zsh 用户
+source scripts/completion/_paker
+echo 'source /path/to/paker/scripts/completion/_paker' >> ~/.zshrc
 ```
+
 
 ## License
 MIT
