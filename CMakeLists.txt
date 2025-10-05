@@ -54,6 +54,7 @@ find_package(OpenSSL REQUIRED)
 
 # 查找CURL库
 find_package(CURL REQUIRED)
+find_package(jsoncpp REQUIRED)
 
 # 查找zlib库
 find_package(ZLIB REQUIRED)
@@ -82,9 +83,9 @@ target_precompile_headers(Paker PRIVATE include/Paker/pch.h)
 
 # 修复 std::filesystem 链接错误
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_link_libraries(Paker stdc++fs glog::glog OpenSSL::SSL OpenSSL::Crypto CURL::libcurl ZLIB::ZLIB OpenMP::OpenMP_CXX)
+    target_link_libraries(Paker stdc++fs glog::glog OpenSSL::SSL OpenSSL::Crypto CURL::libcurl ZLIB::ZLIB OpenMP::OpenMP_CXX jsoncpp_lib)
 else()
-    target_link_libraries(Paker glog::glog OpenSSL::SSL OpenSSL::Crypto CURL::libcurl ZLIB::ZLIB OpenMP::OpenMP_CXX)
+    target_link_libraries(Paker glog::glog OpenSSL::SSL OpenSSL::Crypto CURL::libcurl ZLIB::ZLIB OpenMP::OpenMP_CXX jsoncpp_lib)
 endif()
 
 # 设置安装目标
