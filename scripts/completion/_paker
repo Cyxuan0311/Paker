@@ -1,0 +1,427 @@
+#compdef paker Paker
+# Paker Zsh 智能补全脚本
+# 支持动态补全、上下文感知、智能建议
+
+# 补全函数
+_paker() {
+    local context state line
+    local -a commands subcommands flags
+    
+    # 主命令列表
+    commands=(
+        'init:初始化项目'
+        'add:添加依赖包'
+        'remove:移除依赖包'
+        'list:列出所有依赖'
+        'tree:显示依赖树'
+        'search:搜索依赖包'
+        'info:查看包信息'
+        'update:同步本地依赖'
+        'upgrade:升级所有依赖'
+        'lock:锁定依赖版本'
+        'install-l:按锁文件安装'
+        'resolve:解析项目依赖'
+        'check:检查依赖冲突'
+        'fix:解决依赖冲突'
+        'validate:验证依赖完整性'
+        'perf:生成性能报告'
+        'analyze:分析依赖结构'
+        'diagnose:运行系统诊断'
+        'monitor-enable:启用性能监控'
+        'monitor-clear:清除监控数据'
+        'cache:缓存管理'
+        'rollback:回滚管理'
+        'history:版本历史管理'
+        'record:包安装记录'
+        'parse:增量解析管理'
+        'io:异步I/O管理'
+        'warmup:缓存预热'
+        'remote-add:添加依赖源'
+        'remote-rm:移除依赖源'
+        'version:显示版本信息'
+        'remove-project:移除项目'
+        'suggestion:智能包推荐'
+    )
+    
+    # 全局标志
+    flags=(
+        '--help:显示帮助信息'
+        '--version:显示版本信息'
+        '--no-color:禁用彩色输出'
+        '--dev:启用开发模式'
+    )
+    
+    # 解析当前命令上下文
+    _arguments -C \
+        '1: :->command' \
+        '*::arg:->args' \
+        '--help[显示帮助信息]' \
+        '--version[显示版本信息]' \
+        '--no-color[禁用彩色输出]' \
+        '--dev[启用开发模式]'
+    
+    case $state in
+        command)
+            _describe 'commands' commands
+            ;;
+        args)
+            case $line[1] in
+                add)
+                    _paker_add_completion
+                    ;;
+                remove)
+                    _paker_remove_completion
+                    ;;
+                cache)
+                    _paker_cache_completion
+                    ;;
+                rollback)
+                    _paker_rollback_completion
+                    ;;
+                history)
+                    _paker_history_completion
+                    ;;
+                record)
+                    _paker_record_completion
+                    ;;
+                parse)
+                    _paker_parse_completion
+                    ;;
+                io)
+                    _paker_io_completion
+                    ;;
+                remote-add)
+                    _paker_remote_add_completion
+                    ;;
+                remote-rm)
+                    _paker_remote_rm_completion
+                    ;;
+                suggestion)
+                    _paker_suggestion_completion
+                    ;;
+                *)
+                    _paker_general_completion
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+# 添加包补全
+_paker_add_completion() {
+    local -a packages common_packages
+    
+    # 从缓存获取可用包列表
+    packages=(${(f)"$(Paker cache list --names-only 2>/dev/null | head -20)"})
+    
+    # 常用包列表
+    common_packages=(
+        'fmt:现代C++格式化库'
+        'spdlog:快速C++日志库'
+        'nlohmann-json:现代C++ JSON库'
+        'boost:Boost C++库集合'
+        'catch2:现代C++测试框架'
+        'gtest:Google测试框架'
+        'benchmark:Google基准测试框架'
+    )
+    
+    if [[ -n "$packages" ]]; then
+        _describe 'packages' packages
+    else
+        _describe 'common packages' common_packages
+    fi
+}
+
+# 移除包补全
+_paker_remove_completion() {
+    local -a installed_packages
+    
+    # 获取当前项目已安装的包
+    installed_packages=(${(f)"$(Paker list --names-only 2>/dev/null)"})
+    
+    if [[ -n "$installed_packages" ]]; then
+        _describe 'installed packages' installed_packages
+    fi
+}
+
+# 缓存管理补全
+_paker_cache_completion() {
+    local -a cache_commands cache_flags
+    
+    cache_commands=(
+        'add:安装包到缓存'
+        'remove:从缓存删除包'
+        'status:显示缓存状态'
+        'clean:清理缓存'
+        'lru:LRU缓存管理'
+    )
+    
+    cache_flags=(
+        '--detailed:显示详细信息'
+        '--smart:智能清理'
+        '--force:强制清理'
+        '--stats:显示统计信息'
+        '--status:显示状态'
+    )
+    
+    _describe 'cache commands' cache_commands
+    _describe 'cache flags' cache_flags
+}
+
+# 回滚补全
+_paker_rollback_completion() {
+    local -a rollback_flags installed_packages
+    
+    rollback_flags=(
+        '--previous:回滚到上一版本'
+        '--timestamp:回滚到时间点'
+        '--force:强制回滚'
+        '--list:列出可回滚版本'
+        '--check:检查回滚安全性'
+        '--stats:显示回滚统计'
+    )
+    
+    # 获取已安装包列表
+    installed_packages=(${(f)"$(Paker list --names-only 2>/dev/null)"})
+    
+    _describe 'rollback flags' rollback_flags
+    if [[ -n "$installed_packages" ]]; then
+        _describe 'installed packages' installed_packages
+    fi
+}
+
+# 历史管理补全
+_paker_history_completion() {
+    local -a history_flags installed_packages
+    
+    history_flags=(
+        '--clean:清理历史记录'
+        '--export:导出历史记录'
+        '--import:导入历史记录'
+        '--max-entries:最大条目数'
+    )
+    
+    # 获取已安装包列表
+    installed_packages=(${(f)"$(Paker list --names-only 2>/dev/null)"})
+    
+    _describe 'history flags' history_flags
+    if [[ -n "$installed_packages" ]]; then
+        _describe 'installed packages' installed_packages
+    fi
+}
+
+# 记录管理补全
+_paker_record_completion() {
+    local -a record_flags installed_packages
+    
+    record_flags=(
+        '--list:列出所有包记录'
+        '--files:显示包文件列表'
+    )
+    
+    # 获取已安装包列表
+    installed_packages=(${(f)"$(Paker list --names-only 2>/dev/null)"})
+    
+    _describe 'record flags' record_flags
+    if [[ -n "$installed_packages" ]]; then
+        _describe 'installed packages' installed_packages
+    fi
+}
+
+# 解析管理补全
+_paker_parse_completion() {
+    local -a parse_flags
+    
+    parse_flags=(
+        '--stats:显示解析统计'
+        '--config:显示解析配置'
+        '--clear:清除解析缓存'
+        '--opt:优化解析缓存'
+        '--validate:验证解析缓存'
+    )
+    
+    _describe 'parse flags' parse_flags
+}
+
+# I/O管理补全
+_paker_io_completion() {
+    local -a io_flags
+    
+    io_flags=(
+        '--stats:显示I/O统计'
+        '--config:显示I/O配置'
+        '--test:运行I/O测试'
+        '--bench:运行I/O基准测试'
+        '--opt:优化I/O性能'
+    )
+    
+    _describe 'io flags' io_flags
+}
+
+# 远程源添加补全
+_paker_remote_add_completion() {
+    local -a common_remotes git_services
+    
+    common_remotes=(
+        'github:GitHub远程源'
+        'gitlab:GitLab远程源'
+        'bitbucket:Bitbucket远程源'
+        'custom:自定义远程源'
+    )
+    
+    git_services=(
+        'github.com:GitHub'
+        'gitlab.com:GitLab'
+        'bitbucket.org:Bitbucket'
+    )
+    
+    _describe 'common remotes' common_remotes
+    _describe 'git services' git_services
+}
+
+# 远程源移除补全
+_paker_remote_rm_completion() {
+    local -a configured_remotes common_remotes
+    
+    # 获取已配置的远程源
+    configured_remotes=(${(f)"$(Paker remote-list --names-only 2>/dev/null)"})
+    
+    # 常用远程源
+    common_remotes=(
+        'github:GitHub远程源'
+        'gitlab:GitLab远程源'
+        'bitbucket:Bitbucket远程源'
+    )
+    
+    if [[ -n "$configured_remotes" ]]; then
+        _describe 'configured remotes' configured_remotes
+    else
+        _describe 'common remotes' common_remotes
+    fi
+}
+
+# 智能推荐补全
+_paker_suggestion_completion() {
+    local -a suggestion_flags categories performance_levels security_levels
+    
+    suggestion_flags=(
+        '--category:按类别过滤'
+        '--performance:按性能要求过滤'
+        '--security:按安全要求过滤'
+        '--detailed:显示详细分析'
+        '--auto-install:自动安装推荐包'
+        '--export:导出分析结果'
+    )
+    
+    categories=(
+        'web:Web应用'
+        'desktop:桌面应用'
+        'embedded:嵌入式系统'
+        'game:游戏引擎'
+        'scientific:科学计算'
+        'machine_learning:机器学习'
+    )
+    
+    performance_levels=(
+        'low:低性能要求'
+        'medium:中等性能要求'
+        'high:高性能要求'
+    )
+    
+    security_levels=(
+        'low:低安全要求'
+        'medium:中等安全要求'
+        'high:高安全要求'
+    )
+    
+    _describe 'suggestion flags' suggestion_flags
+    _describe 'categories' categories
+    _describe 'performance levels' performance_levels
+    _describe 'security levels' security_levels
+}
+
+# 通用补全
+_paker_general_completion() {
+    local -a project_commands init_commands
+    
+    if [[ -f "Paker.json" ]]; then
+        # 在Paker项目中
+        project_commands=(
+            'add:添加依赖包'
+            'remove:移除依赖包'
+            'list:列出所有依赖'
+            'tree:显示依赖树'
+            'resolve:解析项目依赖'
+            'check:检查依赖冲突'
+            'fix:解决依赖冲突'
+            'validate:验证依赖完整性'
+            'suggestion:智能包推荐'
+        )
+        _describe 'project commands' project_commands
+    else
+        # 不在项目中
+        init_commands=(
+            'init:初始化项目'
+            '--help:显示帮助信息'
+            '--version:显示版本信息'
+        )
+        _describe 'init commands' init_commands
+    fi
+}
+
+# 智能建议功能
+_paker_smart_suggestions() {
+    local cmd="$1"
+    local context="$2"
+    
+    case "$cmd" in
+        "add")
+            echo "💡 提示: 使用 'Paker add <package>' 添加依赖包"
+            echo "   示例: Paker add fmt spdlog nlohmann-json"
+            ;;
+        "cache")
+            echo "💡 提示: 使用 'Paker cache status' 查看缓存状态"
+            echo "   使用 'Paker cache clean --smart' 智能清理缓存"
+            ;;
+        "rollback")
+            echo "💡 提示: 使用 'Paker rollback --list <package>' 查看可回滚版本"
+            echo "   使用 'Paker rollback <package> <version>' 回滚到指定版本"
+            ;;
+        "perf")
+            echo "💡 提示: 使用 'Paker perf' 生成性能报告"
+            echo "   使用 'Paker analyze' 分析依赖结构"
+            ;;
+    esac
+}
+
+# 错误处理和建议
+_paker_error_handling() {
+    local error_code="$1"
+    local command="$2"
+    
+    case "$error_code" in
+        "command_not_found")
+            echo "❌ 命令未找到: $command"
+            echo "💡 建议: 使用 'Paker --help' 查看可用命令"
+            ;;
+        "package_not_found")
+            echo "❌ 包未找到: $command"
+            echo "💡 建议: 使用 'Paker search <package>' 搜索包"
+            ;;
+        "not_in_project")
+            echo "❌ 当前目录不是Paker项目"
+            echo "💡 建议: 使用 'Paker init' 初始化项目"
+            ;;
+    esac
+}
+
+# 自动补全配置
+autoload -U compinit && compinit
+autoload -U bashcompinit && bashcompinit
+
+# 静默加载，不显示提示信息
+# 只有在调试模式下才显示加载信息
+if [[ "${PAKER_COMPLETION_DEBUG:-false}" == "true" ]]; then
+    echo "✅ Paker Zsh 补全已加载"
+    echo "💡 使用 'Paker <TAB>' 开始智能补全"
+fi
