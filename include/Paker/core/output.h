@@ -50,7 +50,9 @@ enum class ProgressStyle {
     BLOCK,      // 块样式: [████████░░] 80%
     ROTATING,   // 旋转样式: [====>    ] 50% ⏳
     SMOOTH,     // 平滑样式: [████████░░] 80% █
-    MINIMAL     // 最小样式: 50% (100/200)
+    MINIMAL,    // 最小样式: 50% (100/200)
+    SPINNER,    // 旋转器样式: ⏳ Installing... 50%
+    NPM_STYLE   // NPM风格: ⏳ Installing package... 50%
 };
 
 // 进度条类
@@ -72,11 +74,17 @@ private:
     std::vector<double> recent_speeds_;  // 最近的速度记录，用于平滑计算
     static constexpr size_t SPEED_HISTORY_SIZE = 10;
     
+    // 旋转字符相关
+    mutable int spinner_index_;
+    static constexpr const char* SPINNER_CHARS = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+    static constexpr const char* NPM_SPINNER_CHARS = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+    
     // 内部方法
     std::string format_eta(double seconds) const;
     std::string format_speed(double items_per_second) const;
     double calculate_smoothed_speed() const;
     void update_speed_history();
+    std::string get_spinner_char() const;
     
 public:
     ProgressBar(int total, int width = 50, const std::string& prefix = "", 
