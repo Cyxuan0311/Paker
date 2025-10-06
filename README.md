@@ -1,6 +1,6 @@
 <div align="center">
 
-# Paker ：A modern C++ package manager
+# Paker ：A modern intelligent C++ package manager
 
 <img src="icon/logo.png" alt="Paker Logo" width="250" height="200">
 
@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/your-username/paker)
 
-**现代化 C++ 包管理器 | 高性能 | 智能缓存 | 异步I/O**
+**现代化智能 C++ 包管理器 | 高性能 | 智能缓存 | 智能推荐 | 异步I/O**
 
 </div>
 
@@ -264,4 +264,4 @@ echo 'source /path/to/paker/scripts/completion/_paker' >> ~/.zshrc
 
 
 ## License
-MIT
+MIT 
