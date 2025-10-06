@@ -320,9 +320,9 @@ std::shared_ptr<Task> DownloadTaskFactory::create_download_task(
             // 创建目标目录
             fs::create_directories(fs::path(target_path).parent_path());
             
-            // 执行git clone
+            // 执行git clone with progress
             std::ostringstream cmd;
-            cmd << "git clone --depth 1 " << repository_url << " " << target_path;
+            cmd << "git clone --progress --depth 1 " << repository_url << " " << target_path;
             int ret = std::system(cmd.str().c_str());
             
             if (ret != 0) {
@@ -332,11 +332,14 @@ std::shared_ptr<Task> DownloadTaskFactory::create_download_task(
             
             // 检出版本
             if (!version.empty() && version != "*" && version != "latest") {
+                LOG(INFO) << "Checking out version " << version << " for " << package_name;
                 std::ostringstream checkout_cmd;
                 checkout_cmd << "cd " << target_path << " && git fetch --tags && git checkout " << version;
                 ret = std::system(checkout_cmd.str().c_str());
                 if (ret != 0) {
                     LOG(WARNING) << "Failed to checkout version " << version;
+                } else {
+                    LOG(INFO) << "Successfully checked out version " << version << " for " << package_name;
                 }
             }
             

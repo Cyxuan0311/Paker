@@ -18,8 +18,73 @@ ProgressBar::ProgressBar(int total, int width, const std::string& prefix,
                         bool show_percentage, bool show_eta, bool show_speed, ProgressStyle style)
     : total_(total), current_(0), width_(width), prefix_(prefix), suffix_(""),
       show_percentage_(show_percentage), show_eta_(show_eta), show_speed_(show_speed), style_(style),
-      start_time_(std::chrono::steady_clock::now()), last_update_time_(start_time_) {
+      start_time_(std::chrono::steady_clock::now()), last_update_time_(start_time_), spinner_index_(0) {
     recent_speeds_.reserve(SPEED_HISTORY_SIZE);
+    
+    // 显示初始状态（0%）
+    if (total_ > 0) {
+        std::cout << "\r" << prefix_;
+        
+        // 根据样式绘制初始进度条
+        switch (style_) {
+            case ProgressStyle::BASIC: {
+                std::cout << "[";
+                for (int i = 0; i < width_; ++i) {
+                    std::cout << " ";
+                }
+                std::cout << "]";
+                break;
+            }
+                
+            case ProgressStyle::BLOCK: {
+                std::cout << "[";
+                for (int i = 0; i < width_; ++i) {
+                    std::cout << "-";
+                }
+                std::cout << "]";
+                break;
+            }
+                
+            case ProgressStyle::ROTATING: {
+                std::cout << "[";
+                for (int i = 0; i < width_; ++i) {
+                    std::cout << "-";
+                }
+                std::cout << "]";
+                break;
+            }
+                
+            case ProgressStyle::SMOOTH: {
+                std::cout << "[";
+                for (int i = 0; i < width_; ++i) {
+                    std::cout << " ";
+                }
+                std::cout << "]";
+                break;
+            }
+                
+            case ProgressStyle::SPINNER: {
+                std::cout << get_spinner_char() << " " << prefix_;
+                break;
+            }
+                
+            case ProgressStyle::NPM_STYLE: {
+                std::cout << get_spinner_char() << " " << prefix_;
+                break;
+            }
+                
+            case ProgressStyle::MINIMAL:
+                // 最小样式不显示进度条
+                break;
+        }
+        
+        // 显示百分比
+        if (show_percentage_) {
+            std::cout << " 0%";
+        }
+        
+        std::cout.flush();
+    }
 }
 
 void ProgressBar::update(int current) {
@@ -112,6 +177,21 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
         case ProgressStyle::MINIMAL:
             // 最小样式不显示进度条
             break;
+            
+        case ProgressStyle::SPINNER: {
+            // 旋转器样式：只显示旋转字符和文本
+            std::cout << get_spinner_char() << " " << prefix_;
+            break;
+        }
+        
+        case ProgressStyle::NPM_STYLE: {
+            // NPM风格：旋转字符 + 文本 + 百分比
+            std::cout << get_spinner_char() << " " << prefix_;
+            if (!custom_suffix.empty()) {
+                std::cout << " " << custom_suffix;
+            }
+            break;
+        }
     }
     
     // 添加百分比
@@ -166,6 +246,12 @@ void ProgressBar::reset(int total) {
     start_time_ = std::chrono::steady_clock::now();
     last_update_time_ = start_time_;
     recent_speeds_.clear();
+    spinner_index_ = 0;
+}
+
+std::string ProgressBar::get_spinner_char() const {
+    spinner_index_ = (spinner_index_ + 1) % 10;  // 10个旋转字符
+    return std::string(1, SPINNER_CHARS[spinner_index_]);
 }
 
 double ProgressBar::get_percentage() const {
