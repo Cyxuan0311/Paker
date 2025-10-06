@@ -142,113 +142,72 @@ void display_recommendations(const std::vector<Analysis::PackageRecommendation>&
     }
     
     Paker::Output::info("Smart Package Recommendations:");
+    std::cout << std::endl;
     
-    if (detailed) {
-        // 详细显示
-        for (size_t i = 0; i < recommendations.size(); ++i) {
-            const auto& rec = recommendations[i];
-            
-            std::cout << std::endl;
-            std::cout << (i + 1) << ". " << rec.name << " (Recommendation: ";
-            
-            // 显示推荐度星级
-            int stars = static_cast<int>(rec.confidence * 5);
-            for (int j = 0; j < stars; ++j) {
-                std::cout << "⭐";
-            }
-            for (int j = stars; j < 5; ++j) {
-                std::cout << "☆";
-            }
-            std::cout << ")" << std::endl;
-            
-            std::cout << "   ├── Description: " << rec.description << std::endl;
-            std::cout << "   ├── Reason: " << rec.reason << std::endl;
-            std::cout << "   ├── Category: " << rec.category << std::endl;
-            std::cout << "   ├── Compatibility: " << std::fixed << std::setprecision(0) << (rec.compatibility * 100) << "%" << std::endl;
-            std::cout << "   ├── Popularity: " << std::fixed << std::setprecision(0) << (rec.popularity * 100) << "%" << std::endl;
-            std::cout << "   ├── Maintenance: " << std::fixed << std::setprecision(0) << (rec.maintenance * 100) << "%" << std::endl;
-            std::cout << "   ├── Priority: " << rec.priority << std::endl;
-            std::cout << "   └── Install: " << rec.install_command << std::endl;
-        }
-    } else {
-        // 专业表格显示 - 参考nvidia-smi等专业工具的对齐效果
+    for (size_t i = 0; i < recommendations.size(); ++i) {
+        const auto& rec = recommendations[i];
+        
+        // 使用彩色输出显示包名和序号
+        std::cout << "[" << (i + 1) << "] ";
+        Paker::Output::print(rec.name, Paker::OutputType::SUCCESS);
         std::cout << std::endl;
         
-        // 定义固定列宽，确保完美对齐
-        const size_t PACKAGE_WIDTH = 18;
-        const size_t REASON_WIDTH = 28;
-        const size_t PRIORITY_WIDTH = 8;
-        const size_t COMPAT_WIDTH = 8;
-        const size_t POPULAR_WIDTH = 8;
+        // 显示推荐原因
+        std::cout << "    ";
+        Paker::Output::print("Reason: ", Paker::OutputType::INFO);
+        std::cout << rec.reason << std::endl;
         
-        // 构建专业表格边框
-        std::string top_border = "+" + std::string(PACKAGE_WIDTH + 2, '-') + "+" +
-                                std::string(REASON_WIDTH + 2, '-') + "+" +
-                                std::string(PRIORITY_WIDTH + 2, '-') + "+" +
-                                std::string(COMPAT_WIDTH + 2, '-') + "+" +
-                                std::string(POPULAR_WIDTH + 2, '-') + "+";
+        // 显示优先级，使用不同颜色
+        std::cout << "    ";
+        Paker::Output::print("Priority: ", Paker::OutputType::INFO);
+        if (rec.priority == "high") {
+            Paker::Output::print(rec.priority, Paker::OutputType::SUCCESS);
+        } else if (rec.priority == "medium") {
+            Paker::Output::print(rec.priority, Paker::OutputType::WARNING);
+        } else {
+            Paker::Output::print(rec.priority, Paker::OutputType::ERROR);
+        }
+        std::cout << std::endl;
         
-        std::string separator = "+" + std::string(PACKAGE_WIDTH + 2, '-') + "+" +
-                               std::string(REASON_WIDTH + 2, '-') + "+" +
-                               std::string(PRIORITY_WIDTH + 2, '-') + "+" +
-                               std::string(COMPAT_WIDTH + 2, '-') + "+" +
-                               std::string(POPULAR_WIDTH + 2, '-') + "+";
+        // 显示兼容性和流行度
+        std::cout << "    ";
+        Paker::Output::print("Compatibility: ", Paker::OutputType::INFO);
+        std::cout << static_cast<int>(rec.compatibility * 100) << "%" << std::endl;
         
-        std::string bottom_border = "+" + std::string(PACKAGE_WIDTH + 2, '-') + "+" +
-                                   std::string(REASON_WIDTH + 2, '-') + "+" +
-                                   std::string(PRIORITY_WIDTH + 2, '-') + "+" +
-                                   std::string(COMPAT_WIDTH + 2, '-') + "+" +
-                                   std::string(POPULAR_WIDTH + 2, '-') + "+";
+        std::cout << "    ";
+        Paker::Output::print("Popularity: ", Paker::OutputType::INFO);
+        std::cout << static_cast<int>(rec.popularity * 100) << "%" << std::endl;
         
-        // 输出表格头部
-        std::cout << top_border << std::endl;
-        std::cout << "| " << std::setw(PACKAGE_WIDTH) << std::left << "Package"
-                  << " | " << std::setw(REASON_WIDTH) << std::left << "Reason"
-                  << " | " << std::setw(PRIORITY_WIDTH) << std::left << "Priority"
-                  << " | " << std::setw(COMPAT_WIDTH) << std::left << "Compat"
-                  << " | " << std::setw(POPULAR_WIDTH) << std::left << "Popular" << " |" << std::endl;
-        std::cout << separator << std::endl;
-        
-        // 输出数据行 - 专业级对齐
-        for (const auto& rec : recommendations) {
-            // 智能截断文本，保持对齐
-            std::string package_name = rec.name;
-            if (package_name.length() > PACKAGE_WIDTH) {
-                package_name = package_name.substr(0, PACKAGE_WIDTH - 3) + "...";
-            }
-            
-            std::string reason = rec.reason;
-            if (reason.length() > REASON_WIDTH) {
-                reason = reason.substr(0, REASON_WIDTH - 3) + "...";
-            }
-            
-            // 格式化百分比，确保对齐
-            std::string compat_str = std::to_string(static_cast<int>(rec.compatibility * 100)) + "%";
-            std::string popular_str = std::to_string(static_cast<int>(rec.popularity * 100)) + "%";
-            
-            // 优先级格式化
-            std::string priority_str = rec.priority;
-            if (priority_str == "high") {
-                priority_str = "HIGH";
-            } else if (priority_str == "medium") {
-                priority_str = "MED";
-            } else {
-                priority_str = "LOW";
-            }
-            
-            // 输出完美对齐的行 - 使用精确的列宽控制
-            std::cout << "| " << std::setw(PACKAGE_WIDTH) << std::left << package_name
-                      << " | " << std::setw(REASON_WIDTH) << std::left << reason
-                      << " | " << std::setw(PRIORITY_WIDTH) << std::left << priority_str
-                      << " | " << std::setw(COMPAT_WIDTH) << std::right << compat_str
-                      << " | " << std::setw(POPULAR_WIDTH) << std::right << popular_str
-                      << " |" << std::endl;
+        // 显示GitHub地址
+        if (!rec.github_url.empty()) {
+            std::cout << "    ";
+            Paker::Output::print("GitHub: ", Paker::OutputType::INFO);
+            Paker::Output::print(rec.github_url, Paker::OutputType::INFO);
+            std::cout << std::endl;
         }
         
-        std::cout << bottom_border << std::endl;
+        // 如果是详细模式，显示更多信息
+        if (detailed) {
+            std::cout << "    ";
+            Paker::Output::print("Description: ", Paker::OutputType::INFO);
+            std::cout << rec.description << std::endl;
+            
+            std::cout << "    ";
+            Paker::Output::print("Category: ", Paker::OutputType::INFO);
+            std::cout << rec.category << std::endl;
+            
+            std::cout << "    ";
+            Paker::Output::print("Maintenance: ", Paker::OutputType::INFO);
+            std::cout << static_cast<int>(rec.maintenance * 100) << "%" << std::endl;
+            
+            std::cout << "    ";
+            Paker::Output::print("Install: ", Paker::OutputType::INFO);
+            std::cout << rec.install_command << std::endl;
+        }
+        
+        std::cout << std::endl;
     }
     
-    std::cout << std::endl;
     Paker::Output::info("Use 'Paker suggestion --detailed' to view detailed recommendations");
     Paker::Output::info("Use 'Paker suggestion --auto-install' to automatically install recommended packages");
 }

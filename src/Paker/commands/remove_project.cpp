@@ -29,12 +29,18 @@ void pm_remove_project(bool force) {
         std::vector<std::string> files_to_remove = {
             "Paker.json",
             "Paker.lock",
-            "Paker.sources.json"
+            "Paker.sources.json",
+            "paker.json",
+            "paker.lock",
+            "paker.sources.json"
         };
         
         std::vector<std::string> dirs_to_remove = {
             ".paker",
-            "packages"
+            "packages",
+            "build",
+            "cmake-build-debug",
+            "cmake-build-release"
         };
         
         // 删除文件
@@ -65,7 +71,10 @@ void pm_remove_project(bool force) {
         std::vector<std::string> record_files = {
             "test_project_install_record.json",
             "install_record.json",
-            "package_records.json"
+            "package_records.json",
+            get_project_name() + "_install_record.json",
+            ".paker_record.json",
+            "paker_record.json"
         };
         
         for (const auto& record_file : record_files) {
@@ -75,6 +84,57 @@ void pm_remove_project(bool force) {
                     Output::info("Removed record file: " + record_file);
                 } catch (const std::exception& e) {
                     Output::warning("Failed to remove record file " + record_file + ": " + e.what());
+                }
+            }
+        }
+        
+        // 清理缓存和临时文件
+        std::vector<std::string> cache_files = {
+            ".paker/cache",
+            ".paker/links",
+            ".paker/temp",
+            ".paker/logs",
+            "paker_cache",
+            "paker_temp"
+        };
+        
+        for (const auto& cache_file : cache_files) {
+            if (fs::exists(cache_file)) {
+                try {
+                    if (fs::is_directory(cache_file)) {
+                        fs::remove_all(cache_file);
+                        Output::info("Removed cache directory: " + cache_file);
+                    } else {
+                        fs::remove(cache_file);
+                        Output::info("Removed cache file: " + cache_file);
+                    }
+                } catch (const std::exception& e) {
+                    Output::warning("Failed to remove cache " + cache_file + ": " + e.what());
+                }
+            }
+        }
+        
+        // 清理可能的CMake缓存文件
+        std::vector<std::string> cmake_files = {
+            "CMakeCache.txt",
+            "CMakeFiles",
+            "cmake_install.cmake",
+            "Makefile",
+            "build.ninja"
+        };
+        
+        for (const auto& cmake_file : cmake_files) {
+            if (fs::exists(cmake_file)) {
+                try {
+                    if (fs::is_directory(cmake_file)) {
+                        fs::remove_all(cmake_file);
+                        Output::info("Removed CMake directory: " + cmake_file);
+                    } else {
+                        fs::remove(cmake_file);
+                        Output::info("Removed CMake file: " + cmake_file);
+                    }
+                } catch (const std::exception& e) {
+                    Output::warning("Failed to remove CMake file " + cmake_file + ": " + e.what());
                 }
             }
         }
