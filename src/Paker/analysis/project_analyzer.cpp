@@ -1,4 +1,5 @@
 #include "Paker/analysis/project_analyzer.h"
+#include "Paker/analysis/project_type_config.h"
 #include "Paker/core/output.h"
 #include <fstream>
 #include <sstream>
@@ -10,102 +11,7 @@
 namespace Paker {
 namespace Analysis {
 
-ProjectAnalyzer::ProjectAnalyzer() {
-    // 初始化项目类型检测关键词（增强版）
-    project_type_indicators_ = {
-        {"web_application", {
-            "http", "server", "client", "rest", "api", "websocket", "tcp", "udp",
-            "boost-beast", "crow", "cpp-httplib", "pistache", "cpprest", "drogon",
-            "nginx", "apache", "microservice", "gateway", "load_balancer"
-        }},
-        {"desktop_application", {
-            "qt", "gtk", "wxwidgets", "fltk", "gui", "window", "dialog", "widget",
-            "qwidget", "qapplication", "gtkmm", "wxframe", "imwidget", "nuklear",
-            "imgui", "dear_imgui", "native", "cross_platform", "desktop"
-        }},
-        {"embedded_system", {
-            "embedded", "microcontroller", "rtos", "freertos", "zephyr", "threadx",
-            "stm32", "arduino", "esp32", "bare_metal", "hal", "driver", "bsp",
-            "mcu", "iot", "sensor", "actuator", "real_time", "low_power"
-        }},
-        {"game_engine", {
-            "opengl", "vulkan", "sdl", "sfml", "game", "graphics", "rendering",
-            "shader", "texture", "mesh", "sprite", "animation", "physics",
-            "bullet", "box2d", "chipmunk", "unity", "unreal", "cocos2d"
-        }},
-        {"scientific_computing", {
-            "eigen", "armadillo", "blas", "lapack", "fftw", "gsl", "mkl",
-            "numerical", "matrix", "vector", "linear_algebra", "statistics",
-            "optimization", "simulation", "finite_element", "computational"
-        }},
-        {"machine_learning", {
-            "tensorflow", "pytorch", "opencv", "ml", "neural", "deep_learning",
-            "ai", "computer_vision", "nlp", "sklearn", "xgboost", "lightgbm",
-            "onnx", "tflite", "inference", "training", "model", "dataset"
-        }},
-        {"blockchain", {
-            "blockchain", "crypto", "bitcoin", "ethereum", "smart_contract",
-            "consensus", "mining", "hash", "merkle", "distributed", "p2p"
-        }},
-        {"database", {
-            "database", "sql", "nosql", "mongodb", "redis", "postgresql",
-            "mysql", "sqlite", "cassandra", "elasticsearch", "influxdb"
-        }},
-        {"networking", {
-            "network", "socket", "tcp", "udp", "ip", "routing", "protocol",
-            "packet", "bandwidth", "latency", "throughput", "distributed"
-        }}
-    };
-
-    // 初始化性能要求检测关键词（增强版）
-    performance_indicators_ = {
-        "high_performance", "real_time", "low_latency", "boost", "eigen",
-        "openmp", "simd", "parallel", "concurrent", "async", "thread",
-        "lock_free", "atomic", "memory_pool", "cache_friendly", "vectorized",
-        "gpu", "cuda", "opencl", "vulkan", "compute_shader", "optimization",
-        "profiling", "benchmark", "performance", "throughput", "scalability"
-    };
-
-    // 初始化安全要求检测关键词（增强版）
-    security_indicators_ = {
-        "crypto", "encryption", "ssl", "tls", "secure", "authentication",
-        "authorization", "oauth", "jwt", "hash", "signature", "rsa", "aes",
-        "symmetric", "asymmetric", "key_exchange", "certificate", "pki",
-        "vulnerability", "security_audit", "penetration_test", "firewall",
-        "intrusion_detection", "access_control", "role_based", "permission"
-    };
-
-    // 初始化测试要求检测关键词（增强版）
-    testing_indicators_ = {
-        "gtest", "catch2", "boost-test", "doctest", "test", "unit_test",
-        "integration_test", "benchmark", "mock", "fixture", "coverage",
-        "regression_test", "stress_test", "load_test", "performance_test",
-        "acceptance_test", "smoke_test", "sanity_test", "exploratory_test",
-        "test_automation", "ci_cd", "continuous_integration", "tdd", "bdd"
-    };
-    
-    // 初始化机器学习特征检测关键词
-    ml_features_ = {
-        "neural_network", "deep_learning", "cnn", "rnn", "lstm", "transformer",
-        "attention", "backpropagation", "gradient_descent", "adam", "sgd",
-        "dropout", "batch_normalization", "regularization", "overfitting",
-        "cross_validation", "feature_engineering", "data_preprocessing"
-    };
-    
-    // 初始化代码质量指标
-    code_quality_indicators_ = {
-        "const", "constexpr", "noexcept", "override", "final", "explicit",
-        "smart_pointer", "raii", "move_semantics", "perfect_forwarding",
-        "template_metaprogramming", "concepts", "ranges", "coroutines"
-    };
-    
-    // 初始化架构模式检测
-    architecture_patterns_ = {
-        "singleton", "factory", "observer", "strategy", "command", "mvc",
-        "mvp", "mvvm", "microservice", "soa", "event_driven", "reactive",
-        "actor_model", "pipeline", "middleware", "plugin", "component"
-    };
-    
+ProjectAnalyzer::ProjectAnalyzer() : config_() {
     // 初始化GitHub API相关
     github_api_base_ = "https://api.github.com";
     github_token_ = getenv("GITHUB_TOKEN"); // 从环境变量获取token
@@ -222,8 +128,10 @@ std::string ProjectAnalyzer::detect_project_type(const std::string& project_path
         }
     }
     
-    // 3. 基于源代码内容的深度分析
-    for (const auto& [type, indicators] : project_type_indicators_) {
+    // 3. 基于源代码内容的深度分析（使用配置系统）
+    auto all_types = config_.get_all_project_types();
+    for (const auto& type : all_types) {
+        const auto& indicators = config_.get_project_indicators(type);
         double score = 0.0;
         for (const auto& indicator : indicators) {
             // 计算关键词出现频率和权重
@@ -511,7 +419,8 @@ std::string ProjectAnalyzer::assess_performance_needs(const std::string& project
     }
     
     int performance_score = 0;
-    for (const auto& indicator : performance_indicators_) {
+    const auto& indicators = config_.get_performance_indicators();
+    for (const auto& indicator : indicators) {
         if (content.find(indicator) != std::string::npos) {
             performance_score++;
         }
@@ -538,7 +447,8 @@ std::string ProjectAnalyzer::assess_security_needs(const std::string& project_pa
     }
     
     int security_score = 0;
-    for (const auto& indicator : security_indicators_) {
+    const auto& indicators = config_.get_security_indicators();
+    for (const auto& indicator : indicators) {
         if (content.find(indicator) != std::string::npos) {
             security_score++;
         }
@@ -565,7 +475,8 @@ std::string ProjectAnalyzer::assess_testing_needs(const std::string& project_pat
     }
     
     int testing_score = 0;
-    for (const auto& indicator : testing_indicators_) {
+    const auto& indicators = config_.get_testing_indicators();
+    for (const auto& indicator : indicators) {
         if (content.find(indicator) != std::string::npos) {
             testing_score++;
         }
@@ -764,7 +675,7 @@ std::vector<std::string> ProjectAnalyzer::get_trending_packages(const std::strin
     
     // 根据项目类型搜索相关项目
     std::string search_query = build_search_query(project_type);
-    std::string api_url = github_api_base_ + "/search/repositories?q=" + search_query + "&sort=stars&order=desc&per_page=10";
+    std::string api_url = github_api_base_ + "/search/repositories?q=" + search_query + "&sort=stars&order=desc&per_page=30";
     
     std::string response = make_github_request(api_url);
     
@@ -776,17 +687,59 @@ std::vector<std::string> ProjectAnalyzer::get_trending_packages(const std::strin
             for (const auto& item : root["items"]) {
                 std::string repo_name = item.get("name", "").asString();
                 std::string full_name = item.get("full_name", "").asString();
+                int stars = item.get("stargazers_count", 0).asInt();
+                int forks = item.get("forks_count", 0).asInt();
+                std::string language = item.get("language", "").asString();
+                std::string description = item.get("description", "").asString();
                 
-                // 提取包名（去掉前缀，如lib-, boost-等）
-                std::string package_name = extract_package_name(repo_name);
-                if (!package_name.empty()) {
-                    trending.push_back(package_name);
+                // 只选择C++项目且有一定星数的项目
+                if (language == "C++" && stars > 100) {
+                    // 提取包名（去掉前缀，如lib-, boost-等）
+                    std::string package_name = extract_package_name(repo_name);
+                    if (!package_name.empty() && package_name.length() > 2) {
+                        trending.push_back(package_name);
+                    }
                 }
             }
         }
     }
     
+    // 如果GitHub API失败，使用备用方案
+    if (trending.empty()) {
+        trending = get_fallback_trending_packages(project_type);
+    }
+    
     return trending;
+}
+
+std::vector<std::string> ProjectAnalyzer::get_fallback_trending_packages(const std::string& project_type) {
+    std::vector<std::string> fallback_packages;
+    
+    // 基于项目类型的备用包推荐
+    if (project_type == "web_application") {
+        fallback_packages = {"boost-beast", "crow", "cpp-httplib", "pistache", "spdlog", "nlohmann-json"};
+    } else if (project_type == "desktop_application") {
+        fallback_packages = {"qt", "gtkmm", "wxwidgets", "fltk", "imgui", "nuklear"};
+    } else if (project_type == "game_engine") {
+        fallback_packages = {"sdl2", "sfml", "opengl", "vulkan", "glm", "assimp", "bullet"};
+    } else if (project_type == "machine_learning") {
+        fallback_packages = {"opencv", "tensorflow", "pytorch", "eigen", "gtest", "catch2"};
+    } else if (project_type == "scientific_computing") {
+        fallback_packages = {"eigen", "armadillo", "gsl", "fftw", "hdf5", "blas"};
+    } else if (project_type == "embedded_system") {
+        fallback_packages = {"freertos", "zephyr", "mbed", "stm32", "arduino"};
+    } else if (project_type == "blockchain") {
+        fallback_packages = {"libsecp256k1", "openssl", "cryptopp", "libsodium"};
+    } else if (project_type == "database") {
+        fallback_packages = {"sqlite3", "mysql-connector-cpp", "mongocxx", "redis"};
+    } else if (project_type == "networking") {
+        fallback_packages = {"libuv", "asio", "libevent", "curl", "cpprest"};
+    } else {
+        // 通用包
+        fallback_packages = {"fmt", "spdlog", "nlohmann-json", "gtest", "catch2", "boost"};
+    }
+    
+    return fallback_packages;
 }
 
 std::string ProjectAnalyzer::build_search_query(const std::string& project_type) {
@@ -838,7 +791,7 @@ std::vector<std::string> ProjectAnalyzer::find_similar_projects(const std::strin
     
     // 基于项目类型查找相似项目
     std::string search_query = build_search_query(project_type);
-    std::string api_url = github_api_base_ + "/search/repositories?q=" + search_query + "&sort=updated&order=desc&per_page=5";
+    std::string api_url = github_api_base_ + "/search/repositories?q=" + search_query + "&sort=updated&order=desc&per_page=15";
     
     std::string response = make_github_request(api_url);
     
@@ -849,14 +802,47 @@ std::vector<std::string> ProjectAnalyzer::find_similar_projects(const std::strin
         if (reader.parse(response, root) && root.isMember("items")) {
             for (const auto& item : root["items"]) {
                 std::string full_name = item.get("full_name", "").asString();
-                if (!full_name.empty()) {
+                int stars = item.get("stargazers_count", 0).asInt();
+                int forks = item.get("forks_count", 0).asInt();
+                std::string language = item.get("language", "").asString();
+                std::string description = item.get("description", "").asString();
+                
+                // 只选择C++项目且有一定星数的项目
+                if (language == "C++" && stars > 20 && !full_name.empty()) {
                     similar.push_back(full_name);
                 }
             }
         }
     }
     
+    // 如果GitHub API失败，使用备用方案
+    if (similar.empty()) {
+        similar = get_fallback_similar_projects(project_type);
+    }
+    
     return similar;
+}
+
+std::vector<std::string> ProjectAnalyzer::get_fallback_similar_projects(const std::string& project_type) {
+    std::vector<std::string> fallback_projects;
+    
+    // 基于项目类型的备用相似项目
+    if (project_type == "web_application") {
+        fallback_projects = {"microsoft/cpprestsdk", "boostorg/beast", "crowcpp/crow", "p-ranav/httplib"};
+    } else if (project_type == "desktop_application") {
+        fallback_projects = {"qtproject/qt", "gtkmm/gtkmm", "wxWidgets/wxWidgets", "ocornut/imgui"};
+    } else if (project_type == "game_engine") {
+        fallback_projects = {"libsdl-org/SDL", "SFML/SFML", "g-truc/glm", "assimp/assimp"};
+    } else if (project_type == "machine_learning") {
+        fallback_projects = {"opencv/opencv", "tensorflow/tensorflow", "pytorch/pytorch", "eigenteam/eigen-git-mirror"};
+    } else if (project_type == "scientific_computing") {
+        fallback_projects = {"eigenteam/eigen-git-mirror", "conradsnicta/armadillo-code", "GSL/GSL", "FFTW/fftw3"};
+    } else {
+        // 通用项目
+        fallback_projects = {"fmtlib/fmt", "gabime/spdlog", "nlohmann/json", "google/googletest"};
+    }
+    
+    return fallback_projects;
 }
 
 // 新增的高级分析方法
@@ -873,7 +859,8 @@ std::vector<std::string> ProjectAnalyzer::detect_ml_features(const std::string& 
         content += read_file_content(file);
     }
     
-    for (const auto& feature : ml_features_) {
+    const auto& ml_features = config_.get_ml_features();
+    for (const auto& feature : ml_features) {
         if (content.find(feature) != std::string::npos) {
             features.push_back(feature);
         }
@@ -894,10 +881,11 @@ double ProjectAnalyzer::calculate_code_quality_score(const std::string& project_
     }
     
     double score = 0.0;
-    int total_indicators = code_quality_indicators_.size();
+    const auto& indicators = config_.get_code_quality_indicators();
+    int total_indicators = indicators.size();
     int found_indicators = 0;
     
-    for (const auto& indicator : code_quality_indicators_) {
+    for (const auto& indicator : indicators) {
         if (content.find(indicator) != std::string::npos) {
             found_indicators++;
         }
@@ -920,7 +908,8 @@ std::vector<std::string> ProjectAnalyzer::detect_architecture_patterns(const std
         content += read_file_content(file);
     }
     
-    for (const auto& pattern : architecture_patterns_) {
+    const auto& arch_patterns = config_.get_architecture_patterns();
+    for (const auto& pattern : arch_patterns) {
         if (content.find(pattern) != std::string::npos) {
             patterns.push_back(pattern);
         }
@@ -1001,13 +990,212 @@ std::vector<std::string> ProjectAnalyzer::detect_performance_indicators(const st
         content += read_file_content(file);
     }
     
-    for (const auto& indicator : performance_indicators_) {
+    const auto& perf_indicators = config_.get_performance_indicators();
+    for (const auto& indicator : perf_indicators) {
         if (content.find(indicator) != std::string::npos) {
             indicators.push_back(indicator);
         }
     }
     
     return indicators;
+}
+
+GitHubPackageInfo ProjectAnalyzer::get_github_package_info(const std::string& package_name) {
+    GitHubPackageInfo info;
+    info.name = package_name;
+    info.found = false;
+    
+    // 已知的GitHub项目映射
+    std::map<std::string, std::pair<std::string, std::string>> known_projects = {
+        {"sdl2", {"libsdl-org/SDL", "Simple DirectMedia Layer - A cross-platform development library"}},
+        {"sfml", {"SFML/SFML", "Simple and Fast Multimedia Library"}},
+        {"opengl", {"KhronosGroup/OpenGL-Registry", "The OpenGL Registry"}},
+        {"vulkan", {"KhronosGroup/Vulkan-Headers", "Vulkan header files and API registry"}},
+        {"glm", {"g-truc/glm", "OpenGL Mathematics (GLM)"}},
+        {"assimp", {"assimp/assimp", "Official Open Asset Import Library Repository"}},
+        {"bullet", {"bulletphysics/bullet3", "Bullet Physics SDK: real-time collision detection and multi-physics simulation for VR, games, visual effects, robotics, machine learning etc."}},
+        {"box2d", {"erincatto/box2d", "Box2D is a 2D physics engine for games"}},
+        {"raylib", {"raysan5/raylib", "A simple and easy-to-use library to enjoy videogames programming"}},
+        {"bgfx", {"bkaradzic/bgfx", "Cross-platform, graphics API agnostic, \"Bring Your Own Engine/Framework\" style rendering library"}},
+        {"magnum", {"mosra/magnum", "Lightweight and modular C++11/C++14 graphics middleware for games and data visualization"}},
+        {"ogre3d", {"OGRECave/ogre", "Scene-oriented, flexible 3D engine (C++, Python, C#, Java)"}},
+        {"irrlicht", {"zaki/irrlicht", "The Irrlicht Engine is an open source realtime 3D engine written in C++"}},
+        {"cocos2d", {"cocos2d/cocos2d-x", "Cocos2d-x is a suite of open-source, cross-platform, game-development tools used by thousands of developers all over the world"}},
+        {"godot", {"godotengine/godot", "Godot Engine – Multi-platform 2D and 3D game engine"}},
+        {"unity", {"Unity-Technologies/UnityCsReference", "Unity C# reference source code"}},
+        {"unreal", {"EpicGames/UnrealEngine", "Unreal Engine 5"}},
+        {"cryengine", {"CRYTEK/CRYENGINE", "CRYENGINE is a powerful real-time game development platform created by Crytek"}},
+        {"lumberyard", {"aws/lumberyard", "Amazon Lumberyard is a free AAA game engine deeply integrated with AWS and Twitch"}},
+        {"phaser", {"photonstorm/phaser", "Phaser is a fun, free and fast 2D game framework for making HTML5 games for desktop and mobile web browsers"}},
+        {"threejs", {"mrdoob/three.js", "JavaScript 3D library"}},
+        {"babylon", {"BabylonJS/Babylon.js", "Babylon.js is a powerful, beautiful, simple, and open game and rendering engine packed into a friendly JavaScript framework"}},
+        {"pixi", {"pixijs/pixi.js", "The HTML5 Creation Engine: Create beautiful digital content with the fastest, most flexible 2D WebGL renderer"}},
+        {"konva", {"konvajs/konva", "Konva.js 2D canvas library for desktop and mobile applications"}},
+        {"fmt", {"fmtlib/fmt", "A modern formatting library"}},
+        {"spdlog", {"gabime/spdlog", "Fast C++ logging library"}},
+        {"nlohmann-json", {"nlohmann/json", "JSON for Modern C++"}},
+        {"gtest", {"google/googletest", "GoogleTest - Google Testing and Mocking Framework"}},
+        {"catch2", {"catchorg/Catch2", "A modern, C++-native, header-only, test framework for unit-tests, TDD and BDD"}},
+        {"boost", {"boostorg/boost", "Super-project for modularized Boost"}},
+        {"asio", {"boostorg/asio", "Asio C++ Library"}},
+        {"beast", {"boostorg/beast", "HTTP and WebSocket built on Boost.Asio in C++11"}},
+        {"filesystem", {"boostorg/filesystem", "Boost.Filesystem"}},
+        {"range-v3", {"ericniebler/range-v3", "Range library for C++14/17/20, basis for C++20's std::ranges"}},
+        {"abseil", {"abseil/abseil-cpp", "Abseil Common Libraries (C++)"}},
+        {"folly", {"facebook/folly", "An open-source C++ library developed and used at Facebook"}},
+        {"glog", {"google/glog", "C++ implementation of the Google logging library"}},
+        {"gflags", {"gflags/gflags", "The gflags package contains a C++ library that implements commandline flags processing"}},
+        {"protobuf", {"protocolbuffers/protobuf", "Protocol Buffers - Google's data interchange format"}},
+        {"grpc", {"grpc/grpc", "The C based gRPC (C++, Python, Ruby, Objective-C, PHP, C#)"}},
+        {"thrift", {"apache/thrift", "Apache Thrift"}},
+        {"zeromq", {"zeromq/libzmq", "ZeroMQ core engine in C++, implements ZMTP/3.1"}},
+        {"nanomsg", {"nanomsg/nanomsg", "Event notification library"}},
+        {"libevent", {"libevent/libevent", "Event notification library"}},
+        {"libuv", {"libuv/libuv", "Cross-platform asynchronous I/O"}},
+        {"libev", {"enki/libev", "Full-featured and high-performance event loop library"}},
+        {"libevent2", {"libevent/libevent", "Event notification library"}},
+        {"libasync", {"facebook/folly", "Folly: Facebook's C++ library"}},
+        {"libdispatch", {"apple/swift-corelibs-libdispatch", "The libdispatch project, (a.k.a. Grand Central Dispatch), for concurrency on multicore hardware"}},
+        {"eigen", {"eigenteam/eigen-git-mirror", "Eigen is a C++ template library for linear algebra: matrices, vectors, numerical solvers, and related algorithms"}},
+        {"armadillo", {"conradsnicta/armadillo-code", "Armadillo: fast C++ library for linear algebra & scientific computing"}},
+        {"gsl", {"ampl/gsl", "GNU Scientific Library"}},
+        {"fftw", {"FFTW/fftw3", "The Fastest Fourier Transform in the West"}},
+        {"blas", {"Reference-LAPACK/lapack", "LAPACK development repository"}},
+        {"lapack", {"Reference-LAPACK/lapack", "LAPACK development repository"}},
+        {"mkl", {"intel/mkl-dnn", "Deep Neural Network Library (DNNL)"}},
+        {"openblas", {"xianyi/OpenBLAS", "OpenBLAS is an optimized BLAS library based on GotoBLAS2 1.13 BSD version"}},
+        {"intel-mkl", {"intel/mkl-dnn", "Deep Neural Network Library (DNNL)"}},
+        {"cuda", {"NVIDIA/cuda-samples", "Samples for CUDA Developers which demonstrates features in CUDA Toolkit"}},
+        {"opencl", {"KhronosGroup/OpenCL-Headers", "OpenCL header files"}},
+        {"sycl", {"KhronosGroup/SYCL-Headers", "SYCL header files"}},
+        {"openmp", {"OpenMP/OpenMP", "OpenMP: The Open API for Multi-Platform Parallel Programming"}},
+        {"mpi", {"open-mpi/ompi", "Open MPI main development repository"}},
+        {"petsc", {"petsc/petsc", "Portable, Extensible Toolkit for Scientific Computation"}},
+        {"slepc", {"slepc/slepc", "Scalable Library for Eigenvalue Problem Computations"}},
+        {"trilinos", {"trilinos/Trilinos", "Primary repository for the Trilinos Project"}},
+        {"dealii", {"dealii/dealii", "The deal.II finite element library"}},
+        {"fenics", {"FEniCS/dolfin", "DOLFIN is the C++/Python interface of FEniCS"}},
+        {"dolfin", {"FEniCS/dolfin", "DOLFIN is the C++/Python interface of FEniCS"}},
+        {"opencv", {"opencv/opencv", "Open Source Computer Vision Library"}},
+        {"tensorflow", {"tensorflow/tensorflow", "An Open Source Machine Learning Framework"}},
+        {"pytorch", {"pytorch/pytorch", "Tensors and Dynamic neural networks in Python with strong GPU acceleration"}},
+        {"onnx", {"onnx/onnx", "Open standard for machine learning interoperability"}},
+        {"tflite", {"tensorflow/tensorflow", "An Open Source Machine Learning Framework"}},
+        {"sklearn", {"scikit-learn/scikit-learn", "scikit-learn: machine learning in Python"}},
+        {"xgboost", {"dmlc/xgboost", "Scalable, Portable and Distributed Gradient Boosting (GBDT, GBRT or GBM) Library"}},
+        {"lightgbm", {"microsoft/LightGBM", "A fast, distributed, high performance gradient boosting (GBDT, GBRT, GBM or MART) framework based on decision tree algorithms"}},
+        {"catboost", {"catboost/catboost", "A fast, scalable, high performance Gradient Boosting on Decision Trees library"}},
+        {"mlpack", {"mlpack/mlpack", "mlpack: a scalable C++ machine learning library"}},
+        {"shark", {"Shark-ML/Shark", "A fast, modular, general open-source machine learning library"}},
+        {"dlib", {"davisking/dlib", "A toolkit for making real world machine learning and data analysis applications in C++"}},
+        {"torch", {"pytorch/pytorch", "Tensors and Dynamic neural networks in Python with strong GPU acceleration"}},
+        {"caffe", {"BVLC/caffe", "Caffe: a fast open framework for deep learning"}},
+        {"mxnet", {"apache/incubator-mxnet", "Lightweight, Portable, Flexible Distributed/Mobile Deep Learning with Dynamic, Mutation-aware Dataflow Dep Scheduler"}},
+        {"paddle", {"PaddlePaddle/Paddle", "PArallel Distributed Deep LEarning: Machine Learning Framework"}},
+        {"mindspore", {"mindspore-ai/mindspore", "MindSpore is a new open source deep learning training/inference framework"}},
+        {"jax", {"google/jax", "Composable transformations of Python+NumPy programs: differentiate, vectorize, JIT to GPU/TPU, and more"}},
+        {"flax", {"google/flax", "Flax is a neural network library for JAX that is designed for flexibility"}},
+        {"keras", {"keras-team/keras", "Deep Learning for humans"}},
+        {"theano", {"Theano/Theano", "Theano was a Python library that allowed you to define, optimize, and evaluate mathematical expressions involving multi-dimensional arrays efficiently"}},
+        {"lasagne", {"Lasagne/Lasagne", "Lightweight library to build and train neural networks in Theano"}},
+        {"blocks", {"mila-udem/blocks", "A Theano framework for building and training neural networks"}},
+        {"fuel", {"mila-udem/fuel", "A data pipeline framework for machine learning"}},
+        {"qt", {"qtproject/qt", "Qt Project"}},
+        {"gtkmm", {"GNOME/gtkmm", "gtkmm is the official C++ interface for the GTK+ GUI library"}},
+        {"wxwidgets", {"wxWidgets/wxWidgets", "Cross-Platform C++ GUI Library"}},
+        {"fltk", {"fltk/fltk", "Fast Light Tool Kit (FLTK)"}},
+        {"imgui", {"ocornut/imgui", "Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies"}},
+        {"nuklear", {"vurtun/nuklear", "A single-header ANSI C gui library"}},
+        {"dear-imgui", {"ocornut/imgui", "Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies"}},
+        {"nanogui", {"wjakob/nanogui", "Minimalistic GUI library for OpenGL"}},
+        {"cef", {"chromiumembedded/cef", "Chromium Embedded Framework (CEF)"}},
+        {"electron", {"electron/electron", "Build cross-platform desktop apps with JavaScript, HTML, and CSS"}},
+        {"tauri", {"tauri-apps/tauri", "Build smaller, faster, and more secure desktop applications with a web frontend"}},
+        {"flutter", {"flutter/flutter", "Flutter makes it easy and fast to build beautiful apps for mobile and beyond"}},
+        {"gtk", {"GNOME/gtk", "GTK is a multi-platform toolkit for creating graphical user interfaces"}},
+        {"kde", {"KDE", "KDE is an international technology team that creates free and open source software for desktop and portable computing"}},
+        {"gnome", {"GNOME/gnome-shell", "GNOME Shell"}},
+        {"xfce", {"xfce-mirror", "Xfce desktop environment"}},
+        {"lxde", {"lxde", "Lightweight X11 Desktop Environment"}},
+        {"mate", {"mate-desktop", "MATE Desktop Environment"}},
+        {"cinnamon", {"linuxmint/cinnamon", "Cinnamon Desktop Environment"}},
+        {"budgie", {"solus-project/budgie-desktop", "I Took a Pill in Ibiza"}},
+        {"xfce4", {"xfce-mirror", "Xfce desktop environment"}},
+        {"lxqt", {"lxqt", "The LXQt desktop environment"}},
+        {"enlightenment", {"Enlightenment", "Enlightenment window manager"}},
+        {"openbox", {"danakj/openbox", "Openbox window manager"}},
+        {"fluxbox", {"fluxbox", "Fluxbox window manager"}},
+        {"scipy", {"scipy/scipy", "SciPy library main repository"}},
+        {"numpy", {"numpy/numpy", "The fundamental package for scientific computing with Python"}},
+        {"matlab", {"mathworks", "MathWorks"}},
+        {"octave", {"gnu-octave/octave", "GNU Octave"}},
+        {"sage", {"sagemath/sage", "SageMath"}}
+    };
+    
+    // 查找已知项目
+    auto it = known_projects.find(package_name);
+    if (it != known_projects.end()) {
+        info.full_name = it->second.first;
+        info.description = it->second.second;
+        info.github_url = "https://github.com/" + it->second.first;
+        info.found = true;
+        
+        // 尝试获取更多信息
+        try {
+            std::string api_url = github_api_base_ + "/repos/" + it->second.first;
+            std::string response = make_github_request(api_url);
+            
+            if (!response.empty()) {
+                // 解析JSON响应获取更多信息
+                // 这里简化处理，实际应该使用JSON解析库
+                if (response.find("\"stargazers_count\"") != std::string::npos) {
+                    // 提取星标数
+                    size_t start = response.find("\"stargazers_count\":") + 19;
+                    size_t end = response.find(",", start);
+                    if (start != std::string::npos && end != std::string::npos) {
+                        std::string stars_str = response.substr(start, end - start);
+                        info.stars = std::stoi(stars_str);
+                    }
+                }
+                
+                if (response.find("\"forks_count\"") != std::string::npos) {
+                    // 提取分支数
+                    size_t start = response.find("\"forks_count\":") + 14;
+                    size_t end = response.find(",", start);
+                    if (start != std::string::npos && end != std::string::npos) {
+                        std::string forks_str = response.substr(start, end - start);
+                        info.forks = std::stoi(forks_str);
+                    }
+                }
+                
+                if (response.find("\"language\"") != std::string::npos) {
+                    // 提取语言
+                    size_t start = response.find("\"language\":\"") + 12;
+                    size_t end = response.find("\"", start);
+                    if (start != std::string::npos && end != std::string::npos) {
+                        info.language = response.substr(start, end - start);
+                    }
+                }
+                
+                if (response.find("\"license\"") != std::string::npos) {
+                    // 提取许可证
+                    size_t start = response.find("\"name\":\"") + 8;
+                    size_t end = response.find("\"", start);
+                    if (start != std::string::npos && end != std::string::npos) {
+                        info.license = response.substr(start, end - start);
+                    }
+                }
+            }
+        } catch (...) {
+            // 如果API调用失败，使用默认信息
+        }
+    } else {
+        // 如果不在已知列表中，使用搜索
+        info.github_url = "https://github.com/search?q=" + package_name + "+language%3AC%2B%2B&s=stars&o=desc";
+        info.description = "C++ library found on GitHub";
+    }
+    
+    return info;
 }
 
 } // namespace Analysis
