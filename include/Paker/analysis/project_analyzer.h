@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <filesystem>
+#include "Paker/analysis/project_type_config.h"
 
 namespace Paker {
 namespace Analysis {
@@ -24,6 +25,22 @@ struct GitHubAnalysis {
     std::string updated_at;             // 最后更新时间
     std::string license;                // 许可证
     std::vector<std::string> topics;    // 项目标签
+};
+
+/**
+ * GitHub包详细信息结构
+ */
+struct GitHubPackageInfo {
+    std::string name;                   // 包名
+    std::string full_name;              // 完整名称 (owner/repo)
+    std::string description;            // 项目描述
+    std::string github_url;             // GitHub地址
+    int stars = 0;                      // 星标数
+    int forks = 0;                      // 分支数
+    std::string language;               // 主要语言
+    std::string license;                // 许可证
+    std::vector<std::string> topics;    // 项目标签
+    bool found = false;                 // 是否找到项目
 };
 
 /**
@@ -65,6 +82,7 @@ struct PackageRecommendation {
     std::string priority;               // 优先级 (low, medium, high)
     std::vector<std::string> tags;     // 标签
     std::string install_command;       // 安装命令
+    std::string github_url;            // GitHub地址
 };
 
 /**
@@ -137,6 +155,13 @@ public:
      * @return 测试要求等级
      */
     std::string assess_testing_needs(const std::string& project_path);
+    
+    /**
+     * 获取GitHub包详细信息
+     * @param package_name 包名
+     * @return GitHub包信息
+     */
+    GitHubPackageInfo get_github_package_info(const std::string& package_name);
 
 private:
     /**
@@ -207,6 +232,20 @@ private:
     std::vector<std::string> find_similar_projects(const std::string& project_type);
 
     /**
+     * 获取备用热门包（当GitHub API失败时）
+     * @param project_type 项目类型
+     * @return 备用包列表
+     */
+    std::vector<std::string> get_fallback_trending_packages(const std::string& project_type);
+
+    /**
+     * 获取备用相似项目（当GitHub API失败时）
+     * @param project_type 项目类型
+     * @return 备用相似项目列表
+     */
+    std::vector<std::string> get_fallback_similar_projects(const std::string& project_type);
+
+    /**
      * 发送GitHub API请求
      * @param url API URL
      * @return 响应内容
@@ -274,26 +313,8 @@ private:
      */
     std::vector<std::string> detect_performance_indicators(const std::string& project_path);
 
-    // 项目类型检测的关键词映射
-    std::map<std::string, std::vector<std::string>> project_type_indicators_;
-    
-    // 性能要求检测的关键词
-    std::vector<std::string> performance_indicators_;
-    
-    // 安全要求检测的关键词
-    std::vector<std::string> security_indicators_;
-    
-    // 测试要求检测的关键词
-    std::vector<std::string> testing_indicators_;
-
-    // 机器学习特征检测关键词
-    std::vector<std::string> ml_features_;
-    
-    // 代码质量指标关键词
-    std::vector<std::string> code_quality_indicators_;
-    
-    // 架构模式检测关键词
-    std::vector<std::string> architecture_patterns_;
+    // 项目类型配置系统
+    ProjectTypeConfig config_;
 
     // GitHub API相关
     std::string github_api_base_;
