@@ -282,9 +282,10 @@ class PakerSmartCompletion:
         
         return suggestions
     
-    def update_cache(self):
+    def update_cache(self, silent=False):
         """更新补全缓存"""
-        print("🔄 更新补全缓存...")
+        if not silent:
+            print("🔄 更新补全缓存...")
         
         # 更新已安装包列表
         if self.project_root:
@@ -302,7 +303,8 @@ class PakerSmartCompletion:
         
         # 保存缓存
         self._save_cache()
-        print("✅ 补全缓存已更新")
+        if not silent:
+            print("✅ 补全缓存已更新")
 
 def main():
     """主函数"""
@@ -310,6 +312,7 @@ def main():
     parser.add_argument("--suggest", nargs="*", help="获取建议")
     parser.add_argument("--tips", nargs="*", help="获取提示")
     parser.add_argument("--update-cache", action="store_true", help="更新缓存")
+    parser.add_argument("--silent", action="store_true", help="静默模式")
     parser.add_argument("--error", help="处理错误")
     
     args = parser.parse_args()
@@ -317,7 +320,7 @@ def main():
     completion = PakerSmartCompletion()
     
     if args.update_cache:
-        completion.update_cache()
+        completion.update_cache(silent=args.silent)
     elif args.suggest:
         context = completion.analyze_context(args.suggest)
         suggestions = completion.generate_suggestions(context)

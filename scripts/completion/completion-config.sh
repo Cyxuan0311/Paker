@@ -51,8 +51,8 @@ optimize_completion_performance() {
     if [[ "$PAKER_CACHE_OPTIMIZATION" == "true" ]]; then
         # 启用补全缓存
         if command -v paker-completion &> /dev/null; then
-            # 后台更新缓存
-            (paker-completion --update-cache &) 2>/dev/null || true
+            # 静默后台更新缓存，不显示任何输出
+            (paker-completion --update-cache --silent >/dev/null 2>&1 &) 2>/dev/null || true
         fi
     fi
 }
