@@ -66,6 +66,7 @@ file(GLOB_RECURSE PAKER_SRCS src/Paker/*.cpp)
 file(GLOB RECORDER_SRCS src/Recorder/*.cpp)
 file(GLOB NETWORK_SRCS src/Paker/network/*.cpp)
 file(GLOB SIMD_SRCS src/Paker/simd/*.cpp)
+file(GLOB ANALYSIS_SRCS src/Paker/analysis/*.cpp)
 
 add_executable(Paker
     src/main.cpp
@@ -74,6 +75,7 @@ add_executable(Paker
     ${RECORDER_SRCS}
     ${NETWORK_SRCS}
     ${SIMD_SRCS}
+    ${ANALYSIS_SRCS}
 )
 
 target_include_directories(Paker PRIVATE include include/Paker include/Recorder include/third_party)
