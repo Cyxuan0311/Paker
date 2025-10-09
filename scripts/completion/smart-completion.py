@@ -194,10 +194,9 @@ class PakerSmartCompletion:
             # 主命令建议
             suggestions = [
                 "init", "add", "remove", "list", "tree", "search", "info",
-                "update", "upgrade", "lock", "install-l", "resolve", "check",
-                "fix", "validate", "perf", "analyze", "diagnose", "cache",
-                "rollback", "history", "record", "parse", "io", "warmup",
-                "remote-add", "remote-rm", "version", "remove-project"
+                "update", "upgrade", "lock", "cache", "monitor", "version",
+                "parse", "io", "source-add", "source-rm", "remove-project",
+                "suggestion"
             ]
         elif context["command"] == "add":
             # 添加包建议
@@ -208,35 +207,42 @@ class PakerSmartCompletion:
         elif context["command"] == "remove":
             # 移除包建议
             suggestions = self.get_installed_packages()
+        elif context["command"] == "lock":
+            # 锁定管理建议
+            suggestions = ["install", "resolve", "check", "fix", "validate"]
         elif context["command"] == "cache":
             # 缓存管理建议
             if context["subcommand"] in ["add", "remove"]:
                 suggestions = self.get_cached_packages()
             else:
-                suggestions = ["add", "remove", "status", "clean", "lru"]
-        elif context["command"] == "rollback":
-            # 回滚建议
-            if "--list" in context["flags"] or "--check" in context["flags"]:
-                suggestions = self.get_installed_packages()
+                suggestions = ["add", "remove", "status", "clean", "warmup"]
+        elif context["command"] == "monitor":
+            # 监控管理建议
+            suggestions = ["enable", "clear", "perf", "analyze", "diagnose"]
+        elif context["command"] == "version":
+            # 版本管理建议
+            if context["subcommand"] == "rollback":
+                if "--list" in context["flags"] or "--check" in context["flags"]:
+                    suggestions = self.get_installed_packages()
+                else:
+                    suggestions = ["--previous", "--timestamp", "--force", "--list", "--check", "--stats"]
+            elif context["subcommand"] == "history":
+                suggestions = ["--clean", "--export", "--import", "--max-entries"]
+            elif context["subcommand"] == "record":
+                suggestions = ["--list", "--files"]
             else:
-                suggestions = ["--previous", "--timestamp", "--force", "--list", "--check", "--stats"]
-        elif context["command"] == "history":
-            # 历史管理建议
-            suggestions = ["--clean", "--export", "--import", "--max-entries"]
-        elif context["command"] == "record":
-            # 记录管理建议
-            suggestions = ["--list", "--files"]
+                suggestions = ["rollback", "history", "record", "--short", "--build", "--check"]
         elif context["command"] == "parse":
             # 解析管理建议
             suggestions = ["--stats", "--config", "--clear", "--opt", "--validate"]
         elif context["command"] == "io":
             # I/O管理建议
             suggestions = ["--stats", "--config", "--test", "--bench", "--opt"]
-        elif context["command"] == "remote-add":
-            # 远程源添加建议
+        elif context["command"] == "source-add":
+            # 源添加建议
             suggestions = [remote[0] for remote in self.get_common_remotes()]
-        elif context["command"] == "remote-rm":
-            # 远程源移除建议
+        elif context["command"] == "source-rm":
+            # 源移除建议
             suggestions = self.get_configured_remotes()
         
         return suggestions
@@ -248,15 +254,22 @@ class PakerSmartCompletion:
         if context["command"] == "add":
             tips.append("💡 提示: 使用 'Paker add <package>' 添加依赖包")
             tips.append("   示例: Paker add fmt spdlog nlohmann-json")
+        elif context["command"] == "lock":
+            tips.append("💡 提示: 使用 'Paker lock' 生成锁定文件")
+            tips.append("   使用 'Paker lock install' 从锁定文件安装")
         elif context["command"] == "cache":
             tips.append("💡 提示: 使用 'Paker cache status' 查看缓存状态")
             tips.append("   使用 'Paker cache clean --smart' 智能清理缓存")
-        elif context["command"] == "rollback":
-            tips.append("💡 提示: 使用 'Paker rollback --list <package>' 查看可回滚版本")
-            tips.append("   使用 'Paker rollback <package> <version>' 回滚到指定版本")
-        elif context["command"] == "perf":
-            tips.append("💡 提示: 使用 'Paker perf' 生成性能报告")
-            tips.append("   使用 'Paker analyze' 分析依赖结构")
+        elif context["command"] == "monitor":
+            tips.append("💡 提示: 使用 'Paker monitor enable' 启用监控")
+            tips.append("   使用 'Paker monitor perf' 生成性能报告")
+        elif context["command"] == "version":
+            if context["subcommand"] == "rollback":
+                tips.append("💡 提示: 使用 'Paker version rollback --list <package>' 查看可回滚版本")
+                tips.append("   使用 'Paker version rollback <package> <version>' 回滚到指定版本")
+            else:
+                tips.append("💡 提示: 使用 'Paker version' 显示版本信息")
+                tips.append("   使用 'Paker version --short' 显示简短版本")
         elif not context["is_in_project"]:
             tips.append("💡 提示: 当前目录不是Paker项目")
             tips.append("   使用 'Paker init' 初始化项目")

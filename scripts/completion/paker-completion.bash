@@ -15,7 +15,7 @@ _paker_completion() {
     
     # 解析命令上下文
     for ((i=1; i<COMP_CWORD; i++)); do
-        if [[ "${COMP_WORDS[i]}" =~ ^(add|remove|list|tree|search|info|update|upgrade|lock|install-l|resolve|check|fix|validate|perf|analyze|diagnose|monitor-enable|monitor-clear|cache|rollback|history|record|parse|io|warmup|remote-add|remote-rm|version|remove-project)$ ]]; then
+        if [[ "${COMP_WORDS[i]}" =~ ^(add|remove|list|tree|search|info|update|upgrade|lock|cache|monitor|version|parse|io|source-add|source-rm|remove-project|suggestion)$ ]]; then
             subcmd="${COMP_WORDS[i]}"
             break
         fi
@@ -23,7 +23,7 @@ _paker_completion() {
     
     # 主命令补全
     if [[ $COMP_CWORD -eq 1 ]]; then
-        opts="init add remove list tree search info update upgrade lock install-l resolve check fix validate perf analyze diagnose monitor-enable monitor-clear cache rollback history record parse io warmup remote-add remote-rm version remove-project suggestion --help --version --no-color --dev"
+        opts="init add remove list tree search info update upgrade lock cache monitor version parse io source-add source-rm remove-project suggestion --help --version --no-color --dev"
         COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
         return 0
     fi
@@ -36,17 +36,17 @@ _paker_completion() {
         "remove")
             _paker_remove_completion
             ;;
+        "lock")
+            _paker_lock_completion
+            ;;
         "cache")
             _paker_cache_completion
             ;;
-        "rollback")
-            _paker_rollback_completion
+        "monitor")
+            _paker_monitor_completion
             ;;
-        "history")
-            _paker_history_completion
-            ;;
-        "record")
-            _paker_record_completion
+        "version")
+            _paker_version_completion
             ;;
         "parse")
             _paker_parse_completion
@@ -54,11 +54,11 @@ _paker_completion() {
         "io")
             _paker_io_completion
             ;;
-        "remote-add")
-            _paker_remote_add_completion
+        "source-add")
+            _paker_source_add_completion
             ;;
-        "remote-rm")
-            _paker_remote_rm_completion
+        "source-rm")
+            _paker_source_rm_completion
             ;;
         "suggestion")
             _paker_suggestion_completion
@@ -368,6 +368,40 @@ _paker_smart_suggestions() {
             echo "   使用 'Paker analyze' 分析依赖结构"
             ;;
     esac
+}
+
+# Lock 命令补全
+_paker_lock_completion() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local opts="install resolve check fix validate --help"
+    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+}
+
+# Monitor 命令补全
+_paker_monitor_completion() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local opts="enable clear perf analyze diagnose --help"
+    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+}
+
+# Version 命令补全
+_paker_version_completion() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local opts="rollback history record --short --build --check --help"
+    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+}
+
+# Source 命令补全
+_paker_source_add_completion() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local opts="--help"
+    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+}
+
+_paker_source_rm_completion() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local opts="--help"
+    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 }
 
 # 错误处理和建议

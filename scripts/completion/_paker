@@ -18,27 +18,14 @@ _paker() {
         'info:查看包信息'
         'update:同步本地依赖'
         'upgrade:升级所有依赖'
-        'lock:锁定依赖版本'
-        'install-l:按锁文件安装'
-        'resolve:解析项目依赖'
-        'check:检查依赖冲突'
-        'fix:解决依赖冲突'
-        'validate:验证依赖完整性'
-        'perf:生成性能报告'
-        'analyze:分析依赖结构'
-        'diagnose:运行系统诊断'
-        'monitor-enable:启用性能监控'
-        'monitor-clear:清除监控数据'
+        'lock:依赖锁定管理'
         'cache:缓存管理'
-        'rollback:回滚管理'
-        'history:版本历史管理'
-        'record:包安装记录'
+        'monitor:性能监控管理'
+        'version:版本管理'
         'parse:增量解析管理'
         'io:异步I/O管理'
-        'warmup:缓存预热'
-        'remote-add:添加依赖源'
-        'remote-rm:移除依赖源'
-        'version:显示版本信息'
+        'source-add:添加依赖源'
+        'source-rm:移除依赖源'
         'remove-project:移除项目'
         'suggestion:智能包推荐'
     )
@@ -72,17 +59,17 @@ _paker() {
                 remove)
                     _paker_remove_completion
                     ;;
+                lock)
+                    _paker_lock_completion
+                    ;;
                 cache)
                     _paker_cache_completion
                     ;;
-                rollback)
-                    _paker_rollback_completion
+                monitor)
+                    _paker_monitor_completion
                     ;;
-                history)
-                    _paker_history_completion
-                    ;;
-                record)
-                    _paker_record_completion
+                version)
+                    _paker_version_completion
                     ;;
                 parse)
                     _paker_parse_completion
@@ -90,11 +77,11 @@ _paker() {
                 io)
                     _paker_io_completion
                     ;;
-                remote-add)
-                    _paker_remote_add_completion
+                source-add)
+                    _paker_source_add_completion
                     ;;
-                remote-rm)
-                    _paker_remote_rm_completion
+                source-rm)
+                    _paker_source_rm_completion
                     ;;
                 suggestion)
                     _paker_suggestion_completion
@@ -413,6 +400,60 @@ _paker_error_handling() {
             echo "💡 建议: 使用 'Paker init' 初始化项目"
             ;;
     esac
+}
+
+# Lock 命令补全
+_paker_lock_completion() {
+    local -a lock_subcommands
+    lock_subcommands=(
+        'install:从锁定文件安装'
+        'resolve:解析项目依赖'
+        'check:检查依赖冲突'
+        'fix:解决依赖冲突'
+        'validate:验证依赖完整性'
+    )
+    _describe 'lock subcommands' lock_subcommands
+}
+
+# Monitor 命令补全
+_paker_monitor_completion() {
+    local -a monitor_subcommands
+    monitor_subcommands=(
+        'enable:启用性能监控'
+        'clear:清除监控数据'
+        'perf:生成性能报告'
+        'analyze:分析依赖结构'
+        'diagnose:运行系统诊断'
+    )
+    _describe 'monitor subcommands' monitor_subcommands
+}
+
+# Version 命令补全
+_paker_version_completion() {
+    local -a version_subcommands
+    version_subcommands=(
+        'rollback:回滚包版本'
+        'history:版本历史管理'
+        'record:安装记录管理'
+    )
+    _describe 'version subcommands' version_subcommands
+}
+
+# Source 命令补全
+_paker_source_add_completion() {
+    local -a source_options
+    source_options=(
+        '--help:显示帮助信息'
+    )
+    _describe 'source-add options' source_options
+}
+
+_paker_source_rm_completion() {
+    local -a source_options
+    source_options=(
+        '--help:显示帮助信息'
+    )
+    _describe 'source-rm options' source_options
 }
 
 # 自动补全配置
