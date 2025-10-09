@@ -76,6 +76,9 @@ private:
     // 获取包的大小信息
     size_t get_package_size(const std::string& package);
     
+    // 使用系统命令获取包大小
+    size_t get_package_size_system(const std::string& package_path);
+    
     // 格式化大小
     std::string format_size(size_t bytes) const;
     
