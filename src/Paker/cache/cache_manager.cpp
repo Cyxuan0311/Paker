@@ -84,6 +84,9 @@ bool CacheManager::initialize(const std::string& config_path) {
             LOG(WARNING) << "Failed to load cache index, creating new one";
         }
         
+        // 扫描已安装的包并添加到缓存索引
+        scan_installed_packages();
+        
         // 标记为已初始化
         initialized_ = true;
         
@@ -494,6 +497,77 @@ bool CacheManager::load_cache_index() {
     } catch (const std::exception& e) {
         LOG(ERROR) << "Error loading cache index: " << e.what();
         return false;
+    }
+}
+
+void CacheManager::scan_installed_packages() {
+    try {
+        fs::path packages_dir = "packages";
+        if (!fs::exists(packages_dir) || !fs::is_directory(packages_dir)) {
+            LOG(INFO) << "No packages directory found, skipping scan";
+            return;
+        }
+        
+        LOG(INFO) << "Scanning installed packages in " << packages_dir.string();
+        
+        for (const auto& entry : fs::directory_iterator(packages_dir)) {
+            if (entry.is_directory()) {
+                std::string package_name = entry.path().filename().string();
+                std::string version = "unknown";
+                
+                // 获取Git版本信息
+                fs::path head_file = entry.path() / ".git" / "HEAD";
+                if (fs::exists(head_file)) {
+                    std::ifstream hfs(head_file);
+                    std::string head_line;
+                    if (std::getline(hfs, head_line)) {
+                        if (head_line.find("ref:") == 0) {
+                            version = head_line.substr(head_line.find_last_of('/') + 1);
+                        } else {
+                            version = head_line.substr(0, 8);
+                        }
+                    }
+                }
+                
+                // 计算包大小
+                size_t package_size = 0;
+                try {
+                    for (const auto& file_entry : fs::recursive_directory_iterator(entry.path())) {
+                        if (file_entry.is_regular_file()) {
+                            package_size += fs::file_size(file_entry.path());
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    LOG(WARNING) << "Failed to calculate size for package " << package_name << ": " << e.what();
+                }
+                
+                // 创建缓存信息
+                PackageCacheInfo pkg_info;
+                pkg_info.package_name = package_name;
+                pkg_info.version = version;
+                pkg_info.cache_path = entry.path().string();
+                pkg_info.repository_url = ""; // 从packages目录安装的包没有仓库URL
+                pkg_info.size_bytes = package_size;
+                pkg_info.access_count = 1; // 默认访问次数
+                pkg_info.is_active = true;
+                pkg_info.install_time = std::chrono::system_clock::now();
+                pkg_info.last_access = std::chrono::system_clock::now();
+                
+                // 添加到缓存索引
+                package_index_[package_name][version] = pkg_info;
+                
+                LOG(INFO) << "Scanned package: " << package_name << "@" << version 
+                         << " (size: " << package_size << " bytes)";
+            }
+        }
+        
+        // 保存更新后的缓存索引
+        save_cache_index();
+        
+        LOG(INFO) << "Scanned " << package_index_.size() << " packages";
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error scanning installed packages: " << e.what();
     }
 }
 

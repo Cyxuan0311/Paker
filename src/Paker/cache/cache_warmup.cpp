@@ -367,6 +367,26 @@ double CacheWarmupService::get_progress_percentage() const {
 
 WarmupStats CacheWarmupService::get_statistics() const {
     std::lock_guard<std::mutex> lock(stats_mutex_);
+    
+    // 如果统计信息为空，尝试从已安装的包中获取
+    if (stats_.total_packages == 0) {
+        WarmupStats current_stats = stats_;
+        
+        // 扫描已安装的包
+        fs::path packages_dir = "packages";
+        if (fs::exists(packages_dir) && fs::is_directory(packages_dir)) {
+            size_t installed_count = 0;
+            for (const auto& entry : fs::directory_iterator(packages_dir)) {
+                if (entry.is_directory()) {
+                    installed_count++;
+                }
+            }
+            current_stats.total_packages = installed_count;
+        }
+        
+        return current_stats;
+    }
+    
     return stats_;
 }
 
@@ -582,6 +602,65 @@ std::vector<std::string> CacheWarmupService::analyze_project_dependencies(const 
     return dependencies;
 }
 
+void CacheWarmupService::scan_installed_packages_for_warmup() {
+    try {
+        fs::path packages_dir = "packages";
+        if (!fs::exists(packages_dir) || !fs::is_directory(packages_dir)) {
+            LOG(INFO) << "No packages directory found for warmup scan";
+            return;
+        }
+        
+        LOG(INFO) << "Scanning installed packages for warmup in " << packages_dir.string();
+        
+        packages_to_preload_.clear();
+        package_registry_.clear();
+        
+        for (const auto& entry : fs::directory_iterator(packages_dir)) {
+            if (entry.is_directory()) {
+                std::string package_name = entry.path().filename().string();
+                std::string version = "unknown";
+                
+                // 获取Git版本信息
+                fs::path head_file = entry.path() / ".git" / "HEAD";
+                if (fs::exists(head_file)) {
+                    std::ifstream hfs(head_file);
+                    std::string head_line;
+                    if (std::getline(hfs, head_line)) {
+                        if (head_line.find("ref:") == 0) {
+                            version = head_line.substr(head_line.find_last_of('/') + 1);
+                        } else {
+                            version = head_line.substr(0, 8);
+                        }
+                    }
+                }
+                
+                // 创建预热信息
+                PackageWarmupInfo info;
+                info.package_name = package_name;
+                info.version = version;
+                info.repository_url = ""; // 从packages目录安装的包没有仓库URL
+                info.priority = WarmupPriority::NORMAL; // 默认优先级
+                info.is_essential = false; // 默认非必需
+                info.is_preloaded = false;
+                info.popularity_score = 0.0;
+                info.estimated_size = 0; // 可以后续计算
+                
+                packages_to_preload_.push_back(info);
+                package_registry_[package_name + "@" + version] = info;
+                
+                LOG(INFO) << "Scanned package for warmup: " << package_name << "@" << version;
+            }
+        }
+        
+        rebuild_priority_queues();
+        
+        LOG(INFO) << "Scanned " << packages_to_preload_.size() << " packages for warmup";
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error scanning installed packages for warmup: " << e.what();
+    }
+}
+
 std::vector<PackageWarmupInfo> CacheWarmupService::get_preload_queue() const {
     std::lock_guard<std::mutex> lock(preload_mutex_);
     return packages_to_preload_;
@@ -709,6 +788,9 @@ bool CacheWarmupService::load_preload_config(const std::string& config_path) {
             }
             
             rebuild_priority_queues();
+        } else {
+            // 如果没有配置文件，扫描已安装的包
+            scan_installed_packages_for_warmup();
         }
         
         LOG(INFO) << "Preload configuration loaded from: " << config_path;
