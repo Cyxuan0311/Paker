@@ -18,6 +18,9 @@ private:
     bool recursive_mode_;
     IncrementalParser* incremental_parser_;
     
+    // 内部辅助方法
+    void scan_installed_packages();
+    
 public:
     DependencyResolver();
     ~DependencyResolver();
@@ -101,6 +104,9 @@ private:
     
     // 从目录结构推断依赖
     bool infer_dependencies_from_structure(const std::string& package_path, DependencyNode& node);
+    
+    // 验证包名是否有效
+    bool is_valid_package_name(const std::string& name);
 };
 
 } // namespace Paker 
