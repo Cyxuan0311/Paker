@@ -36,7 +36,7 @@ const RepoMap& get_builtin_repos();
 // 生成/更新 Paker.lock 文件，记录实际安装的依赖版本
 void pm_lock();
 // 根据 Paker.lock 文件安装依赖
-void pm_install_lock();
+void pm_add_lock();
 // 升级所有依赖到最新或指定版本
 void pm_upgrade(const std::string& pkg = ""); 
 
