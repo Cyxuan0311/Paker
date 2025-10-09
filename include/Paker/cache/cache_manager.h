@@ -134,6 +134,7 @@ public:
 private:
     // 内部辅助方法
     bool load_cache_index();
+    void scan_installed_packages();
     bool update_package_info(const std::string& package, const std::string& version);
     std::string generate_cache_key(const std::string& package, const std::string& version) const;
     bool create_symbolic_link(const std::string& target, const std::string& link_path);

@@ -177,6 +177,7 @@ private:
     double calculate_popularity_score(const PackageWarmupInfo& package) const;
     bool is_package_essential(const std::string& package) const;
     std::vector<std::string> analyze_project_dependencies(const std::string& project_path) const;
+    void scan_installed_packages_for_warmup();
     
     // 资源管理
     bool check_preload_resources(const PackageWarmupInfo& package) const;
