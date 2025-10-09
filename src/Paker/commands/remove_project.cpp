@@ -72,7 +72,7 @@ void pm_remove_project(bool force) {
             "test_project_install_record.json",
             "install_record.json",
             "package_records.json",
-            get_project_name() + "_install_record.json",
+            "Paker_install_record.json",
             ".paker_record.json",
             "paker_record.json"
         };

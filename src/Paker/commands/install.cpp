@@ -48,6 +48,60 @@ std::string get_package_install_path(const std::string& package) {
     return "packages/" + package;
 }
 
+// 更新JSON配置文件（用于并行安装）
+void update_json_file(const std::vector<std::string>& packages) {
+    std::string json_file = get_json_file();
+    if (!fs::exists(json_file)) {
+        Paker::Output::error("Not a Paker project. Run 'paker init' first.");
+        return;
+    }
+    
+    json j;
+    try {
+        std::ifstream ifs(json_file);
+        ifs >> j;
+        ifs.close();
+        
+        // 验证JSON结构
+        if (!j.is_object()) {
+            Paker::Output::error("Invalid project configuration file");
+            return;
+        }
+    } catch (const std::exception& e) {
+        Paker::Output::error("Failed to parse project configuration file");
+        return;
+    }
+    
+    // 确保dependencies字段存在
+    if (!j.contains("dependencies")) {
+        j["dependencies"] = json::object();
+    }
+    
+    // 添加所有包到dependencies
+    for (const auto& pkg_input : packages) {
+        auto [pkg, version] = parse_name_version(pkg_input);
+        if (!pkg.empty()) {
+            j["dependencies"][pkg] = version.empty() ? "*" : version;
+        }
+    }
+    
+    // 安全地写入JSON文件
+    try {
+        std::ofstream ofs(json_file);
+        if (!ofs.is_open()) {
+            Paker::Output::error("Failed to save project configuration");
+            return;
+        }
+        ofs << j.dump(4);
+        ofs.close();
+        
+        Paker::Output::success("Updated project configuration with " + std::to_string(packages.size()) + " packages");
+    } catch (const std::exception& e) {
+        Paker::Output::error("Failed to save project configuration");
+        return;
+    }
+}
+
 // 并行安装多个包
 void pm_add_parallel(const std::vector<std::string>& packages) {
     if (packages.empty()) {
@@ -93,7 +147,7 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
     
     // 简洁的并行安装界面
     std::cout << "\n";
-    std::cout << "Installing " << std::to_string(task_ids.size()) << " packages in parallel\n";
+    std::cout << "Downloading " << std::to_string(task_ids.size()) << " packages in parallel\n";
     std::cout << "\n";
     
     // 创建进度条显示并行下载进度
@@ -117,7 +171,7 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
             progress_value = (elapsed * 90) / 1000; // 假设每个包下载需要1秒
             if (progress_value > 90) progress_value = 90;
             
-            parallel_progress->update(progress_value, "Downloading package " + std::to_string(completed_tasks + 1) + "/" + std::to_string(task_ids.size()));
+            parallel_progress->update(progress_value, "Downloading package " + std::to_string(completed_tasks + 1) + "/" + std::to_string(task_ids.size()) + " files...");
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
             
             if (progress_value >= 90) break;
@@ -145,6 +199,9 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
     delete parallel_progress;
     
     if (all_success) {
+        // 更新配置文件
+        update_json_file(packages);
+        
         std::cout << "\n";
         std::cout << "Successfully installed " << std::to_string(task_ids.size()) << " packages\n";
         std::cout << "\n";
@@ -330,7 +387,7 @@ void pm_add(const std::string& pkg_input) {
         
         // 简洁的安装界面
         std::cout << "\n";
-        std::cout << "Installing " << pkg;
+        std::cout << "Downloading " << pkg;
         if (!version.empty() && version != "*") {
             std::cout << "@" << version;
         }
@@ -338,10 +395,10 @@ void pm_add(const std::string& pkg_input) {
         std::cout << "\n";
         
         // 创建无限进度条，显示实时进度
-        progress = new Paker::ProgressBar(100, 50, "Installing", true, true, false, Paker::ProgressStyle::NPM_STYLE);
+        progress = new Paker::ProgressBar(100, 50, "Downloading", true, true, false, Paker::ProgressStyle::NPM_STYLE);
         
         // 步骤1: 克隆仓库
-        progress->update(10, "Cloning repository...");
+        progress->update(10, "Connecting to repository...");
         Paker::Output::debug("Cloning repository: " + repo_url);
         
         std::ostringstream cmd;
@@ -365,7 +422,7 @@ void pm_add(const std::string& pkg_input) {
             progress_value = 20 + (elapsed * 60) / 1000; // 假设下载需要1秒
             if (progress_value > 80) progress_value = 80;
             
-            progress->update(progress_value, "Downloading...");
+            progress->update(progress_value, "Downloading package files...");
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
             
             if (progress_value >= 80) break;

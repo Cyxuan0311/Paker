@@ -25,39 +25,40 @@ void pm_warmup() {
             return;
         }
         
-        // 简化的预热实现，避免段错误
-        std::cout << " Analyzing project dependencies..." << std::endl;
-        
-        // 检查常见的依赖文件
-        std::vector<std::string> config_files = {
-            "Paker.json",
-            "package.json", 
-            "CMakeLists.txt",
-            "dependencies.json"
-        };
-        
-        int found_configs = 0;
-        for (const auto& config_file : config_files) {
-            if (std::filesystem::exists(config_file)) {
-                std::cout << " Found config file: " << config_file << std::endl;
-                found_configs++;
-            }
+        auto warmup_service = get_cache_warmup_service();
+        if (!warmup_service) {
+            std::cout << " Warmup service not initialized" << std::endl;
+            return;
         }
         
-        if (found_configs > 0) {
-            std::cout << " Cache warmup completed!" << std::endl;
-            
-            // 显示统计信息
-            std::cout << "\n Warmup Statistics:" << std::endl;
-            std::cout << "  Total packages: " << found_configs << std::endl;
-            std::cout << "  Successfully preloaded: " << found_configs << std::endl;
-            std::cout << "  Failed: 0" << std::endl;
-            std::cout << "  Success rate: 100.0%" << std::endl;
-            std::cout << "  Total time: 0ms" << std::endl;
-            std::cout << "  Average time: 0ms/pkg" << std::endl;
-        } else {
-            std::cout << " No dependency configuration files found" << std::endl;
-            std::cout << " Consider creating a Paker.json file to define your dependencies" << std::endl;
+        std::cout << " Analyzing project dependencies..." << std::endl;
+        
+        // 分析使用模式
+        bool success = warmup_service->analyze_usage_patterns();
+        if (!success) {
+            std::cout << "[WARN] Unable to analyze project dependencies, using default configuration" << std::endl;
+        }
+        
+        // 执行预热
+        bool preload_success = warmup_service->start_preload(WarmupStrategy::IMMEDIATE);
+        if (!preload_success) {
+            std::cout << " Failed to start preload process" << std::endl;
+            return;
+        }
+        
+        std::cout << " Cache warmup completed!" << std::endl;
+        
+        // 显示统计信息
+        auto stats = warmup_service->get_statistics();
+        std::cout << "\n Warmup Statistics:" << std::endl;
+        std::cout << "  Total packages: " << stats.total_packages << std::endl;
+        std::cout << "  Successfully preloaded: " << stats.preloaded_packages << std::endl;
+        std::cout << "  Failed: " << stats.failed_packages << std::endl;
+        std::cout << "  Success rate: " << std::fixed << std::setprecision(1) 
+                  << (stats.success_rate * 100) << "%" << std::endl;
+        std::cout << "  Total time: " << stats.total_time.count() << "ms" << std::endl;
+        if (stats.total_packages > 0) {
+            std::cout << "  Average time: " << stats.average_time_per_package.count() << "ms/pkg" << std::endl;
         }
         
     } catch (const std::exception& e) {

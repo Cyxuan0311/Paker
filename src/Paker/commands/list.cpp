@@ -57,17 +57,40 @@ void pm_list() {
     
     // 声明的依赖
     Paker::Output::info("\nDependencies (declared):");
-    if (j["dependencies"].empty()) {
+    
+    // 统计所有声明的依赖
+    int declared_count = 0;
+    if (j.contains("dependencies") && !j["dependencies"].empty()) {
+        declared_count += j["dependencies"].size();
+    }
+    if (j.contains("url_dependencies") && !j["url_dependencies"].empty()) {
+        declared_count += j["url_dependencies"].size();
+    }
+    
+    if (declared_count == 0) {
         Paker::Output::info("  (none)");
     } else {
         Paker::Table table;
         table.add_column("Package", 20);
         table.add_column("Version", 15);
+        table.add_column("Type", 10);
         
-        for (auto& [k, v] : j["dependencies"].items()) {
-            LOG(INFO) << "  " << k << ": " << v;
-            table.add_row({k, v.get<std::string>()});
+        // 显示dependencies中的包
+        if (j.contains("dependencies") && !j["dependencies"].empty()) {
+            for (auto& [k, v] : j["dependencies"].items()) {
+                LOG(INFO) << "  " << k << ": " << v;
+                table.add_row({k, v.get<std::string>(), "dependency"});
+            }
         }
+        
+        // 显示url_dependencies中的包
+        if (j.contains("url_dependencies") && !j["url_dependencies"].empty()) {
+            for (auto& [k, v] : j["url_dependencies"].items()) {
+                LOG(INFO) << "  " << k << ": " << v;
+                table.add_row({k, "url", "url_dependency"});
+            }
+        }
+        
         Paker::Output::print_table(table);
     }
     
@@ -81,11 +104,29 @@ void pm_list() {
         table.add_column("Version", 15);
         table.add_column("Status", 10);
         
+        // 收集所有声明的依赖名称
+        std::set<std::string> declared_packages;
+        if (j.contains("dependencies") && !j["dependencies"].empty()) {
+            for (auto& [k, v] : j["dependencies"].items()) {
+                declared_packages.insert(k);
+            }
+        }
+        if (j.contains("url_dependencies") && !j["url_dependencies"].empty()) {
+            for (auto& [k, v] : j["url_dependencies"].items()) {
+                declared_packages.insert(k);
+            }
+        }
+        
         for (const auto& entry : fs::directory_iterator(pkg_dir)) {
             if (entry.is_directory()) {
                 std::string dep = entry.path().filename().string();
                 std::string version = "unknown";
                 std::string status = "installed";
+                
+                // 检查是否在声明的依赖中
+                if (declared_packages.find(dep) == declared_packages.end()) {
+                    status = "orphaned"; // 孤立的包
+                }
                 
                 fs::path head_file = entry.path() / ".git" / "HEAD";
                 if (fs::exists(head_file)) {
@@ -138,28 +179,77 @@ void pm_tree() {
     std::string root_name = j["name"].get<std::string>();
     versions[root_name] = j["version"].get<std::string>();
     
+    // 处理dependencies字段
     if (j.contains("dependencies")) {
         for (auto& [dep, ver] : j["dependencies"].items()) {
             deps[root_name].push_back(dep);
             versions[dep] = ver.get<std::string>();
-            
-            // 递归获取子依赖
-            fs::path pkg_dir = fs::path("packages") / dep;
-            fs::path dep_json = pkg_dir / "Paker.json";
-            if (!fs::exists(dep_json)) dep_json = pkg_dir / "paker.json";
-            
-            if (fs::exists(dep_json)) {
-                std::ifstream dep_ifs(dep_json);
-                try {
-                    json dep_j; dep_ifs >> dep_j;
-                    if (dep_j.contains("dependencies")) {
-                        for (auto& [sub_dep, sub_ver] : dep_j["dependencies"].items()) {
-                            deps[dep].push_back(sub_dep);
-                            versions[sub_dep] = sub_ver.get<std::string>();
+        }
+    }
+    
+    // 处理url_dependencies字段
+    if (j.contains("url_dependencies")) {
+        for (auto& [dep, url] : j["url_dependencies"].items()) {
+            deps[root_name].push_back(dep);
+            versions[dep] = "url";
+        }
+    }
+    
+    // 递归获取所有已安装包的子依赖
+    fs::path pkg_dir = "packages";
+    if (fs::exists(pkg_dir) && fs::is_directory(pkg_dir)) {
+        for (const auto& entry : fs::directory_iterator(pkg_dir)) {
+            if (entry.is_directory()) {
+                std::string pkg_name = entry.path().filename().string();
+                
+                // 如果包没有在配置文件中声明，将其作为孤立包添加到根节点
+                bool is_declared = false;
+                if (j.contains("dependencies") && j["dependencies"].contains(pkg_name)) {
+                    is_declared = true;
+                }
+                if (j.contains("url_dependencies") && j["url_dependencies"].contains(pkg_name)) {
+                    is_declared = true;
+                }
+                
+                if (!is_declared) {
+                    deps[root_name].push_back(pkg_name + " (orphaned)");
+                }
+                
+                // 获取包的版本信息
+                if (versions.find(pkg_name) == versions.end()) {
+                    fs::path head_file = entry.path() / ".git" / "HEAD";
+                    if (fs::exists(head_file)) {
+                        std::ifstream hfs(head_file);
+                        std::string head_line;
+                        if (std::getline(hfs, head_line)) {
+                            if (head_line.find("ref:") == 0) {
+                                versions[pkg_name] = head_line.substr(head_line.find_last_of('/') + 1);
+                            } else {
+                                versions[pkg_name] = head_line.substr(0, 8);
+                            }
                         }
+                    } else {
+                        versions[pkg_name] = "unknown";
                     }
-                } catch (...) {
-                    LOG(WARNING) << "Failed to parse dependencies for " << dep;
+                }
+                
+                // 递归获取子依赖
+                fs::path dep_json = entry.path() / "Paker.json";
+                if (!fs::exists(dep_json)) dep_json = entry.path() / "paker.json";
+                
+                if (fs::exists(dep_json)) {
+                    std::ifstream dep_ifs(dep_json);
+                    try {
+                        json dep_j; dep_ifs >> dep_j;
+                        if (dep_j.contains("dependencies")) {
+                            for (auto& [sub_dep, sub_ver] : dep_j["dependencies"].items()) {
+                                deps[pkg_name].push_back(sub_dep);
+                                versions[sub_dep] = sub_ver.get<std::string>();
+                            }
+                        }
+                    } catch (...) {
+                        LOG(WARNING) << "Failed to parse dependencies for " << pkg_name;
+                    }
                 }
             }
         }

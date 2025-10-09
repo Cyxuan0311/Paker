@@ -42,13 +42,17 @@ void pm_lock() {
     
     json lock_j;
     lock_j["dependencies"] = json::object();
-    fs::path pkg_dir = "packages";
-    if (fs::exists(pkg_dir) && fs::is_directory(pkg_dir)) {
-        for (const auto& entry : fs::directory_iterator(pkg_dir)) {
-            if (entry.is_directory()) {
-                std::string dep = entry.path().filename().string();
-                std::string version = "unknown";
-                fs::path head_file = entry.path() / ".git" / "HEAD";
+    lock_j["url_dependencies"] = json::object();
+    
+    // 基于配置文件生成锁文件，而不是基于实际安装状态
+    if (j.contains("dependencies") && !j["dependencies"].empty()) {
+        for (auto& [dep, ver] : j["dependencies"].items()) {
+            std::string version = ver.get<std::string>();
+            
+            // 如果包已安装，获取实际版本
+            fs::path pkg_dir = fs::path("packages") / dep;
+            if (fs::exists(pkg_dir) && fs::is_directory(pkg_dir)) {
+                fs::path head_file = pkg_dir / ".git" / "HEAD";
                 if (fs::exists(head_file)) {
                     std::ifstream hfs(head_file);
                     std::string head_line;
@@ -56,12 +60,39 @@ void pm_lock() {
                         if (head_line.find("ref:") == 0) {
                             version = head_line.substr(head_line.find_last_of('/') + 1);
                         } else {
-                            version = head_line;
+                            version = head_line.substr(0, 8); // 只显示前8位commit hash
                         }
                     }
                 }
-                lock_j["dependencies"][dep] = version;
             }
+            
+            lock_j["dependencies"][dep] = version;
+        }
+    }
+    
+    // 处理url_dependencies
+    if (j.contains("url_dependencies") && !j["url_dependencies"].empty()) {
+        for (auto& [dep, url] : j["url_dependencies"].items()) {
+            std::string version = "url";
+            
+            // 如果包已安装，获取实际版本
+            fs::path pkg_dir = fs::path("packages") / dep;
+            if (fs::exists(pkg_dir) && fs::is_directory(pkg_dir)) {
+                fs::path head_file = pkg_dir / ".git" / "HEAD";
+                if (fs::exists(head_file)) {
+                    std::ifstream hfs(head_file);
+                    std::string head_line;
+                    if (std::getline(hfs, head_line)) {
+                        if (head_line.find("ref:") == 0) {
+                            version = head_line.substr(head_line.find_last_of('/') + 1);
+                        } else {
+                            version = head_line.substr(0, 8);
+                        }
+                    }
+                }
+            }
+            
+            lock_j["url_dependencies"][dep] = version;
         }
     }
     std::ofstream ofs("Paker.lock");
@@ -70,7 +101,7 @@ void pm_lock() {
     std::cout << "Generated Paker.lock\n";
 }
 
-void pm_install_lock() {
+void pm_add_lock() {
     if (!fs::exists("Paker.lock")) {
         LOG(ERROR) << "No Paker.lock file found. Run 'paker lock' first.";
         std::cout << "No Paker.lock file found. Run 'paker lock' first.\n";
@@ -88,8 +119,8 @@ void pm_install_lock() {
         if (!ver.is_null() && ver != "*" && ver != "unknown") dep_str += "@" + ver.get<std::string>();
         pm_add(dep_str);
     }
-    LOG(INFO) << "Installed dependencies from Paker.lock";
-    std::cout << "Installed dependencies from Paker.lock\n";
+    LOG(INFO) << "Added dependencies from Paker.lock";
+    std::cout << "Added dependencies from Paker.lock\n";
 }
 
 void pm_upgrade(const std::string& pkg) {
