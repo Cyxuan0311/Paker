@@ -101,10 +101,10 @@ Paker rollback --list <TAB>
 
 #### 4. 远程源管理补全
 ```bash
-Paker remote-add <TAB>
+Paker source-add <TAB>
 # 显示: github gitlab bitbucket custom
 
-Paker remote-rm <TAB>
+Paker source-rm <TAB>
 # 显示: 已配置的远程源列表
 ```
 

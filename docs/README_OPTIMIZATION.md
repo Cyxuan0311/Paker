@@ -54,10 +54,10 @@ init, remove-project
 add, remove, list, tree, search, info, update, upgrade
 
 # 依赖源管理
-remote-add, remote-rm
+source-add, source-rm
 
 # 版本控制
-lock, install-l, version
+lock, add-l, version
 ```
 
 #### 管理命令 (18个)

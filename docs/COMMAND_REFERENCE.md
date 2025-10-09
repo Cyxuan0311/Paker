@@ -1,29 +1,91 @@
 # Paker 命令参考
 
-## 快速命令表
+## 8个核心命令组
 
-| 功能分类 | 命令 | 说明 | 示例 |
-|---------|------|------|------|
-| **项目初始化** | `init` | 初始化项目 | `Paker init` |
-| **依赖管理** | `add <package>` | 添加依赖包 | `Paker add fmt` |
-| | `add-p <pkg1> <pkg2>...` | 并行安装多个包 | `Paker add-p fmt spdlog` |
-| | `add-r <package>` | 递归安装依赖 | `Paker add-r mylib` |
-| | `remove <package>` | 移除依赖包 | `Paker remove fmt` |
-| | `list` | 列出所有依赖 | `Paker list` |
-| | `tree` | 显示依赖树 | `Paker tree` |
-| | `search <package>` | 搜索依赖包 | `Paker search fmt` |
-| | `info <package>` | 查看包信息 | `Paker info fmt` |
-| **依赖源管理** | `remote-add <name> <url>` | 添加依赖源 | `Paker remote-add mylib https://github.com/example/mylib.git` |
-| | `remote-rm <name>` | 移除依赖源 | `Paker remote-rm mylib` |
-| **版本管理** | `upgrade` | 升级所有依赖 | `Paker upgrade` |
-| | `upgrade <package>` | 升级指定依赖 | `Paker upgrade fmt` |
-| | `update` | 同步本地依赖 | `Paker update` |
-| | `lock` | 锁定依赖版本 | `Paker lock` |
-| | `install-l` | 按锁文件安装 | `Paker install-l` |
-| **依赖解析** | `resolve` | 解析项目依赖 | `Paker resolve` |
-| | `check` | 检查依赖冲突 | `Paker check` |
-| | `fix` | 解决依赖冲突 | `Paker fix` |
-| | `validate` | 验证依赖完整性 | `Paker validate` |
+Paker采用8个核心命令组，每个命令组包含相关的子命令，让用户更容易找到需要的功能。
+
+### 1. 核心包管理命令 (Core Package Management)
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `add <package>` | 添加依赖包 | `Paker add fmt` |
+| `add-p <pkg1> <pkg2>...` | 并行安装多个包 | `Paker add-p fmt spdlog` |
+| `add-r <package>` | 递归安装依赖 | `Paker add-r mylib` |
+| `remove <package>` | 移除依赖包 | `Paker remove fmt` |
+| `list` | 列出所有依赖 | `Paker list` |
+| `tree` | 显示依赖树 | `Paker tree` |
+| `upgrade [package]` | 升级依赖 | `Paker upgrade fmt` |
+| `update` | 更新本地包 | `Paker update` |
+| `search <keyword>` | 搜索依赖包 | `Paker search fmt` |
+| `info <package>` | 查看包信息 | `Paker info fmt` |
+| `clean` | 清理未使用的包 | `Paker clean` |
+
+### 2. 依赖锁定命令 (Dependency Locking)
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `lock` | 生成锁定文件 | `Paker lock` |
+| `lock install` | 从锁定文件安装 | `Paker lock install` |
+| `lock resolve` | 解析项目依赖 | `Paker lock resolve` |
+| `lock check` | 检查依赖冲突 | `Paker lock check` |
+| `lock fix` | 解决依赖冲突 | `Paker lock fix` |
+| `lock validate` | 验证依赖完整性 | `Paker lock validate` |
+
+### 3. 缓存管理命令 (Cache Management)
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `cache add <package> [version]` | 安装包到缓存 | `Paker cache add fmt` |
+| `cache remove <package> [version]` | 从缓存删除包 | `Paker cache remove fmt` |
+| `cache status [--detailed]` | 显示缓存状态 | `Paker cache status --detailed` |
+| `cache clean [--smart] [--force]` | 清理缓存 | `Paker cache clean --smart` |
+| `cache warmup` | 缓存预热 | `Paker cache warmup` |
+
+### 4. 性能监控命令 (Performance Monitoring)
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `monitor enable [--disable]` | 启用性能监控 | `Paker monitor enable` |
+| `monitor clear` | 清除监控数据 | `Paker monitor clear` |
+| `monitor perf [-o,--output]` | 生成性能报告 | `Paker monitor perf -o report.json` |
+| `monitor analyze [-o,--output]` | 分析依赖结构 | `Paker monitor analyze -o analysis.json` |
+| `monitor diagnose [-o,--output]` | 运行系统诊断 | `Paker monitor diagnose -o diagnostic.json` |
+
+### 5. 版本控制命令 (Version Control)
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `version [--short] [--build] [--check]` | 显示版本信息 | `Paker version --short` |
+| `version rollback <package> [version] [options]` | 回滚到指定版本 | `Paker version rollback fmt 1.0.0` |
+| `version rollback --previous <package>` | 回滚到上一版本 | `Paker version rollback --previous fmt` |
+| `version rollback --timestamp <time>` | 回滚到时间点 | `Paker version rollback --timestamp "2024-01-15 10:30:00"` |
+| `version rollback --list <package>` | 列出可回滚版本 | `Paker version rollback --list fmt` |
+| `version rollback --check <package> <version>` | 检查回滚安全性 | `Paker version rollback --check fmt 1.0.0` |
+| `version rollback --stats` | 显示回滚统计 | `Paker version rollback --stats` |
+| `version history [package] [options]` | 版本历史管理 | `Paker version history fmt` |
+| `version record [package] [--list] [--files]` | 包安装记录 | `Paker version record fmt --files` |
+
+### 6. 项目管理命令 (Project Management)
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `init` | 初始化项目 | `Paker init` |
+| `remove-project [--force]` | 删除项目 | `Paker remove-project --force` |
+| `suggestion [options]` | 智能包推荐 | `Paker suggestion --category web` |
+
+### 7. 依赖源管理命令 (Dependency Source Management)
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `source-add <name> <url>` | 添加依赖源 | `Paker source-add mylib https://github.com/example/mylib.git` |
+| `source-rm <name>` | 移除依赖源 | `Paker source-rm mylib` |
+
+### 8. 系统管理命令 (System Management)
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `parse [--stats] [--config] [--clear] [--opt] [--validate]` | 增量解析管理 | `Paker parse --stats` |
+| `io [--stats] [--config] [--test] [--bench] [--opt]` | 异步I/O管理 | `Paker io --test` |
 
 ## 缓存管理命令
 
@@ -106,7 +168,7 @@
 ### 项目初始化流程
 ```bash
 Paker init
-Paker remote-add mylib https://github.com/example/mylib.git
+Paker source-add mylib https://github.com/example/mylib.git
 Paker add-p fmt spdlog nlohmann-json
 Paker resolve
 Paker check
