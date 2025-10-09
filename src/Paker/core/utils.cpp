@@ -21,7 +21,7 @@ std::pair<std::string, std::string> parse_name_version(const std::string& input)
 }
 
 std::string get_record_file_path() {
-    return get_project_name() + "_install_record.json";
+    return "Paker_install_record.json";
 }
 
 std::vector<std::string> collect_package_files(const std::string& package_path) {
