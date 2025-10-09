@@ -199,6 +199,18 @@ bool DependencyResolver::load_dependencies_from_json(const std::string& json_fil
             }
         }
         
+        // 解析URL依赖
+        if (j.contains("url_dependencies")) {
+            for (const auto& [package, url] : j["url_dependencies"].items()) {
+                if (!resolve_package(package, "url")) {
+                    LOG(WARNING) << "Failed to resolve URL package: " << package;
+                }
+            }
+        }
+        
+        // 扫描已安装的包
+        scan_installed_packages();
+        
         // 解析自定义仓库
         if (j.contains("remotes")) {
             for (const auto& remote : j["remotes"]) {
@@ -216,6 +228,53 @@ bool DependencyResolver::load_dependencies_from_json(const std::string& json_fil
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to parse JSON file: " << e.what();
         return false;
+    }
+}
+
+void DependencyResolver::scan_installed_packages() {
+    try {
+        fs::path packages_dir = "packages";
+        if (!fs::exists(packages_dir) || !fs::is_directory(packages_dir)) {
+            LOG(INFO) << "No packages directory found for dependency scanning";
+            return;
+        }
+        
+        LOG(INFO) << "Scanning installed packages for dependency analysis in " << packages_dir.string();
+        
+        for (const auto& entry : fs::directory_iterator(packages_dir)) {
+            if (entry.is_directory()) {
+                std::string package_name = entry.path().filename().string();
+                std::string version = "unknown";
+                
+                // 获取Git版本信息
+                fs::path head_file = entry.path() / ".git" / "HEAD";
+                if (fs::exists(head_file)) {
+                    std::ifstream hfs(head_file);
+                    std::string head_line;
+                    if (std::getline(hfs, head_line)) {
+                        if (head_line.find("ref:") == 0) {
+                            version = head_line.substr(head_line.find_last_of('/') + 1);
+                        } else {
+                            version = head_line.substr(0, 8);
+                        }
+                    }
+                }
+                
+                // 添加到依赖图
+                if (!is_package_resolved(package_name)) {
+                    if (resolve_package(package_name, version)) {
+                        LOG(INFO) << "Scanned installed package for analysis: " << package_name << "@" << version;
+                    } else {
+                        LOG(WARNING) << "Failed to resolve scanned package: " << package_name;
+                    }
+                }
+            }
+        }
+        
+        LOG(INFO) << "Completed scanning installed packages for dependency analysis";
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error scanning installed packages for dependency analysis: " << e.what();
     }
 }
 
@@ -324,26 +383,68 @@ bool DependencyResolver::read_dependencies_from_json(std::ifstream& ifs, Depende
 }
 
 bool DependencyResolver::read_dependencies_from_cmake(std::ifstream& ifs, DependencyNode& node) {
-    // 简化的 CMake 依赖解析
+    // 改进的 CMake 依赖解析
     std::string line;
     while (std::getline(ifs, line)) {
-        // 查找 find_package 或类似命令
-        if (line.find("find_package") != std::string::npos || 
-            line.find("add_subdirectory") != std::string::npos) {
-            // 提取包名（简化实现）
-            std::istringstream iss(line);
-            std::string token;
-            while (iss >> token) {
-                if (token != "find_package" && token != "add_subdirectory" && 
-                    !token.empty() && token[0] != '#') {
-                    node.dependencies.insert(token);
-                    break;
+        // 移除注释和多余空格
+        size_t comment_pos = line.find('#');
+        if (comment_pos != std::string::npos) {
+            line = line.substr(0, comment_pos);
+        }
+        
+        // 移除前后空格
+        line.erase(0, line.find_first_not_of(" \t"));
+        line.erase(line.find_last_not_of(" \t") + 1);
+        
+        if (line.empty()) continue;
+        
+        // 只处理 find_package 命令，忽略 add_subdirectory
+        if (line.find("find_package") == 0) {
+            // 解析 find_package(包名 REQUIRED) 格式
+            size_t open_paren = line.find('(');
+            size_t close_paren = line.find(')');
+            
+            if (open_paren != std::string::npos && close_paren != std::string::npos) {
+                std::string package_part = line.substr(open_paren + 1, close_paren - open_paren - 1);
+                
+                // 提取包名（第一个单词）
+                std::istringstream iss(package_part);
+                std::string package_name;
+                if (iss >> package_name) {
+                    // 验证包名是否有效（不包含特殊字符）
+                    if (is_valid_package_name(package_name)) {
+                        node.dependencies.insert(package_name);
+                    }
                 }
             }
         }
+        // 忽略 add_subdirectory 命令，因为它们不是包依赖
     }
     
     return !node.dependencies.empty();
+}
+
+bool DependencyResolver::is_valid_package_name(const std::string& name) {
+    if (name.empty()) return false;
+    
+    // 检查是否包含无效字符
+    for (char c : name) {
+        if (!std::isalnum(c) && c != '-' && c != '_' && c != '.') {
+            return false;
+        }
+    }
+    
+    // 检查是否以数字开头（通常不是有效的包名）
+    if (std::isdigit(name[0])) {
+        return false;
+    }
+    
+    // 检查长度
+    if (name.length() < 2 || name.length() > 50) {
+        return false;
+    }
+    
+    return true;
 }
 
 bool DependencyResolver::infer_dependencies_from_structure(const std::string& package_path, DependencyNode& node) {
