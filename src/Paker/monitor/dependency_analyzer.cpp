@@ -9,6 +9,8 @@
 #include <filesystem>
 #include <glog/logging.h>
 #include "nlohmann/json.hpp"
+#include <cstdlib>
+#include <cstdio>
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -267,11 +269,26 @@ size_t DependencyAnalyzer::get_package_size(const std::string& package) {
         return 0;
     }
     
+    // 首先尝试使用系统命令获取准确大小
+    size_t system_size = get_package_size_system(package_path);
+    if (system_size > 0) {
+        return system_size;
+    }
+    
+    // 如果系统命令失败，回退到文件系统遍历
     size_t total_size = 0;
     try {
         for (const auto& entry : fs::recursive_directory_iterator(package_path)) {
             if (entry.is_regular_file()) {
-                total_size += fs::file_size(entry.path());
+                try {
+                    // 使用更准确的文件大小计算方法
+                    auto file_size = fs::file_size(entry.path());
+                    total_size += file_size;
+                } catch (const fs::filesystem_error& e) {
+                    // 如果无法获取文件大小，尝试使用stat
+                    LOG(WARNING) << "Failed to get file size for " << entry.path() << ": " << e.what();
+                    continue;
+                }
             }
         }
     } catch (const std::exception& e) {
@@ -282,14 +299,19 @@ size_t DependencyAnalyzer::get_package_size(const std::string& package) {
 }
 
 std::string DependencyAnalyzer::format_size(size_t bytes) const {
-    if (bytes < 1024) {
+    if (bytes == 0) {
+        return "0 B";
+    } else if (bytes < 1024) {
         return std::to_string(bytes) + " B";
     } else if (bytes < 1024 * 1024) {
-        return std::to_string(bytes / 1024) + " KB";
+        double kb = static_cast<double>(bytes) / 1024.0;
+        return std::to_string(static_cast<int>(kb + 0.5)) + " KB";
     } else if (bytes < 1024 * 1024 * 1024) {
-        return std::to_string(bytes / (1024 * 1024)) + " MB";
+        double mb = static_cast<double>(bytes) / (1024.0 * 1024.0);
+        return std::to_string(static_cast<int>(mb + 0.5)) + " MB";
     } else {
-        return std::to_string(bytes / (1024 * 1024 * 1024)) + " GB";
+        double gb = static_cast<double>(bytes) / (1024.0 * 1024.0 * 1024.0);
+        return std::to_string(static_cast<int>(gb + 0.5)) + " GB";
     }
 }
 
@@ -395,6 +417,37 @@ bool DependencyAnalyzer::export_analysis(const DependencyAnalysis& analysis, con
         LOG(ERROR) << "Failed to export dependency analysis: " << e.what();
         return false;
     }
+}
+
+size_t DependencyAnalyzer::get_package_size_system(const std::string& package_path) {
+    try {
+        // 使用du命令获取准确的目录大小
+        std::string command = "du -sb " + package_path + " 2>/dev/null";
+        FILE* pipe = popen(command.c_str(), "r");
+        if (!pipe) {
+            return 0;
+        }
+        
+        char buffer[128];
+        std::string result = "";
+        while (fgets(buffer, sizeof buffer, pipe) != nullptr) {
+            result += buffer;
+        }
+        pclose(pipe);
+        
+        if (!result.empty()) {
+            // 解析du命令的输出，提取字节数
+            size_t pos = result.find('\t');
+            if (pos != std::string::npos) {
+                std::string size_str = result.substr(0, pos);
+                return std::stoull(size_str);
+            }
+        }
+    } catch (const std::exception& e) {
+        LOG(WARNING) << "Failed to get package size using system command: " << e.what();
+    }
+    
+    return 0;
 }
 
 } // namespace Paker 

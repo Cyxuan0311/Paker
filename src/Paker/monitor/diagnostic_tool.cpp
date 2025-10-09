@@ -204,6 +204,7 @@ std::vector<DiagnosticIssue> DiagnosticTool::check_dependencies() {
         return issues;
     }
     
+    
     // 检查依赖解析
     for (const auto& [package, node] : graph_.get_nodes()) {
         for (const auto& dep : node.dependencies) {
