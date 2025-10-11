@@ -16,34 +16,16 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Winvalid-pch")
 endif()
 
-# 启用SIMD指令集支持
+# 启用SIMD指令集支持 - 使用智能CPU特性检测
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    # 检查CPU特性并启用相应的SIMD指令集
-    include(CheckCXXCompilerFlag)
+    # 包含CPU特性检测脚本
+    include(${CMAKE_SOURCE_DIR}/cmake/DetectCPUFeatures.cmake)
     
-    # 检查SSE2支持
-    check_cxx_compiler_flag("-msse2" COMPILER_SUPPORTS_SSE2)
-    if(COMPILER_SUPPORTS_SSE2)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2")
-    endif()
+    # 检测CPU特性
+    detect_cpu_features()
     
-    # 检查SSE4.2支持
-    check_cxx_compiler_flag("-msse4.2" COMPILER_SUPPORTS_SSE42)
-    if(COMPILER_SUPPORTS_SSE42)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2")
-    endif()
-    
-    # 检查AVX2支持
-    check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
-    if(COMPILER_SUPPORTS_AVX2)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
-    endif()
-    
-    # 检查AVX512支持
-    check_cxx_compiler_flag("-mavx512f" COMPILER_SUPPORTS_AVX512)
-    if(COMPILER_SUPPORTS_AVX512)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512f")
-    endif()
+    # 应用CPU优化
+    apply_cpu_optimizations()
 endif()
 
 # 查找glog库
