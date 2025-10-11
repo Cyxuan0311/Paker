@@ -437,12 +437,19 @@ bool CacheWarmupService::preload_single_package(const PackageWarmupInfo& package
             return true;
         }
         
-        // 安装到缓存
-        bool success = cache_manager_->install_package_to_cache(
-            package_info.package_name,
-            package_info.version,
-            package_info.repository_url
-        );
+        bool success = false;
+        
+        // 如果repository_url为空，说明是已安装的包，直接复制
+        if (package_info.repository_url.empty()) {
+            success = copy_installed_package_to_cache(package_info);
+        } else {
+            // 从仓库安装到缓存
+            success = cache_manager_->install_package_to_cache(
+                package_info.package_name,
+                package_info.version,
+                package_info.repository_url
+            );
+        }
         
         if (success) {
             LOG(INFO) << "Successfully preloaded: " << package_info.package_name << "@" << package_info.version;
@@ -487,8 +494,8 @@ void CacheWarmupService::rebuild_priority_queues() {
 
 bool CacheWarmupService::analyze_usage_patterns(const std::string& project_path) {
     try {
-        // 分析项目配置文件
-        std::string config_file = project_path.empty() ? ".paker/paker.json" : project_path + "/.paker/paker.json";
+        // 分析项目配置文件 - 修复：查找正确的配置文件路径
+        std::string config_file = project_path.empty() ? "Paker.json" : project_path + "/Paker.json";
         
         if (!fs::exists(config_file)) {
             LOG(WARNING) << "Project config not found: " << config_file;
@@ -506,7 +513,11 @@ bool CacheWarmupService::analyze_usage_patterns(const std::string& project_path)
             }
         }
         
+        // 扫描已安装的包进行预热
+        scan_installed_packages_for_warmup();
+        
         LOG(INFO) << "Usage patterns analyzed from: " << config_file;
+        LOG(INFO) << "Found " << packages_to_preload_.size() << " packages for warmup";
         return true;
         
     } catch (const std::exception& e) {
@@ -612,8 +623,9 @@ void CacheWarmupService::scan_installed_packages_for_warmup() {
         
         LOG(INFO) << "Scanning installed packages for warmup in " << packages_dir.string();
         
-        packages_to_preload_.clear();
-        package_registry_.clear();
+        // 不清空已有的包列表，只添加新发现的包
+        // packages_to_preload_.clear();
+        // package_registry_.clear();
         
         for (const auto& entry : fs::directory_iterator(packages_dir)) {
             if (entry.is_directory()) {
@@ -634,6 +646,13 @@ void CacheWarmupService::scan_installed_packages_for_warmup() {
                     }
                 }
                 
+                // 检查是否已经存在相同的包
+                std::string package_key = package_name + "@" + version;
+                if (package_registry_.find(package_key) != package_registry_.end()) {
+                    LOG(INFO) << "Package already registered for warmup: " << package_name;
+                    continue;
+                }
+                
                 // 创建预热信息
                 PackageWarmupInfo info;
                 info.package_name = package_name;
@@ -646,7 +665,7 @@ void CacheWarmupService::scan_installed_packages_for_warmup() {
                 info.estimated_size = 0; // 可以后续计算
                 
                 packages_to_preload_.push_back(info);
-                package_registry_[package_name + "@" + version] = info;
+                package_registry_[package_key] = info;
                 
                 LOG(INFO) << "Scanned package for warmup: " << package_name << "@" << version;
             }
@@ -818,6 +837,43 @@ bool initialize_cache_warmup_service() {
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to initialize cache warmup service: " << e.what();
+        return false;
+    }
+}
+
+bool CacheWarmupService::copy_installed_package_to_cache(const PackageWarmupInfo& package_info) {
+    try {
+        // 检查已安装的包是否存在
+        fs::path installed_path = fs::path("packages") / package_info.package_name;
+        if (!fs::exists(installed_path) || !fs::is_directory(installed_path)) {
+            LOG(WARNING) << "Installed package not found: " << installed_path.string();
+            return false;
+        }
+        
+        // 确定缓存路径 - 使用公共方法构造路径
+        std::string cache_path = cache_manager_->get_user_cache_path() + "/" + package_info.package_name + "/" + package_info.version;
+        fs::path cache_dir(cache_path);
+        
+        // 创建缓存目录
+        fs::create_directories(cache_dir.parent_path());
+        
+        // 复制包到缓存
+        try {
+            fs::copy(installed_path, cache_dir, fs::copy_options::recursive);
+            LOG(INFO) << "Copied installed package to cache: " << package_info.package_name 
+                      << " from " << installed_path.string() << " to " << cache_path;
+        } catch (const fs::filesystem_error& e) {
+            LOG(ERROR) << "Failed to copy package: " << e.what();
+            return false;
+        }
+        
+        // 更新缓存索引 - 保存缓存索引
+        cache_manager_->save_cache_index();
+        
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error copying installed package to cache: " << e.what();
         return false;
     }
 }

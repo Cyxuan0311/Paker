@@ -403,7 +403,7 @@ bool CacheManager::migrate_from_legacy_mode(const std::string& project_path) {
 bool CacheManager::install_shallow_clone(const std::string& repo_url, const std::string& cache_path, 
                                        const std::string& version) {
     std::ostringstream cmd;
-    cmd << "git clone --depth 1 " << repo_url << " " << cache_path;
+    cmd << "git clone --quiet --depth 1 " << repo_url << " " << cache_path << " 2>/dev/null";
     int ret = std::system(cmd.str().c_str());
     
     if (ret != 0) {
@@ -412,7 +412,7 @@ bool CacheManager::install_shallow_clone(const std::string& repo_url, const std:
     
     if (!version.empty() && version != "*") {
         std::ostringstream checkout_cmd;
-        checkout_cmd << "cd " << cache_path << " && git fetch --tags && git checkout " << version;
+        checkout_cmd << "cd " << cache_path << " && git fetch --tags --quiet && git checkout --quiet " << version << " 2>/dev/null";
         ret = std::system(checkout_cmd.str().c_str());
         if (ret != 0) {
             LOG(WARNING) << "Failed to checkout version " << version;
