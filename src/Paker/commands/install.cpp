@@ -147,12 +147,12 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
     
     // 简洁的并行安装界面
     std::cout << "\n";
-    std::cout << "Downloading " << std::to_string(task_ids.size()) << " packages in parallel\n";
+    std::cout << "Installing " << std::to_string(task_ids.size()) << " packages in parallel\n";
     std::cout << "\n";
     
     // 创建进度条显示并行下载进度
     Paker::ProgressBar* parallel_progress = new Paker::ProgressBar(
-        100, 50, "Downloading", true, true, false, Paker::ProgressStyle::NPM_STYLE
+        100, 30, "", true, true, false, Paker::ProgressStyle::BASIC
     );
     
     bool all_success = true;
@@ -171,7 +171,7 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
             progress_value = (elapsed * 90) / 1000; // 假设每个包下载需要1秒
             if (progress_value > 90) progress_value = 90;
             
-            parallel_progress->update(progress_value, "Downloading package " + std::to_string(completed_tasks + 1) + "/" + std::to_string(task_ids.size()) + " files...");
+            parallel_progress->update(progress_value, "Installing package " + std::to_string(completed_tasks + 1) + "/" + std::to_string(task_ids.size()) + "...");
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
             
             if (progress_value >= 90) break;
@@ -195,7 +195,7 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
         parallel_progress->update(progress_percent, "Completed " + std::to_string(completed_tasks) + "/" + std::to_string(task_ids.size()) + " packages");
     }
     
-    parallel_progress->finish("All packages downloaded successfully");
+    parallel_progress->finish("All packages installed successfully");
     delete parallel_progress;
     
     if (all_success) {
@@ -214,6 +214,7 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
 
 void pm_add(const std::string& pkg_input) {
     // 开始性能监控
+    LOG(INFO) << "Starting performance monitoring for package_install";
     PAKER_PERF_START("package_install");
     
     auto [pkg, version] = parse_name_version(pkg_input);
@@ -387,22 +388,25 @@ void pm_add(const std::string& pkg_input) {
         
         // 简洁的安装界面
         std::cout << "\n";
-        std::cout << "Downloading " << pkg;
+        // 显示安装信息
+        std::cout << "\n";
+        std::cout << "Installing " << pkg;
         if (!version.empty() && version != "*") {
             std::cout << "@" << version;
         }
-        std::cout << " from " << repo_url << "\n";
+        std::cout << "\n";
+        std::cout << "Repository: " << repo_url << "\n";
         std::cout << "\n";
         
-        // 创建无限进度条，显示实时进度
-        progress = new Paker::ProgressBar(100, 50, "Downloading", true, true, false, Paker::ProgressStyle::NPM_STYLE);
+        // 创建简洁的进度条
+        progress = new Paker::ProgressBar(100, 30, "", true, true, false, Paker::ProgressStyle::BASIC);
         
         // 步骤1: 克隆仓库
-        progress->update(10, "Connecting to repository...");
+        progress->update(0, "Connecting to repository...");
         Paker::Output::debug("Cloning repository: " + repo_url);
         
         std::ostringstream cmd;
-        cmd << "git clone --progress --depth 1 " << repo_url << " " << pkg_dir.string();
+        cmd << "git clone --quiet --depth 1 " << repo_url << " " << pkg_dir.string() << " 2>/dev/null";
         int ret = std::system(cmd.str().c_str());
         if (ret != 0) {
             LOG(ERROR) << "Failed to clone repo: " << repo_url;
@@ -410,27 +414,11 @@ void pm_add(const std::string& pkg_input) {
             return;
         }
         
-        // 模拟下载进度 - 基于实际操作的进度显示
-        auto start_time = std::chrono::steady_clock::now();
-        int progress_value = 20;
-        
-        while (progress_value < 80) {
-            auto current_time = std::chrono::steady_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count();
-            
-            // 基于时间计算进度
-            progress_value = 20 + (elapsed * 60) / 1000; // 假设下载需要1秒
-            if (progress_value > 80) progress_value = 80;
-            
-            progress->update(progress_value, "Downloading package files...");
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            
-            if (progress_value >= 80) break;
-        }
+        progress->update(30, "Repository cloned successfully");
         
         // 步骤2: 检出版本（如果需要）
         if (!version.empty() && version != "*") {
-            progress->update(85, "Checking out version " + version);
+            progress->update(50, "Checking out version " + version);
             Paker::Output::debug("Checking out version: " + version);
             std::ostringstream checkout_cmd;
             checkout_cmd << "cd " << pkg_dir.string() << " && git fetch --tags && git checkout " << version;
@@ -445,7 +433,7 @@ void pm_add(const std::string& pkg_input) {
         }
         
         // 步骤3: 记录文件
-        progress->update(95, "Recording package files and metadata");
+        progress->update(70, "Recording package files and metadata");
         Paker::Output::debug("Recording package files...");
         
         // 使用Record类记录安装的文件
@@ -456,13 +444,10 @@ void pm_add(const std::string& pkg_input) {
         record.addPackageRecord(pkg, pkg_dir.string(), installed_files);
         LOG(INFO) << "Recorded " << installed_files.size() << " files for package: " << pkg;
         
-        // 完成进度
-        progress->update(100, "Installation completed successfully");
-    }
-    
-    if (progress) {
+        // 完成安装
         progress->finish("Installation completed successfully");
         delete progress;
+        progress = nullptr;
     }
     
     // 简洁的安装完成信息
@@ -478,7 +463,19 @@ void pm_add(const std::string& pkg_input) {
     pm_record_version_change(pkg, "", version, repo_url, "Package installation");
     
     // 结束性能监控并记录指标
+    LOG(INFO) << "Ending performance monitoring for package_install";
     PAKER_PERF_END("package_install", Paker::MetricType::INSTALL_TIME);
+    
+    // 检查性能监控器状态
+    if (Paker::g_performance_monitor.is_enabled()) {
+        LOG(INFO) << "Performance monitor is enabled";
+        
+        // 检查是否有数据被记录
+        auto metrics = Paker::g_performance_monitor.get_metrics();
+        LOG(INFO) << "Total metrics recorded: " << metrics.size();
+    } else {
+        LOG(WARNING) << "Performance monitor is disabled";
+    }
     
     // 记录包大小
     size_t total_size = 0;
@@ -492,6 +489,7 @@ void pm_add(const std::string& pkg_input) {
 
 void pm_add_url(const std::string& url) {
     // 开始性能监控
+    LOG(INFO) << "Starting performance monitoring for package_install_url";
     PAKER_PERF_START("package_install_url");
     
     std::string json_file = get_json_file();
@@ -537,8 +535,8 @@ void pm_add_url(const std::string& url) {
         // 创建目标目录
         fs::create_directories(target_path);
         
-        // 使用git clone下载
-        std::string cmd = "git clone " + url + " " + target_path;
+        // 使用git clone下载（静默模式）
+        std::string cmd = "git clone --quiet --depth 1 " + url + " " + target_path + " 2>/dev/null";
         int result = system(cmd.c_str());
         
         if (result == 0) {
@@ -553,8 +551,24 @@ void pm_add_url(const std::string& url) {
         Paker::Output::info("Package already exists: " + pkg_name);
     }
     
-    // 结束性能监控
+    // 结束性能监控（即使包已存在也要记录）
+    LOG(INFO) << "Ending performance monitoring for package_install_url";
     PAKER_PERF_END("package_install_url", Paker::MetricType::INSTALL_TIME);
+    
+    // 检查性能监控器状态
+    if (Paker::g_performance_monitor.is_enabled()) {
+        LOG(INFO) << "Performance monitor is enabled";
+        
+        // 检查是否有数据被记录
+        auto metrics = Paker::g_performance_monitor.get_metrics();
+        LOG(INFO) << "Total metrics recorded: " << metrics.size();
+    } else {
+        LOG(WARNING) << "Performance monitor is disabled";
+    }
+    
+    // 保存性能监控数据到文件
+    std::string perf_file = ".paker/performance_data.json";
+    Paker::g_performance_monitor.save_to_file(perf_file);
 }
 
 void pm_remove(const std::string& pkg) {

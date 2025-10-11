@@ -15,10 +15,10 @@ bool Output::verbose_mode_ = false;
 
 // ProgressBar 实现
 ProgressBar::ProgressBar(int total, int width, const std::string& prefix, 
-                        bool show_percentage, bool show_eta, bool show_speed, ProgressStyle style)
+                        bool show_percentage, bool show_eta, bool show_speed, ProgressStyle style, bool use_colors)
     : total_(total), current_(0), width_(width), prefix_(prefix), suffix_(""),
       show_percentage_(show_percentage), show_eta_(show_eta), show_speed_(show_speed), style_(style),
-      start_time_(std::chrono::steady_clock::now()), last_update_time_(start_time_), spinner_index_(0) {
+      use_colors_(use_colors), start_time_(std::chrono::steady_clock::now()), last_update_time_(start_time_), spinner_index_(0) {
     recent_speeds_.reserve(SPEED_HISTORY_SIZE);
     
     // 显示初始状态（0%）
@@ -115,11 +115,23 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
             std::cout << "[";
             for (int i = 0; i < width_; ++i) {
                 if (i < filled_width) {
-                    std::cout << "=";
+                    if (use_colors_) {
+                        std::cout << Colors::BOLD << Colors::CYAN << "=" << Colors::RESET;
+                    } else {
+                        std::cout << "=";
+                    }
                 } else if (i == filled_width) {
-                    std::cout << ">";
+                    if (use_colors_) {
+                        std::cout << Colors::YELLOW << ">" << Colors::RESET;
+                    } else {
+                        std::cout << ">";
+                    }
                 } else {
-                    std::cout << " ";
+                    if (use_colors_) {
+                        std::cout << Colors::DIM << " " << Colors::RESET;
+                    } else {
+                        std::cout << " ";
+                    }
                 }
             }
             std::cout << "]";
@@ -130,9 +142,17 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
             std::cout << "[";
             for (int i = 0; i < width_; ++i) {
                 if (i < filled_width) {
-                    std::cout << "#";
+                    if (use_colors_) {
+                        std::cout << Colors::GREEN << "#" << Colors::RESET;
+                    } else {
+                        std::cout << "#";
+                    }
                 } else {
-                    std::cout << "-";
+                    if (use_colors_) {
+                        std::cout << Colors::DIM << "-" << Colors::RESET;
+                    } else {
+                        std::cout << "-";
+                    }
                 }
             }
             std::cout << "]";
@@ -143,18 +163,34 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
             std::cout << "[";
             for (int i = 0; i < width_; ++i) {
                 if (i < filled_width) {
-                    std::cout << "=";
+                    if (use_colors_) {
+                        std::cout << Colors::BOLD << Colors::CYAN << "=" << Colors::RESET;
+                    } else {
+                        std::cout << "=";
+                    }
                 } else if (i == filled_width) {
-                    std::cout << ">";
+                    if (use_colors_) {
+                        std::cout << Colors::YELLOW << ">" << Colors::RESET;
+                    } else {
+                        std::cout << ">";
+                    }
                 } else {
-                    std::cout << " ";
+                    if (use_colors_) {
+                        std::cout << Colors::DIM << " " << Colors::RESET;
+                    } else {
+                        std::cout << " ";
+                    }
                 }
             }
             std::cout << "]";
             // 添加旋转指示器
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_).count();
             const char* spinners[] = {"|", "/", "-", "\\"};
-            std::cout << " " << spinners[(elapsed / 200) % 4];
+            if (use_colors_) {
+                std::cout << " " << Colors::CYAN << spinners[(elapsed / 200) % 4] << Colors::RESET;
+            } else {
+                std::cout << " " << spinners[(elapsed / 200) % 4];
+            }
             break;
         }
             
@@ -162,14 +198,26 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
             std::cout << "[";
             for (int i = 0; i < width_; ++i) {
                 if (i < filled_width) {
-                    std::cout << "#";
+                    if (use_colors_) {
+                        std::cout << Colors::GREEN << "#" << Colors::RESET;
+                    } else {
+                        std::cout << "#";
+                    }
                 } else {
-                    std::cout << "-";
+                    if (use_colors_) {
+                        std::cout << Colors::DIM << "-" << Colors::RESET;
+                    } else {
+                        std::cout << "-";
+                    }
                 }
             }
             std::cout << "]";
             if (filled_width < width_) {
-                std::cout << " #";
+                if (use_colors_) {
+                    std::cout << " " << Colors::YELLOW << "#" << Colors::RESET;
+                } else {
+                    std::cout << " #";
+                }
             }
             break;
         }
@@ -180,15 +228,27 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
             
         case ProgressStyle::SPINNER: {
             // 旋转器样式：只显示旋转字符和文本
-            std::cout << get_spinner_char() << " " << prefix_;
+            if (use_colors_) {
+                std::cout << Colors::CYAN << get_spinner_char() << Colors::RESET << " " << prefix_;
+            } else {
+                std::cout << get_spinner_char() << " " << prefix_;
+            }
             break;
         }
         
         case ProgressStyle::NPM_STYLE: {
             // NPM风格：旋转字符 + 文本 + 百分比
-            std::cout << get_spinner_char() << " " << prefix_;
+            if (use_colors_) {
+                std::cout << Colors::CYAN << get_spinner_char() << Colors::RESET << " " << prefix_;
+            } else {
+                std::cout << get_spinner_char() << " " << prefix_;
+            }
             if (!custom_suffix.empty()) {
-                std::cout << " " << custom_suffix;
+                if (use_colors_) {
+                    std::cout << " " << Colors::YELLOW << custom_suffix << Colors::RESET;
+                } else {
+                    std::cout << " " << custom_suffix;
+                }
             }
             break;
         }
@@ -196,17 +256,29 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
     
     // 添加百分比
     if (show_percentage_) {
-        std::cout << " " << std::fixed << std::setprecision(1) << (percentage * 100) << "%";
+        if (use_colors_) {
+            std::cout << " " << Colors::BOLD << Colors::YELLOW << std::fixed << std::setprecision(1) << (percentage * 100) << "%" << Colors::RESET;
+        } else {
+            std::cout << " " << std::fixed << std::setprecision(1) << (percentage * 100) << "%";
+        }
     }
     
     // 添加计数
-    std::cout << " (" << current_ << "/" << total_ << ")";
+    if (use_colors_) {
+        std::cout << " " << Colors::DIM << "(" << current_ << "/" << total_ << ")" << Colors::RESET;
+    } else {
+        std::cout << " (" << current_ << "/" << total_ << ")";
+    }
     
     // 添加ETA
     if (show_eta_ && current_ > 0 && current_ < total_) {
         double eta = get_eta_seconds();
         if (eta > 0) {
-            std::cout << " ETA: " << format_eta(eta);
+            if (use_colors_) {
+                std::cout << " " << Colors::CYAN << "ETA: " << format_eta(eta) << Colors::RESET;
+            } else {
+                std::cout << " ETA: " << format_eta(eta);
+            }
         }
     }
     
@@ -214,15 +286,27 @@ void ProgressBar::update(int current, const std::string& custom_suffix) {
     if (show_speed_ && current_ > 0) {
         double speed = get_speed();
         if (speed > 0) {
-            std::cout << " " << format_speed(speed);
+            if (use_colors_) {
+                std::cout << " " << Colors::GREEN << format_speed(speed) << Colors::RESET;
+            } else {
+                std::cout << " " << format_speed(speed);
+            }
         }
     }
     
     // 添加自定义后缀
     if (!custom_suffix.empty()) {
-        std::cout << " " << custom_suffix;
+        if (use_colors_) {
+            std::cout << " " << Colors::YELLOW << custom_suffix << Colors::RESET;
+        } else {
+            std::cout << " " << custom_suffix;
+        }
     } else if (!suffix_.empty()) {
-        std::cout << " " << suffix_;
+        if (use_colors_) {
+            std::cout << " " << Colors::YELLOW << suffix_ << Colors::RESET;
+        } else {
+            std::cout << " " << suffix_;
+        }
     }
     
     std::cout.flush();
@@ -235,7 +319,7 @@ void ProgressBar::finish() {
 void ProgressBar::finish(const std::string& final_message) {
     update(total_);
     if (!final_message.empty()) {
-        std::cout << " " << final_message;
+        std::cout << "\n" << final_message;
     }
     std::cout << std::endl;
 }
@@ -250,7 +334,7 @@ void ProgressBar::reset(int total) {
 }
 
 std::string ProgressBar::get_spinner_char() const {
-    spinner_index_ = (spinner_index_ + 1) % 10;  // 10个旋转字符
+    spinner_index_ = (spinner_index_ + 1) % 4;  // 4个旋转字符
     return std::string(1, SPINNER_CHARS[spinner_index_]);
 }
 

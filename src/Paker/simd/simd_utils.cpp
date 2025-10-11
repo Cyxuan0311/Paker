@@ -20,45 +20,53 @@ SIMDInstructionSet SIMDDetector::detect_instruction_set() {
     
     // 检测CPU特性
     #ifdef __x86_64__
-    // 检测SSE2
-    if (has_sse2()) {
-        max_set = SIMDInstructionSet::SSE2;
+    try {
+        // 检测SSE2
+        if (has_sse2()) {
+            max_set = SIMDInstructionSet::SSE2;
+        }
+        
+        // 检测SSE3
+        if (has_sse3()) {
+            max_set = SIMDInstructionSet::SSE3;
+        }
+        
+        // 检测SSSE3
+        if (has_ssse3()) {
+            max_set = SIMDInstructionSet::SSSE3;
+        }
+        
+        // 检测SSE4.1
+        if (has_sse4_1()) {
+            max_set = SIMDInstructionSet::SSE4_1;
+        }
+        
+        // 检测SSE4.2
+        if (has_sse4_2()) {
+            max_set = SIMDInstructionSet::SSE4_2;
+        }
+        
+        // 检测AVX
+        if (has_avx()) {
+            max_set = SIMDInstructionSet::AVX;
+        }
+        
+        // 检测AVX2
+        if (has_avx2()) {
+            max_set = SIMDInstructionSet::AVX2;
+        }
+        
+        // 检测AVX512
+        if (has_avx512()) {
+            max_set = SIMDInstructionSet::AVX512;
+        }
+    } catch (const std::exception& e) {
+        LOG(WARNING) << "SIMD detection failed, falling back to NONE: " << e.what();
+        max_set = SIMDInstructionSet::NONE;
     }
-    
-    // 检测SSE3
-    if (has_sse3()) {
-        max_set = SIMDInstructionSet::SSE3;
-    }
-    
-    // 检测SSSE3
-    if (has_ssse3()) {
-        max_set = SIMDInstructionSet::SSSE3;
-    }
-    
-    // 检测SSE4.1
-    if (has_sse4_1()) {
-        max_set = SIMDInstructionSet::SSE4_1;
-    }
-    
-    // 检测SSE4.2
-    if (has_sse4_2()) {
-        max_set = SIMDInstructionSet::SSE4_2;
-    }
-    
-    // 检测AVX
-    if (has_avx()) {
-        max_set = SIMDInstructionSet::AVX;
-    }
-    
-    // 检测AVX2
-    if (has_avx2()) {
-        max_set = SIMDInstructionSet::AVX2;
-    }
-    
-    // 检测AVX512
-    if (has_avx512()) {
-        max_set = SIMDInstructionSet::AVX512;
-    }
+    #else
+    // 非x86_64架构，禁用SIMD
+    max_set = SIMDInstructionSet::NONE;
     #endif
     
     detected_instruction_set_ = max_set;
@@ -70,7 +78,18 @@ SIMDInstructionSet SIMDDetector::detect_instruction_set() {
 
 bool SIMDDetector::has_sse2() {
     #ifdef __SSE2__
-    return true;
+    // 使用CPUID指令安全检测SSE2支持
+    #ifdef __x86_64__
+    try {
+        unsigned int eax, ebx, ecx, edx;
+        __asm__ __volatile__ ("cpuid" : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx) : "a" (1));
+        return (edx & (1 << 26)) != 0;  // SSE2 bit in EDX
+    } catch (...) {
+        return false;
+    }
+    #else
+    return true;  // 假设x86_64支持SSE2
+    #endif
     #else
     return false;
     #endif
@@ -133,6 +152,15 @@ bool SIMDDetector::has_avx512() {
 }
 
 void SIMDDetector::initialize() {
+    // 检查环境变量，如果设置了PAKER_DISABLE_SIMD，则禁用SIMD
+    const char* disable_simd = std::getenv("PAKER_DISABLE_SIMD");
+    if (disable_simd && (std::string(disable_simd) == "1" || std::string(disable_simd) == "true")) {
+        detected_instruction_set_ = SIMDInstructionSet::NONE;
+        detection_completed_ = true;
+        LOG(INFO) << "SIMD disabled by environment variable PAKER_DISABLE_SIMD";
+        return;
+    }
+    
     detect_instruction_set();
 }
 
@@ -149,13 +177,18 @@ bool SIMDStringUtils::string_equals_simd(const char* str1, const char* str2, siz
     if (str1 == str2) return true;
     if (!str1 || !str2) return false;
     
-    SIMDInstructionSet instruction_set = SIMDDetector::get_current_instruction_set();
-    
-    if (instruction_set >= SIMDInstructionSet::AVX2) {
-        return string_equals_avx2(str1, str2, len);
-    } else if (instruction_set >= SIMDInstructionSet::SSE2) {
-        return string_equals_sse2(str1, str2, len);
-    } else {
+    try {
+        SIMDInstructionSet instruction_set = SIMDDetector::get_current_instruction_set();
+        
+        if (instruction_set >= SIMDInstructionSet::AVX2) {
+            return string_equals_avx2(str1, str2, len);
+        } else if (instruction_set >= SIMDInstructionSet::SSE2) {
+            return string_equals_sse2(str1, str2, len);
+        } else {
+            return std::memcmp(str1, str2, len) == 0;
+        }
+    } catch (const std::exception& e) {
+        LOG(WARNING) << "SIMD string comparison failed, using fallback: " << e.what();
         return std::memcmp(str1, str2, len) == 0;
     }
 }
