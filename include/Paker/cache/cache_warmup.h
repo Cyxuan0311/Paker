@@ -168,6 +168,7 @@ private:
     void preload_worker_thread();
     bool preload_single_package(const PackageWarmupInfo& package_info);
     void update_preload_progress(const std::string& package, const std::string& version, bool success);
+    bool copy_installed_package_to_cache(const PackageWarmupInfo& package_info);
     
     // 优先级管理
     void rebuild_priority_queues();
