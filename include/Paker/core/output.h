@@ -67,6 +67,7 @@ private:
     bool show_eta_;
     bool show_speed_;
     ProgressStyle style_;
+    bool use_colors_;
     
     // ETA计算相关
     std::chrono::steady_clock::time_point start_time_;
@@ -76,8 +77,8 @@ private:
     
     // 旋转字符相关
     mutable int spinner_index_;
-    static constexpr const char* SPINNER_CHARS = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
-    static constexpr const char* NPM_SPINNER_CHARS = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+    static constexpr const char* SPINNER_CHARS = "-\\|/";
+    static constexpr const char* NPM_SPINNER_CHARS = "-\\|/";
     
     // 内部方法
     std::string format_eta(double seconds) const;
@@ -89,7 +90,7 @@ private:
 public:
     ProgressBar(int total, int width = 50, const std::string& prefix = "", 
                 bool show_percentage = true, bool show_eta = true, bool show_speed = false,
-                ProgressStyle style = ProgressStyle::SMOOTH);
+                ProgressStyle style = ProgressStyle::SMOOTH, bool use_colors = true);
     
     void update(int current);
     void update(int current, const std::string& custom_suffix);
@@ -104,6 +105,7 @@ public:
     void set_show_eta(bool show) { show_eta_ = show; }
     void set_show_speed(bool show) { show_speed_ = show; }
     void set_show_percentage(bool show) { show_percentage_ = show; }
+    void set_use_colors(bool use) { use_colors_ = use; }
     
     // 获取状态
     int get_current() const { return current_; }
