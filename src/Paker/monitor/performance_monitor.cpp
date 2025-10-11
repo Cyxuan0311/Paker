@@ -20,7 +20,6 @@ void PerformanceMonitor::start_timer(const std::string& name) {
     if (!enabled_) return;
     
     timers_[name] = std::chrono::steady_clock::now();
-    LOG(INFO) << "Started timer: " << name;
 }
 
 void PerformanceMonitor::end_timer(const std::string& name, MetricType type) {
@@ -38,8 +37,6 @@ void PerformanceMonitor::end_timer(const std::string& name, MetricType type) {
     
     record_metric(type, name, static_cast<double>(duration_ms), "ms");
     timers_.erase(it);
-    
-    LOG(INFO) << "Ended timer: " << name << " (" << duration_ms << "ms)";
 }
 
 void PerformanceMonitor::record_metric(MetricType type, const std::string& name, double value, 
@@ -61,8 +58,6 @@ void PerformanceMonitor::record_metric(MetricType type, const std::string& name,
     PerformanceMetric metric(type, name, value, unit);
     metric.metadata = metadata;
     metrics_[category].push_back(metric);
-    
-    LOG(INFO) << "Recorded metric: " << name << " = " << value << " " << unit;
 }
 
 std::vector<PerformanceMetric> PerformanceMonitor::get_metrics(const std::string& category) const {
@@ -79,19 +74,23 @@ std::vector<PerformanceMetric> PerformanceMonitor::get_metrics(const std::string
 }
 
 std::string PerformanceMonitor::generate_performance_report() const {
-    if (!enabled_ || metrics_.empty()) {
+    if (!enabled_) {
+        return "Performance monitoring is disabled.";
+    }
+    
+    if (metrics_.empty()) {
         return "No performance data available.";
     }
     
     std::ostringstream report;
-    report << " Performance Report\n";
-    report << "====================\n\n";
+    report << "Performance Report\n";
+    report << "========================================\n\n";
     
     for (const auto& [category, metrics] : metrics_) {
         if (metrics.empty()) continue;
         
         report << "Category: " << category << "\n";
-        report << std::string(20, '-') << "\n";
+        report << "----------------------------------------\n";
         
         // 计算统计信息
         double total_value = 0.0;
@@ -106,21 +105,36 @@ std::string PerformanceMonitor::generate_performance_report() const {
         
         double avg_value = total_value / metrics.size();
         
-        report << "Total metrics: " << metrics.size() << "\n";
-        report << "Average: " << std::fixed << std::setprecision(2) << avg_value;
-        if (!metrics[0].unit.empty()) report << " " << metrics[0].unit;
-        report << "\n";
-        report << "Min: " << std::fixed << std::setprecision(2) << min_value;
-        if (!metrics[0].unit.empty()) report << " " << metrics[0].unit;
-        report << "\n";
-        report << "Max: " << std::fixed << std::setprecision(2) << max_value;
-        if (!metrics[0].unit.empty()) report << " " << metrics[0].unit;
-        report << "\n\n";
+        // 格式化数值显示
+        auto format_value = [](double value, const std::string& unit) -> std::string {
+            if (value < 1.0) {
+                return std::to_string(static_cast<int>(value * 1000)) + "μ" + unit;
+            } else if (value < 1000.0) {
+                return std::to_string(static_cast<int>(value * 100) / 100.0) + " " + unit;
+            } else {
+                return std::to_string(static_cast<int>(value / 1000)) + "k" + unit;
+            }
+        };
+        
+        report << "  Total metrics: " << metrics.size() << "\n";
+        report << "  Average: " << format_value(avg_value, metrics[0].unit) << "\n";
+        report << "  Min: " << format_value(min_value, metrics[0].unit) << "\n";
+        report << "  Max: " << format_value(max_value, metrics[0].unit) << "\n\n";
         
         // 显示详细指标
+        report << "  Detailed Metrics:\n";
         for (const auto& metric : metrics) {
-            report << "  " << metric.name << ": " << std::fixed << std::setprecision(2) << metric.value;
-            if (!metric.unit.empty()) report << " " << metric.unit;
+            report << "    - " << metric.name << ": " << format_value(metric.value, metric.unit);
+            if (!metric.metadata.empty()) {
+                report << " (";
+                bool first = true;
+                for (const auto& [key, value] : metric.metadata) {
+                    if (!first) report << ", ";
+                    report << key << "=" << value;
+                    first = false;
+                }
+                report << ")";
+            }
             report << "\n";
         }
         report << "\n";
