@@ -205,7 +205,7 @@ Paker/
 | [zlib](https://zlib.net/) | 最新 | 数据压缩和解压缩 | ✅ 必需 |
 | [OpenMP](https://www.openmp.org/) | 最新 | 并行计算支持 | ✅ 必需 |
 | stdc++fs | 内置 | std::filesystem支持 | ✅ 自动 |
-| SIMD指令集 | 自动检测 | SSE2/SSE4.2/AVX2/AVX512优化 | ✅ 可选 |
+| SIMD指令集 | 自动检测当前CCPU | SSE2/SSE4.2/AVX2/AVX512优化 | ✅ 可选 |
 
 ### 系统要求
 
