@@ -47,7 +47,13 @@ bool IncrementalParser::initialize() {
     
     // 初始化解析器
     if (!resolver_) {
-        resolver_ = std::make_unique<DependencyResolver>();
+        try {
+            resolver_ = std::make_unique<DependencyResolver>();
+            LOG(INFO) << "Dependency resolver initialized successfully";
+        } catch (const std::exception& e) {
+            LOG(ERROR) << "Failed to initialize dependency resolver: " << e.what();
+            return false;
+        }
     }
     
     LOG(INFO) << "Incremental parser initialized successfully";
@@ -100,6 +106,12 @@ bool IncrementalParser::parse_package(const std::string& package, const std::str
     
     // 缓存未命中，进行解析
     update_cache_stats(false);
+    
+    // 确保解析器已初始化
+    if (!resolver_) {
+        LOG(ERROR) << "Dependency resolver not initialized";
+        return false;
+    }
     
     bool success = resolver_->resolve_package(package, version);
     if (success && config_.enable_caching) {
@@ -528,10 +540,16 @@ void IncrementalParser::reset_stats() {
 }
 
 const DependencyGraph& IncrementalParser::get_dependency_graph() const {
+    if (!resolver_) {
+        throw std::runtime_error("Dependency resolver not initialized");
+    }
     return resolver_->get_dependency_graph();
 }
 
 DependencyGraph& IncrementalParser::get_dependency_graph() {
+    if (!resolver_) {
+        throw std::runtime_error("Dependency resolver not initialized");
+    }
     return resolver_->get_dependency_graph();
 }
 
@@ -595,42 +613,74 @@ bool IncrementalParser::validate_cache_integrity() const {
 void IncrementalParser::optimize_cache() {
     LOG(INFO) << "Optimizing cache";
     
-    // 清理过期条目
-    std::lock_guard<std::mutex> lock(cache_mutex_);
-    auto it = parse_cache_.begin();
-    while (it != parse_cache_.end()) {
-        if (!is_cache_valid(it->second)) {
-            it = parse_cache_.erase(it);
-        } else {
-            ++it;
+    try {
+        // 清理过期条目
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        auto it = parse_cache_.begin();
+        while (it != parse_cache_.end()) {
+            if (!is_cache_valid(it->second)) {
+                it = parse_cache_.erase(it);
+            } else {
+                ++it;
+            }
         }
+        
+        // 如果缓存仍然过大，执行LRU清理
+        if (parse_cache_.size() > config_.max_cache_size) {
+            evict_old_cache_entries();
+        }
+        
+        LOG(INFO) << "Cache optimization completed";
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error during cache optimization: " << e.what();
+        throw;
+    } catch (...) {
+        LOG(ERROR) << "Unknown error during cache optimization";
+        throw;
     }
-    
-    // 如果缓存仍然过大，执行LRU清理
-    if (parse_cache_.size() > config_.max_cache_size) {
-        evict_old_cache_entries();
-    }
-    
-    LOG(INFO) << "Cache optimization completed";
 }
 
 void IncrementalParser::preload_common_dependencies() {
     LOG(INFO) << "Preloading common dependencies";
     
-    // 预加载一些常见的依赖包
-    std::vector<std::string> common_packages = {
-        "fmt", "spdlog", "nlohmann-json", "glog", "openssl"
-    };
-    
-    for (const auto& package : common_packages) {
-        try {
-            parse_package(package);
-        } catch (const std::exception& e) {
-            LOG(WARNING) << "Failed to preload package " << package << ": " << e.what();
-        }
+    // 检查解析器是否已初始化
+    if (!resolver_) {
+        LOG(WARNING) << "Dependency resolver not initialized, skipping preloading";
+        return;
     }
     
-    LOG(INFO) << "Common dependencies preloading completed";
+    try {
+        // 预加载一些常见的依赖包
+        std::vector<std::string> common_packages = {
+            "fmt", "spdlog", "nlohmann-json", "glog", "openssl"
+        };
+        
+        for (const auto& package : common_packages) {
+            try {
+                // 检查包是否已经存在，避免重复解析
+                std::string cache_key = package + "@latest";
+                {
+                    std::lock_guard<std::mutex> lock(cache_mutex_);
+                    if (parse_cache_.find(cache_key) != parse_cache_.end()) {
+                        LOG(INFO) << "Package " << package << " already cached, skipping";
+                        continue;
+                    }
+                }
+                
+                parse_package(package);
+            } catch (const std::exception& e) {
+                LOG(WARNING) << "Failed to preload package " << package << ": " << e.what();
+            }
+        }
+        
+        LOG(INFO) << "Common dependencies preloading completed";
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error during common dependencies preloading: " << e.what();
+        throw;
+    } catch (...) {
+        LOG(ERROR) << "Unknown error during common dependencies preloading";
+        throw;
+    }
 }
 
 // 全局函数实现
