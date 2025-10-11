@@ -456,7 +456,7 @@ bool GitIncrementalUpdater::perform_git_pull(const std::string& path) const {
 
 bool GitIncrementalUpdater::perform_git_fetch(const std::string& path) const {
     std::ostringstream cmd;
-    cmd << "cd " << path << " && git fetch origin";
+    cmd << "cd " << path << " && git fetch --quiet origin 2>/dev/null";
     
     int ret = std::system(cmd.str().c_str());
     return ret == 0;
@@ -562,7 +562,7 @@ std::vector<std::string> GitIncrementalUpdater::detect_git_changes(const std::st
 
 bool GitIncrementalUpdater::checkout_version(const std::string& package_path, const std::string& version) const {
     std::ostringstream cmd;
-    cmd << "cd " << package_path << " && git checkout " << version;
+    cmd << "cd " << package_path << " && git checkout --quiet " << version << " 2>/dev/null";
     
     int ret = std::system(cmd.str().c_str());
     return ret == 0;
