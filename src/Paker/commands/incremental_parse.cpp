@@ -196,29 +196,44 @@ void pm_incremental_parse_optimize() {
     }
     
     auto* parser = get_incremental_parser();
+    if (!parser) {
+        Output::error("Incremental parser not available");
+        return;
+    }
     
     try {
         Output::info("Starting incremental parse cache optimization...");
         
-        // 执行缓存优化
-        parser->optimize_cache();
+        // 安全地执行缓存优化
+        if (parser) {
+            parser->optimize_cache();
+            Output::info("Cache optimization completed");
+        }
         
-        // 预加载常用依赖
-        parser->preload_common_dependencies();
+        // 安全地预加载常用依赖
+        if (parser) {
+            parser->preload_common_dependencies();
+            Output::info("Common dependencies preloading completed");
+        }
         
         Output::success("Cache optimization completed!");
         
         // 显示优化后的统计信息
-        auto stats = parser->get_stats();
-        Output::info("Post-optimization Statistics:");
-        Output::info("  Cache size: " + std::to_string(parser->get_cache_size()) + " entries");
-        Output::info("  Cache hit rate: " + std::to_string(
-            stats.cache_hits + stats.cache_misses > 0 ? 
-            (double)stats.cache_hits / (stats.cache_hits + stats.cache_misses) * 100 : 0) + "%");
+        if (parser) {
+            auto stats = parser->get_stats();
+            Output::info("Post-optimization Statistics:");
+            Output::info("  Cache size: " + std::to_string(parser->get_cache_size()) + " entries");
+            Output::info("  Cache hit rate: " + std::to_string(
+                stats.cache_hits + stats.cache_misses > 0 ? 
+                (double)stats.cache_hits / (stats.cache_hits + stats.cache_misses) * 100 : 0) + "%");
+        }
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to optimize cache: " << e.what();
         Output::error("Cache optimization failed: " + std::string(e.what()));
+    } catch (...) {
+        LOG(ERROR) << "Unknown error during cache optimization";
+        Output::error("Cache optimization failed due to unknown error");
     }
 }
 

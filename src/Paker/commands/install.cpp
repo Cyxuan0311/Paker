@@ -421,7 +421,7 @@ void pm_add(const std::string& pkg_input) {
             progress->update(50, "Checking out version " + version);
             Paker::Output::debug("Checking out version: " + version);
             std::ostringstream checkout_cmd;
-            checkout_cmd << "cd " << pkg_dir.string() << " && git fetch --tags && git checkout " << version;
+            checkout_cmd << "cd " << pkg_dir.string() << " && git fetch --tags --quiet && git checkout --quiet " << version << " 2>/dev/null";
             int ret2 = std::system(checkout_cmd.str().c_str());
             if (ret2 != 0) {
                 LOG(WARNING) << "Failed to checkout version/tag: " << version;

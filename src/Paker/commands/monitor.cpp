@@ -13,6 +13,18 @@ int pm_performance_report(const std::string& output_file) {
     try {
         Output::info("Generating performance report...");
         
+        // 检查性能监控器状态
+        if (!g_performance_monitor.is_enabled()) {
+            Output::warning("Performance monitoring is disabled");
+            return 1;
+        }
+        
+        // 尝试从文件加载性能监控数据
+        std::string perf_file = ".paker/performance_data.json";
+        if (fs::exists(perf_file)) {
+            g_performance_monitor.load_from_file(perf_file);
+        }
+        
         // 生成性能报告
         std::string report = g_performance_monitor.generate_performance_report();
         
