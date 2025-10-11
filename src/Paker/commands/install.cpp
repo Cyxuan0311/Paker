@@ -105,7 +105,7 @@ void update_json_file(const std::vector<std::string>& packages) {
 // 并行安装多个包
 void pm_add_parallel(const std::vector<std::string>& packages) {
     if (packages.empty()) {
-        Paker::Output::warning("No packages specified for parallel installation");
+        Paker::Output::warning("No packages specified for parallel download");
         return;
     }
     
@@ -117,7 +117,7 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
         }
     }
     
-    Paker::Output::info("Starting parallel installation of " + std::to_string(packages.size()) + " packages");
+    Paker::Output::info("Starting parallel download of " + std::to_string(packages.size()) + " packages");
     
     std::vector<std::string> task_ids;
     
@@ -147,7 +147,7 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
     
     // 简洁的并行安装界面
     std::cout << "\n";
-    std::cout << "Installing " << std::to_string(task_ids.size()) << " packages in parallel\n";
+    std::cout << "Downloading " << std::to_string(task_ids.size()) << " packages in parallel\n";
     std::cout << "\n";
     
     // 创建进度条显示并行下载进度
@@ -171,7 +171,7 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
             progress_value = (elapsed * 90) / 1000; // 假设每个包下载需要1秒
             if (progress_value > 90) progress_value = 90;
             
-            parallel_progress->update(progress_value, "Installing package " + std::to_string(completed_tasks + 1) + "/" + std::to_string(task_ids.size()) + "...");
+            parallel_progress->update(progress_value, "Downloading package " + std::to_string(completed_tasks + 1) + "/" + std::to_string(task_ids.size()) + "...");
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
             
             if (progress_value >= 90) break;
@@ -195,7 +195,7 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
         parallel_progress->update(progress_percent, "Completed " + std::to_string(completed_tasks) + "/" + std::to_string(task_ids.size()) + " packages");
     }
     
-    parallel_progress->finish("All packages installed successfully");
+    parallel_progress->finish("All packages downloaded successfully");
     delete parallel_progress;
     
     if (all_success) {
@@ -203,11 +203,11 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
         update_json_file(packages);
         
         std::cout << "\n";
-        std::cout << "Successfully installed " << std::to_string(task_ids.size()) << " packages\n";
+        std::cout << "Successfully downloaded " << std::to_string(task_ids.size()) << " packages\n";
         std::cout << "\n";
     } else {
         std::cout << "\n";
-        std::cout << "Some packages failed to install\n";
+        std::cout << "Some packages failed to download\n";
         std::cout << "\n";
     }
 }
@@ -320,7 +320,7 @@ void pm_add(const std::string& pkg_input) {
                     }
                     Paker::Output::success("Conflicts resolved automatically");
                 } else {
-                    Paker::Output::error("Please resolve conflicts before installing");
+                    Paker::Output::error("Please resolve conflicts before downloading");
                     return;
                 }
             }
@@ -344,10 +344,10 @@ void pm_add(const std::string& pkg_input) {
         
         // 检查包是否已在缓存中
         if (!Paker::g_cache_manager->is_package_cached(pkg, target_version)) {
-            Paker::Output::info("Installing " + pkg + "@" + target_version + " to global cache...");
+            Paker::Output::info("Downloading " + pkg + "@" + target_version + " to global cache...");
             
             if (!Paker::g_cache_manager->install_package_to_cache(pkg, target_version, repo_url)) {
-                Paker::Output::error("Failed to install package to cache");
+                Paker::Output::error("Failed to download package to cache");
                 return;
             }
         } else {
@@ -373,7 +373,7 @@ void pm_add(const std::string& pkg_input) {
         installed_files = collect_package_files(linked_path);
         record.addPackageRecord(pkg, linked_path, installed_files);
         
-        Paker::Output::success("Successfully installed " + pkg + " (cached, " + std::to_string(installed_files.size()) + " files)");
+        Paker::Output::success("Successfully downloaded " + pkg + " (cached, " + std::to_string(installed_files.size()) + " files)");
         
     } else {
         // 传统模式（向后兼容）
@@ -390,7 +390,7 @@ void pm_add(const std::string& pkg_input) {
         std::cout << "\n";
         // 显示安装信息
         std::cout << "\n";
-        std::cout << "Installing " << pkg;
+        std::cout << "Downloading " << pkg;
         if (!version.empty() && version != "*") {
             std::cout << "@" << version;
         }
@@ -445,14 +445,14 @@ void pm_add(const std::string& pkg_input) {
         LOG(INFO) << "Recorded " << installed_files.size() << " files for package: " << pkg;
         
         // 完成安装
-        progress->finish("Installation completed successfully");
+        progress->finish("Download completed successfully");
         delete progress;
         progress = nullptr;
     }
     
     // 简洁的安装完成信息
     std::cout << "\n";
-    std::cout << "Successfully installed " << pkg;
+    std::cout << "Successfully downloaded " << pkg;
     if (!version.empty() && version != "*") {
         std::cout << "@" << version;
     }
@@ -460,7 +460,7 @@ void pm_add(const std::string& pkg_input) {
     std::cout << "\n";
     
     // 记录版本变更
-    pm_record_version_change(pkg, "", version, repo_url, "Package installation");
+    pm_record_version_change(pkg, "", version, repo_url, "Package download");
     
     // 结束性能监控并记录指标
     LOG(INFO) << "Ending performance monitoring for package_install";
@@ -530,7 +530,7 @@ void pm_add_url(const std::string& url) {
     // 实际下载包
     std::string target_path = get_package_install_path(pkg_name);
     if (!fs::exists(target_path)) {
-        Paker::Output::info("Installing package: " + pkg_name);
+        Paker::Output::info("Downloading package: " + pkg_name);
         
         // 创建目标目录
         fs::create_directories(target_path);
@@ -575,7 +575,7 @@ void pm_remove(const std::string& pkg) {
     std::string json_file = get_json_file();
     if (!fs::exists(json_file)) {
         LOG(ERROR) << "Not a Paker project. Run 'paker init' first.";
-        std::cout << "Not a Paker project. Run 'paker init' first.\n";
+        Paker::Output::error("Not a Paker project. Run 'Paker init' first.");
         return;
     }
     
