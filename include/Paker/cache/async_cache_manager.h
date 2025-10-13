@@ -59,6 +59,17 @@ private:
     std::chrono::milliseconds total_write_time_{0};
     mutable std::mutex stats_mutex_;
     
+    // 缓存目录和路径管理
+    std::string cache_directory_;
+    
+    // 统计信息
+    std::atomic<size_t> total_read_operations_{0};
+    std::atomic<size_t> total_write_operations_{0};
+    double average_read_time_{0.0};
+    double average_write_time_{0.0};
+    double cache_hit_rate_{0.0};
+    std::chrono::milliseconds max_write_time_{0};
+    
 public:
     AsyncCacheManager(AsyncIOManager* async_io_manager);
     ~AsyncCacheManager();

@@ -56,6 +56,18 @@ struct AccessPattern {
                      is_hot(false), priority_score(0.0) {}
 };
 
+// 缓存碎片信息
+struct FragmentationInfo {
+    double fragmentation_ratio;  // 碎片化比例 (0.0-1.0)
+    size_t total_files;          // 总文件数
+    size_t fragmented_files;     // 碎片化文件数
+    size_t total_size;           // 总大小
+    size_t fragmented_size;      // 碎片化文件大小
+    
+    FragmentationInfo() : fragmentation_ratio(0.0), total_files(0), fragmented_files(0), 
+                         total_size(0), fragmented_size(0) {}
+};
+
 // 自适应缓存策略
 class AdaptiveCacheStrategy {
 private:
@@ -96,7 +108,12 @@ struct CacheStatistics {
     std::map<std::string, size_t> package_sizes;
     std::map<std::string, size_t> access_counts;
     
-    CacheStatistics() : total_items(0), total_size_bytes(0), hit_count(0), miss_count(0), hit_rate(0.0) {}
+    // 新增的碎片整理统计
+    size_t defragmentation_count;
+    std::chrono::system_clock::time_point last_defragmentation;
+    
+    CacheStatistics() : total_items(0), total_size_bytes(0), hit_count(0), miss_count(0), hit_rate(0.0),
+                       defragmentation_count(0) {}
 };
 
 // LRU缓存管理器
@@ -144,6 +161,12 @@ private:
     // 文件系统操作
     bool remove_cache_directory(const std::string& path) const;
     bool create_cache_directory(const std::string& path) const;
+    
+    // 缓存碎片整理辅助方法
+    FragmentationInfo analyze_cache_fragmentation() const;
+    std::vector<LRUCacheItem> get_sorted_cache_items_for_defragmentation() const;
+    bool consolidate_cache_item(const LRUCacheItem& item, const std::string& temp_dir);
+    void update_cache_index_after_defragmentation();
     
 public:
     LRUCacheManager(const std::string& cache_directory,
