@@ -19,6 +19,13 @@ struct LightweightDependencyNode {
     bool is_installed;
     std::string install_path;
     
+    // 新增字段
+    std::string description;
+    std::string package_type;
+    std::string language;
+    std::vector<std::string> dependencies;
+    std::string metadata;
+    
     // 使用索引而不是直接存储依赖关系
     std::vector<size_t> dependency_indices;
     std::vector<size_t> dependent_indices;
@@ -138,6 +145,21 @@ public:
 private:
     bool resolve_package_dependencies(const std::string& package, const std::string& version);
     bool read_package_metadata(const std::string& package_path, LightweightDependencyNode& node);
+    
+    // 辅助方法
+    std::string find_package_path(const std::string& package, const std::string& version) const;
+    std::vector<std::string> extract_dependencies(const LightweightDependencyNode& node) const;
+    std::string resolve_dependency_version(const std::string& parent_package, const std::string& dependency) const;
+    
+    // C++元数据读取方法
+    bool read_cmake_metadata(const std::string& file_path, LightweightDependencyNode& node) const;
+    bool read_makefile_metadata(const std::string& file_path, LightweightDependencyNode& node) const;
+    bool read_autotools_metadata(const std::string& file_path, LightweightDependencyNode& node) const;
+    bool read_pkgconfig_metadata(const std::string& file_path, LightweightDependencyNode& node) const;
+    bool read_vcpkg_metadata(const std::string& file_path, LightweightDependencyNode& node) const;
+    bool read_conan_metadata(const std::string& file_path, LightweightDependencyNode& node) const;
+    bool read_cpp_requirements(const std::string& file_path, LightweightDependencyNode& node) const;
+    bool analyze_package_structure(const std::string& package_path, LightweightDependencyNode& node) const;
 };
 
 // 依赖图分析器
