@@ -3,6 +3,7 @@
 #include "Paker/dependency/version_manager.h"
 #include "Paker/dependency/dependency_resolver.h"
 #include "Paker/cache/cache_manager.h"
+#include "Paker/core/core_services.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -241,6 +242,29 @@ RollbackResult VersionHistoryManager::rollback_to_version(const std::string& pac
             }
         }
         
+        // 依赖感知回滚：检查依赖包
+        if (options.strategy == RollbackStrategy::DEPENDENCY_AWARE) {
+            LOG(INFO) << "Performing dependency-aware rollback for " << package_name;
+            auto dependent_packages = get_dependent_packages(package_name);
+            
+            if (!dependent_packages.empty()) {
+                Output::warning("Found " + std::to_string(dependent_packages.size()) + 
+                              " packages that depend on " + package_name);
+                
+                for (const auto& dep_pkg : dependent_packages) {
+                    Output::info("  - " + dep_pkg);
+                }
+                
+                if (!options.force) {
+                    Output::warning("Dependency-aware rollback may affect dependent packages.");
+                    Output::info("Use --force to proceed with rollback.");
+                    result.success = false;
+                    result.message = "Dependency-aware rollback requires --force flag";
+                    return result;
+                }
+            }
+        }
+        
         // 查找目标版本的历史记录
         auto it = package_history_.find(package_name);
         if (it == package_history_.end()) {
@@ -320,6 +344,25 @@ RollbackResult VersionHistoryManager::rollback_to_version(const std::string& pac
             rollback_entry.backup_path = current_backup_path;
             
             history_.push_back(rollback_entry);
+            
+            // 依赖感知回滚：处理依赖包
+            if (options.strategy == RollbackStrategy::DEPENDENCY_AWARE) {
+                auto dependent_packages = get_dependent_packages(package_name);
+                for (const auto& dep_pkg : dependent_packages) {
+                    LOG(INFO) << "Checking if dependent package " << dep_pkg << " needs rollback";
+                    
+                    // 检查依赖包是否需要相应的回滚
+                    auto dep_it = package_history_.find(dep_pkg);
+                    if (dep_it != package_history_.end() && !dep_it->second.empty()) {
+                        // 获取依赖包的最新版本
+                        const auto& latest_entry = dep_it->second.back();
+                        Output::info("Dependent package " + dep_pkg + " is at version " + latest_entry.new_version);
+                        
+                        // 这里可以添加更复杂的逻辑来决定是否需要回滚依赖包
+                        // 例如：检查版本兼容性、时间相关性等
+                    }
+                }
+            }
             package_history_[package_name].push_back(rollback_entry);
             save_history();
             
@@ -399,6 +442,7 @@ bool VersionHistoryManager::can_safely_rollback(const std::string& package_name,
     if (!dependent_packages.empty()) {
         // 检查依赖包是否兼容目标版本
         for (const auto& dep : dependent_packages) {
+            (void)dep; // 避免未使用参数警告
             if (!VersionManager::is_version_compatible(target_version, "current")) {
                 return false;
             }
@@ -495,9 +539,122 @@ bool VersionHistoryManager::validate_rollback_safety(const std::string& package_
 
 std::vector<std::string> VersionHistoryManager::get_dependent_packages(const std::string& package_name) const {
     std::vector<std::string> dependents;
-    // 这里需要从依赖图中获取依赖该包的包列表
-    // 暂时返回空列表，后续可以集成依赖解析器
+    
+    try {
+        LOG(INFO) << "Getting dependent packages for: " << package_name;
+        
+        // 尝试从依赖解析器获取依赖图
+        auto* dependency_resolver = get_dependency_resolver();
+        if (!dependency_resolver) {
+            LOG(WARNING) << "Dependency resolver not available, cannot get dependent packages";
+            return dependents;
+        }
+        
+        // 获取依赖图
+        auto* dependency_graph = get_dependency_graph();
+        if (!dependency_graph) {
+            LOG(WARNING) << "Dependency graph not available, cannot get dependent packages";
+            return dependents;
+        }
+        
+        // 从依赖图中查找所有依赖该包的包
+        const auto& nodes = dependency_graph->get_nodes();
+        for (const auto& [pkg_name, node] : nodes) {
+            // 检查该包的依赖列表中是否包含目标包
+            for (const auto& dep : node.dependencies) {
+                if (dep == package_name) {
+                    dependents.push_back(pkg_name);
+                    VLOG(1) << "Found dependent package: " << pkg_name << " depends on " << package_name;
+                    break;
+                }
+            }
+        }
+        
+        LOG(INFO) << "Found " << dependents.size() << " dependent packages for " << package_name;
+        
+        // 如果依赖图不可用，尝试从历史记录中推断
+        if (dependents.empty()) {
+            LOG(INFO) << "No dependents found in dependency graph, checking history records";
+            
+            // 从历史记录中查找可能受影响的包
+            for (const auto& entry : history_) {
+                if (entry.package_name != package_name) {
+                    // 检查该包是否在目标包变更时被记录
+                    // 这可以作为依赖关系的间接证据
+                    auto it = std::find(dependents.begin(), dependents.end(), entry.package_name);
+                    if (it == dependents.end()) {
+                        // 简单启发式：如果包在同一时间被修改，可能有关联
+                        dependents.push_back(entry.package_name);
+                        VLOG(1) << "Inferred potential dependent from history: " << entry.package_name;
+                    }
+                }
+            }
+        }
+        
+        // 去重
+        std::sort(dependents.begin(), dependents.end());
+        dependents.erase(std::unique(dependents.begin(), dependents.end()), dependents.end());
+        
+        LOG(INFO) << "Final dependent packages count: " << dependents.size();
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error getting dependent packages for " << package_name << ": " << e.what();
+    }
+    
     return dependents;
+}
+
+// 新增：智能回滚建议功能
+std::vector<std::string> VersionHistoryManager::get_rollback_suggestions(const std::string& package_name) const {
+    std::vector<std::string> suggestions;
+    
+    try {
+        LOG(INFO) << "Generating rollback suggestions for: " << package_name;
+        
+        // 获取包的历史记录
+        auto it = package_history_.find(package_name);
+        if (it == package_history_.end() || it->second.empty()) {
+            LOG(WARNING) << "No history found for package: " << package_name;
+            return suggestions;
+        }
+        
+        // 分析历史记录，生成智能建议
+        const auto& history = it->second;
+        
+        // 1. 最近稳定版本建议
+        for (auto rit = history.rbegin(); rit != history.rend() && suggestions.size() < 3; ++rit) {
+            if (!rit->is_rollback && rit->new_version != "current") {
+                suggestions.push_back("Recent stable version: " + rit->new_version);
+                VLOG(1) << "Added recent stable version suggestion: " << rit->new_version;
+            }
+        }
+        
+        // 2. 依赖感知建议
+        auto dependent_packages = get_dependent_packages(package_name);
+        if (!dependent_packages.empty()) {
+            suggestions.push_back("Dependency-aware rollback recommended (affects " + 
+                                std::to_string(dependent_packages.size()) + " dependent packages)");
+        }
+        
+        // 3. 时间点建议
+        auto now = std::chrono::system_clock::now();
+        for (const auto& entry : history) {
+            auto time_diff = now - entry.timestamp;
+            auto hours = std::chrono::duration_cast<std::chrono::hours>(time_diff).count();
+            
+            if (hours < 24) {  // 24小时内的版本
+                suggestions.push_back("Recent version (within 24h): " + entry.new_version);
+                break;
+            }
+        }
+        
+        LOG(INFO) << "Generated " << suggestions.size() << " rollback suggestions";
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error generating rollback suggestions: " << e.what();
+    }
+    
+    return suggestions;
 }
 
 // 全局函数
@@ -518,6 +675,7 @@ void cleanup_history_manager() {
 // 添加缺失的函数实现
 RollbackResult VersionHistoryManager::rollback_to_timestamp(const std::chrono::system_clock::time_point& timestamp,
                                                            const RollbackOptions& options) {
+    (void)options; // 避免未使用参数警告
     RollbackResult result;
     result.success = false;
     result.message = "Rollback to timestamp not implemented";

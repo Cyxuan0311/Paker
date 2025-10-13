@@ -467,14 +467,14 @@ void AsyncIOManager::worker_thread_function() {
 }
 
 void AsyncIOManager::process_operation(std::shared_ptr<AsyncIOOperation> operation) {
-    active_operations_++;
+    active_operations_count_++;
     total_operations_++;
     
     try {
         operation->execute();
         
         if (operation->get_status() == IOOperationStatus::COMPLETED) {
-            completed_operations_++;
+            completed_operations_count_++;
         } else if (operation->get_status() == IOOperationStatus::FAILED) {
             failed_operations_++;
         }
@@ -486,7 +486,7 @@ void AsyncIOManager::process_operation(std::shared_ptr<AsyncIOOperation> operati
         failed_operations_++;
     }
     
-    active_operations_--;
+    active_operations_count_--;
 }
 
 std::future<std::shared_ptr<FileReadResult>> AsyncIOManager::read_file_async(
@@ -622,11 +622,11 @@ void AsyncIOManager::set_max_concurrent_operations(size_t max_concurrent) {
 double AsyncIOManager::get_success_rate() const {
     size_t total = total_operations_.load();
     if (total == 0) return 0.0;
-    return static_cast<double>(completed_operations_.load()) / total * 100.0;
+    return static_cast<double>(completed_operations_count_.load()) / total * 100.0;
 }
 
 double AsyncIOManager::get_average_operation_time() const {
-    size_t completed = completed_operations_.load();
+    size_t completed = completed_operations_count_.load();
     if (completed == 0) return 0.0;
     return static_cast<double>(total_io_time_.count()) / completed;
 }
@@ -635,9 +635,9 @@ std::string AsyncIOManager::get_performance_report() const {
     std::stringstream ss;
     ss << "AsyncIO Performance Report:\n";
     ss << "  Total operations: " << total_operations_.load() << "\n";
-    ss << "  Completed operations: " << completed_operations_.load() << "\n";
+    ss << "  Completed operations: " << completed_operations_count_.load() << "\n";
     ss << "  Failed operations: " << failed_operations_.load() << "\n";
-    ss << "  Active operations: " << active_operations_.load() << "\n";
+    ss << "  Active operations: " << active_operations_count_.load() << "\n";
     ss << "  Queue size: " << get_queue_size() << "\n";
     ss << "  Success rate: " << get_success_rate() << "%\n";
     ss << "  Average operation time: " << get_average_operation_time() << "ms\n";
@@ -893,8 +893,59 @@ void AsyncIOManager::process_batch_operations() {
 }
 
 void AsyncIOManager::optimize_batch_scheduling() {
-    // 实现批量调度优化逻辑
-    // 例如：合并相似操作、调整批次大小等
+    std::lock_guard<std::mutex> lock(operations_mutex_);
+    
+    if (pending_batch_operations_.empty()) {
+        return;
+    }
+    
+    // 按操作类型分组
+    std::map<IOOperationType, std::vector<BatchOperation>> grouped_ops;
+    for (auto& op : pending_batch_operations_) {
+        grouped_ops[op.type].push_back(op);
+    }
+    
+    // 优化每个组的调度
+    for (auto& [type, ops] : grouped_ops) {
+        if (ops.size() < 2) continue;
+        
+        // 按优先级排序，优先处理高优先级
+        std::sort(ops.begin(), ops.end(), [](const auto& a, const auto& b) {
+            return a.priority > b.priority;
+        });
+        
+        // 合并相似操作
+        std::vector<BatchOperation> optimized_ops;
+        for (size_t i = 0; i < ops.size(); ) {
+            auto& current_op = ops[i];
+            optimized_ops.push_back(current_op);
+            
+            // 查找可以合并的后续操作
+            size_t j = i + 1;
+            while (j < ops.size() && 
+                   ops[j].priority == current_op.priority) { // 优先级相同
+                // 合并操作（这里简化处理，实际可以更复杂）
+                current_op.file_paths.insert(current_op.file_paths.end(), 
+                                            ops[j].file_paths.begin(), 
+                                            ops[j].file_paths.end());
+                j++;
+            }
+            i = j;
+        }
+        
+        // 更新操作列表
+        ops = std::move(optimized_ops);
+    }
+    
+    // 重新组织批量操作
+    pending_batch_operations_.clear();
+    for (auto& [type, ops] : grouped_ops) {
+        for (auto& op : ops) {
+            pending_batch_operations_.push_back(op);
+        }
+    }
+    
+    LOG(INFO) << "Batch scheduling optimized: " << pending_batch_operations_.size() << " operations";
 }
 
 // 新增的公共方法实现
@@ -997,13 +1048,19 @@ double AsyncIOManager::get_average_throughput() const {
 }
 
 double AsyncIOManager::get_cache_hit_rate() const {
-    // 这里可以实现缓存命中率计算
-    return 0.0; // 占位符
+    std::lock_guard<std::mutex> lock(stats_mutex_);
+    
+    if (total_cache_requests_ == 0) {
+        return 0.0;
+    }
+    
+    double hit_rate = static_cast<double>(cache_hits_) / total_cache_requests_ * 100.0;
+    return std::min(100.0, std::max(0.0, hit_rate));
 }
 
 size_t AsyncIOManager::get_total_bytes_processed() const {
-    // 这里需要实现总字节数统计
-    return 0; // 占位符
+    std::lock_guard<std::mutex> lock(stats_mutex_);
+    return total_bytes_processed_;
 }
 
 std::string AsyncIOManager::get_detailed_performance_report() const {
@@ -1193,7 +1250,7 @@ PredictivePreloadStrategy::PredictivePreloadStrategy(double confidence_threshold
 
 void PredictivePreloadStrategy::record_package_usage(const std::string& package_name) {
     std::lock_guard<std::mutex> lock(prediction_mutex_);
-    package_frequency_[package_name]++;
+    package_frequency_[package_name].usage_count++;
 }
 
 void PredictivePreloadStrategy::update_dependency_graph(const std::string& package, 
@@ -1259,8 +1316,8 @@ void PredictivePreloadStrategy::preload_predicted_packages() {
     
     // 为最常用的包预测依赖
     std::vector<std::pair<std::string, size_t>> sorted_packages;
-    for (const auto& [pkg, freq] : package_frequency_) {
-        sorted_packages.emplace_back(pkg, freq);
+    for (const auto& [pkg, info] : package_frequency_) {
+        sorted_packages.emplace_back(pkg, info.usage_count);
     }
     
     std::sort(sorted_packages.begin(), sorted_packages.end(),
@@ -1284,22 +1341,82 @@ void PredictivePreloadStrategy::update_prediction_parameters() {
     // 基于预测历史调整参数
     size_t total_predictions = 0;
     size_t successful_predictions = 0;
+    size_t recent_predictions = 0;
+    size_t recent_successful = 0;
+    
+    auto now = std::chrono::steady_clock::now();
+    auto recent_threshold = now - std::chrono::hours(24); // 最近24小时
     
     for (const auto& [pkg, history] : prediction_history_) {
-        total_predictions += history.size();
-        // 这里可以添加成功预测的统计逻辑
+        for (const auto& record : history) {
+            total_predictions++;
+            
+            // 检查预测是否成功（基于实际使用情况）
+            PredictionRecord pred_record;
+            pred_record.predicted_dependency = record.package_name;
+            pred_record.prediction_time = record.prediction_time;
+            pred_record.confidence = record.confidence;
+            bool is_successful = check_prediction_success(pkg, pred_record);
+            if (is_successful) {
+                successful_predictions++;
+            }
+            
+            // 统计最近预测
+            if (record.prediction_time >= recent_threshold) {
+                recent_predictions++;
+                if (is_successful) {
+                    recent_successful++;
+                }
+            }
+        }
     }
     
     if (total_predictions > 0) {
-        double success_rate = static_cast<double>(successful_predictions) / total_predictions;
+        double overall_success_rate = static_cast<double>(successful_predictions) / total_predictions;
+        double recent_success_rate = recent_predictions > 0 ? 
+            static_cast<double>(recent_successful) / recent_predictions : overall_success_rate;
+        
+        // 使用加权平均，更重视最近的预测结果
+        double weighted_success_rate = 0.7 * recent_success_rate + 0.3 * overall_success_rate;
         
         // 根据成功率调整置信度阈值
-        if (success_rate > 0.8) {
-            confidence_threshold_ = std::max(0.5, confidence_threshold_ - 0.05);
-        } else if (success_rate < 0.5) {
-            confidence_threshold_ = std::min(0.9, confidence_threshold_ + 0.05);
+        if (weighted_success_rate > 0.8) {
+            confidence_threshold_ = std::max(0.3, confidence_threshold_ - 0.02);
+        } else if (weighted_success_rate < 0.5) {
+            confidence_threshold_ = std::min(0.95, confidence_threshold_ + 0.02);
         }
+        
+        // 调整预测窗口大小
+        if (weighted_success_rate > 0.7) {
+            prediction_window_size_ = std::min(static_cast<size_t>(100), prediction_window_size_ + 5);
+        } else if (weighted_success_rate < 0.4) {
+            prediction_window_size_ = std::max(static_cast<size_t>(10), prediction_window_size_ - 5);
+        }
+        
+        LOG(INFO) << "Prediction parameters updated - Success rate: " << weighted_success_rate 
+                  << ", Confidence threshold: " << confidence_threshold_
+                  << ", Window size: " << prediction_window_size_;
     }
+}
+
+bool PredictivePreloadStrategy::check_prediction_success(const std::string& package_name, 
+                                                        const PredictionRecord& record) const {
+    // 检查预测的依赖是否在实际使用中被访问
+    auto it = package_frequency_.find(record.predicted_dependency);
+    if (it == package_frequency_.end()) {
+        return false;
+    }
+    
+    // 检查预测时间后是否有实际使用
+    auto usage_time = it->second.last_used;
+    if (usage_time > record.prediction_time) {
+        // 计算时间差，如果预测后很快被使用，认为预测成功
+        auto time_diff = std::chrono::duration_cast<std::chrono::minutes>(
+            usage_time - record.prediction_time);
+        return time_diff.count() <= 60; // 1小时内使用认为预测成功
+    }
+    
+    return false;
 }
 
 double PredictivePreloadStrategy::calculate_prediction_confidence(const std::string& package_name, 
@@ -1310,11 +1427,11 @@ double PredictivePreloadStrategy::calculate_prediction_confidence(const std::str
     auto freq_it = package_frequency_.find(dependency);
     if (freq_it != package_frequency_.end()) {
         double max_freq = 0.0;
-        for (const auto& [pkg, freq] : package_frequency_) {
-            max_freq = std::max(max_freq, static_cast<double>(freq));
+        for (const auto& [pkg, info] : package_frequency_) {
+            max_freq = std::max(max_freq, static_cast<double>(info.usage_count));
         }
         if (max_freq > 0) {
-            confidence += frequency_weight_ * (freq_it->second / max_freq);
+            confidence += frequency_weight_ * (static_cast<double>(freq_it->second.usage_count) / max_freq);
         }
     }
     
