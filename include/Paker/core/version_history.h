@@ -27,7 +27,7 @@ struct VersionHistoryEntry {
     std::vector<std::string> affected_files;
     size_t backup_size_bytes;
     
-    VersionHistoryEntry() : backup_size_bytes(0), is_rollback(false) {}
+    VersionHistoryEntry() : is_rollback(false), backup_size_bytes(0) {}
 };
 
 // 回滚策略
@@ -107,6 +107,9 @@ public:
     // 获取版本历史
     std::vector<VersionHistoryEntry> get_package_history(const std::string& package_name) const;
     std::vector<VersionHistoryEntry> get_recent_history(size_t count = 10) const;
+    
+    // 智能回滚建议
+    std::vector<std::string> get_rollback_suggestions(const std::string& package_name) const;
     
     // 获取可回滚的版本列表
     std::vector<std::string> get_rollbackable_versions(const std::string& package_name) const;

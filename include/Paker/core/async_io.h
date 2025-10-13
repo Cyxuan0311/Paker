@@ -269,7 +269,6 @@ private:
     std::map<std::string, std::vector<DependencyPrediction>> prediction_history_;
     mutable std::mutex prediction_mutex_;
     std::map<std::string, std::vector<std::string>> dependency_graph_;
-    std::map<std::string, size_t> package_frequency_;
     std::chrono::milliseconds preload_interval_;
     std::chrono::steady_clock::time_point last_preload_;
     
@@ -279,6 +278,17 @@ private:
     double frequency_weight_;
     double recency_weight_;
     double dependency_weight_;
+    size_t prediction_window_size_;
+    
+    // 包使用频率记录
+    struct PackageUsageInfo {
+        size_t usage_count;
+        std::chrono::steady_clock::time_point last_used;
+        double frequency_score;
+        
+        PackageUsageInfo() : usage_count(0), frequency_score(0.0) {}
+    };
+    std::map<std::string, PackageUsageInfo> package_frequency_;
     
 public:
     PredictivePreloadStrategy(double confidence_threshold = 0.7,
@@ -294,6 +304,19 @@ public:
     void update_prediction_parameters();
     double calculate_prediction_confidence(const std::string& package_name, 
                                          const std::string& dependency) const;
+    
+    // 预测记录结构
+    struct PredictionRecord {
+        std::string predicted_dependency;
+        std::chrono::steady_clock::time_point prediction_time;
+        double confidence;
+        
+        PredictionRecord() : confidence(0.0) {}
+    };
+    
+    // 检查预测成功的方法
+    bool check_prediction_success(const std::string& package_name, 
+                                 const PredictionRecord& record) const;
 };
 
 // 零拷贝缓冲区
@@ -470,14 +493,25 @@ private:
     
     // 控制变量
     std::atomic<bool> running_{false};
-    std::atomic<size_t> active_operations_{0};
+    std::atomic<size_t> active_operations_count_{0};
     size_t max_concurrent_operations_;
     
     // 统计信息
     std::atomic<size_t> total_operations_{0};
-    std::atomic<size_t> completed_operations_{0};
+    std::atomic<size_t> completed_operations_count_{0};
     std::atomic<size_t> failed_operations_{0};
+    std::atomic<size_t> total_bytes_processed_{0};
     std::chrono::milliseconds total_io_time_{0};
+    
+    // 缓存统计
+    std::atomic<size_t> total_cache_requests_{0};
+    std::atomic<size_t> cache_hits_{0};
+    mutable std::mutex stats_mutex_;
+    
+    // 操作历史记录
+    std::unordered_map<std::string, std::shared_ptr<AsyncIOOperation>> completed_operations_;
+    std::unordered_map<std::string, std::shared_ptr<AsyncIOOperation>> active_operations_;
+    mutable std::mutex operations_mutex_;
     
     // 动态缓冲区管理
     std::unordered_map<BufferType, BufferConfig> buffer_configs_;
@@ -579,9 +613,9 @@ public:
     
     // 统计信息
     size_t get_total_operations() const { return total_operations_; }
-    size_t get_completed_operations() const { return completed_operations_; }
+    size_t get_completed_operations() const { return completed_operations_count_; }
     size_t get_failed_operations() const { return failed_operations_; }
-    size_t get_active_operations() const { return active_operations_; }
+    size_t get_active_operations() const { return active_operations_count_; }
     std::chrono::milliseconds get_total_io_time() const { return total_io_time_; }
     
     // 性能监控
