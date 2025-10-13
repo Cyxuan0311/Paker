@@ -73,6 +73,22 @@ public:
     // 检查网络问题
     std::vector<DiagnosticIssue> check_network();
     
+    // 网络诊断辅助方法
+    std::vector<DiagnosticIssue> check_basic_connectivity();
+    std::vector<DiagnosticIssue> check_repository_connectivity();
+    std::vector<DiagnosticIssue> check_dns_resolution();
+    std::vector<DiagnosticIssue> check_proxy_settings();
+    std::vector<DiagnosticIssue> check_firewall_ports();
+    std::vector<DiagnosticIssue> check_network_latency();
+    std::vector<DiagnosticIssue> check_network_bandwidth();
+    
+    // 网络测试辅助方法
+    bool test_host_connectivity(const std::string& host);
+    bool test_repository_connectivity(const std::string& url);
+    bool test_dns_resolution(const std::string& domain);
+    bool test_port_connectivity(int port);
+    double measure_network_latency(const std::string& host);
+    
     // 修复建议
     std::vector<std::string> generate_fix_suggestions(const DiagnosticResult& result);
     
