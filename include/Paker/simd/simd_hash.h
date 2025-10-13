@@ -123,6 +123,24 @@ private:
     static std::string sha256_avx2_optimized(const void* data, size_t len);
     static std::string md5_avx2_optimized(const void* data, size_t len);
     static uint32_t crc32_avx2_optimized(const void* data, size_t len);
+    
+    // AVX2并行处理方法
+    static std::string sha256_avx2_parallel(const void* data, size_t len);
+    static std::string sha256_avx2_vectorized(const void* data, size_t len);
+    static std::string md5_avx2_parallel(const void* data, size_t len);
+    static std::string md5_avx2_vectorized(const void* data, size_t len);
+    static uint32_t crc32_avx2_parallel(const void* data, size_t len);
+    static uint32_t crc32_avx2_vectorized(const void* data, size_t len);
+    
+    // AVX2块处理方法
+    static std::string process_sha256_avx2_blocks(const void* data, size_t len);
+    static std::string process_md5_avx2_blocks(const void* data, size_t len);
+    static uint32_t process_crc32_avx2_blocks(const void* data, size_t len);
+    
+    // 哈希合并方法
+    static std::string combine_sha256_hashes(const std::vector<std::string>& hashes);
+    static std::string combine_md5_hashes(const std::vector<std::string>& hashes);
+    static uint32_t combine_crc32_values(const std::vector<uint32_t>& crcs);
 };
 
 // SIMD优化的文件哈希计算器
