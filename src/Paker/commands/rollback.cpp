@@ -164,21 +164,21 @@ void pm_history_show(const std::string& package_name) {
     std::vector<VersionHistoryEntry> history;
     if (package_name.empty()) {
         history = history_manager->get_recent_history(20);
-        Output::info("Recent version history (last 20 entries):");
+        std::cout << "Recent version history (last 20 entries):" << std::endl;
     } else {
         history = history_manager->get_package_history(package_name);
-        Output::info("Version history for " + package_name + ":");
+        std::cout << "Version history for " + package_name + ":" << std::endl;
     }
     
     if (history.empty()) {
-        Output::info("No history entries found");
+        std::cout << "No history entries found" << std::endl;
         return;
     }
     
     // 显示历史记录表格
-    Output::info("┌─────────────────┬─────────────┬─────────────┬─────────────────────┬─────────────┐");
-    Output::info("│ Package         │ Old Version │ New Version │ Timestamp           │ Operation   │");
-    Output::info("├─────────────────┼─────────────┼─────────────┼─────────────────────┼─────────────┤");
+    std::cout << "┌─────────────────┬─────────────┬─────────────┬─────────────────────┬─────────────┐" << std::endl;
+    std::cout << "│ Package         │ Old Version │ New Version │ Timestamp           │ Operation   │" << std::endl;
+    std::cout << "├─────────────────┼─────────────┼─────────────┼─────────────────────┼─────────────┤" << std::endl;
     
     for (const auto& entry : history) {
         std::ostringstream row;
@@ -196,10 +196,10 @@ void pm_history_show(const std::string& package_name) {
         std::string operation = entry.is_rollback ? "Rollback" : "Update";
         row << std::setw(11) << std::left << operation << " │";
         
-        Output::info(row.str());
+        std::cout << row.str() << std::endl;
     }
     
-    Output::info("└─────────────────┴─────────────┴─────────────┴─────────────────────┴─────────────┘");
+    std::cout << "└─────────────────┴─────────────┴─────────────┴─────────────────────┴─────────────┘" << std::endl;
 }
 
 void pm_rollback_list(const std::string& package_name) {

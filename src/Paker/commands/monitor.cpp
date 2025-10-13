@@ -81,7 +81,6 @@ int pm_analyze_dependencies(const std::string& output_file) {
         
         if (output_file.empty()) {
             // 输出到控制台
-            Output::success("Dependency Analysis Report:");
             std::cout << report << std::endl;
             
             // 显示依赖树可视化
@@ -138,10 +137,12 @@ int pm_diagnose(const std::string& output_file) {
             // 显示修复建议
             auto suggestions = diagnostic.generate_fix_suggestions(result);
             if (!suggestions.empty()) {
-                Output::info("Fix Suggestions:");
+                std::cout << "\n\033[1;32mFix Suggestions:\033[0m\n";
+                std::cout << "\033[0;32m==================\033[0m\n";
                 for (const auto& suggestion : suggestions) {
-                    std::cout << "  - " << suggestion << std::endl;
+                    std::cout << "  \033[0;33m- \033[0m" << suggestion << std::endl;
                 }
+                std::cout << "\n";
             }
         } else {
             // 保存到文件

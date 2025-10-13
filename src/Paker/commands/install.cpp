@@ -202,6 +202,20 @@ void pm_add_parallel(const std::vector<std::string>& packages) {
         // 更新配置文件
         update_json_file(packages);
         
+        // 记录安装信息到Paker_install_record.json
+        Recorder::Record record(get_record_file_path());
+        for (const auto& pkg_input : packages) {
+            auto [pkg, version] = parse_name_version(pkg_input);
+            if (!pkg.empty()) {
+                std::string install_path = get_package_install_path(pkg);
+                if (fs::exists(install_path)) {
+                    std::vector<std::string> installed_files = collect_package_files(install_path);
+                    record.addPackageRecord(pkg, install_path, installed_files);
+                    LOG(INFO) << "Recorded " << installed_files.size() << " files for package: " << pkg;
+                }
+            }
+        }
+        
         std::cout << "\n";
         std::cout << "Successfully downloaded " << std::to_string(task_ids.size()) << " packages\n";
         std::cout << "\n";

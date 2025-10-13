@@ -350,14 +350,17 @@ int run_cli(int argc, char* argv[]) {
     version_cmd->add_flag("--build", version_build, "Show build information");
     version_cmd->add_option("--check", version_check_target, "Check version compatibility");
     version_cmd->callback([&]() {
-        if (version_short) {
-            Paker::pm_version_short();
-        } else if (version_build) {
-            Paker::pm_version_build();
-        } else if (!version_check_target.empty()) {
-            Paker::pm_version_check(version_check_target);
-        } else {
-            Paker::pm_version();
+        // 只有在没有子命令时才显示版本信息
+        if (version_cmd->get_subcommands().empty()) {
+            if (version_short) {
+                Paker::pm_version_short();
+            } else if (version_build) {
+                Paker::pm_version_build();
+            } else if (!version_check_target.empty()) {
+                Paker::pm_version_check(version_check_target);
+            } else {
+                Paker::pm_version();
+            }
         }
     });
     

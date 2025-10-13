@@ -46,30 +46,30 @@ void pm_async_io_stats() {
     auto* async_cache_manager = get_async_cache_manager();
     
     try {
-        Output::info(" Async I/O Statistics");
-        Output::info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Output::info("\033[1;36m Async I/O Statistics\033[0m");
+        Output::info("\033[0;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m");
         
-        // 异步I/O统计
-        Output::info(" Async I/O Statistics:");
-        Output::info("  Total operations: " + std::to_string(async_io_manager->get_total_operations()));
-        Output::info("  Completed operations: " + std::to_string(async_io_manager->get_completed_operations()));
-        Output::info("  Failed operations: " + std::to_string(async_io_manager->get_failed_operations()));
-        Output::info("  Active operations: " + std::to_string(async_io_manager->get_active_operations()));
-        Output::info("  Queue size: " + std::to_string(async_io_manager->get_queue_size()));
-        Output::info("  Success rate: " + std::to_string(async_io_manager->get_success_rate()) + "%");
-        Output::info("  Average operation time: " + std::to_string(async_io_manager->get_average_operation_time()) + "ms");
+        // Async I/O statistics
+        Output::info("\033[1;32m Async I/O Statistics:\033[0m");
+        Output::info("  Total operations: \033[1;33m" + std::to_string(async_io_manager->get_total_operations()) + "\033[0m");
+        Output::info("  Completed operations: \033[1;32m" + std::to_string(async_io_manager->get_completed_operations()) + "\033[0m");
+        Output::info("  Failed operations: \033[1;31m" + std::to_string(async_io_manager->get_failed_operations()) + "\033[0m");
+        Output::info("  Active operations: \033[1;35m" + std::to_string(async_io_manager->get_active_operations()) + "\033[0m");
+        Output::info("  Queue size: \033[1;34m" + std::to_string(async_io_manager->get_queue_size()) + "\033[0m");
+        Output::info("  Success rate: \033[1;33m" + std::to_string(async_io_manager->get_success_rate()) + "%\033[0m");
+        Output::info("  Average operation time: \033[1;36m" + std::to_string(async_io_manager->get_average_operation_time()) + "ms\033[0m");
         
-        // 异步缓存统计
+        // Async cache statistics
         if (async_cache_manager) {
-            Output::info(" Async Cache Statistics:");
-            Output::info("  Total reads: " + std::to_string(async_cache_manager->get_total_reads()));
-            Output::info("  Total writes: " + std::to_string(async_cache_manager->get_total_writes()));
-            Output::info("  Cache hits: " + std::to_string(async_cache_manager->get_cache_hits()));
-            Output::info("  Cache misses: " + std::to_string(async_cache_manager->get_cache_misses()));
-            Output::info("  Cache hit rate: " + std::to_string(async_cache_manager->get_cache_hit_rate()) + "%");
-            Output::info("  Async operations: " + std::to_string(async_cache_manager->get_async_operations()));
-            Output::info("  Average read time: " + std::to_string(async_cache_manager->get_average_read_time()) + "ms");
-            Output::info("  Average write time: " + std::to_string(async_cache_manager->get_average_write_time()) + "ms");
+            Output::info("\033[1;35m Async Cache Statistics:\033[0m");
+            Output::info("  Total reads: \033[1;33m" + std::to_string(async_cache_manager->get_total_reads()) + "\033[0m");
+            Output::info("  Total writes: \033[1;33m" + std::to_string(async_cache_manager->get_total_writes()) + "\033[0m");
+            Output::info("  Cache hits: \033[1;32m" + std::to_string(async_cache_manager->get_cache_hits()) + "\033[0m");
+            Output::info("  Cache misses: \033[1;31m" + std::to_string(async_cache_manager->get_cache_misses()) + "\033[0m");
+            Output::info("  Cache hit rate: \033[1;36m" + std::to_string(async_cache_manager->get_cache_hit_rate()) + "%\033[0m");
+            Output::info("  Async operations: \033[1;35m" + std::to_string(async_cache_manager->get_async_operations()) + "\033[0m");
+            Output::info("  Average read time: \033[1;34m" + std::to_string(async_cache_manager->get_average_read_time()) + "ms\033[0m");
+            Output::info("  Average write time: \033[1;34m" + std::to_string(async_cache_manager->get_average_write_time()) + "ms\033[0m");
         }
         
         // 显示详细报告
@@ -98,26 +98,26 @@ void pm_async_io_config() {
     auto* async_io_manager = get_async_io_manager();
     
     try {
-        Output::info(" Async I/O Configuration");
-        Output::info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Output::info("\033[1;36m Async I/O Configuration\033[0m");
+        Output::info("\033[0;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m");
         
-        Output::info(" Thread Configuration:");
-        Output::info("  Max concurrent operations: " + std::to_string(async_io_manager->get_max_concurrent_operations()));
-        Output::info("  Hardware concurrency: " + std::to_string(std::thread::hardware_concurrency()));
+        Output::info("\033[1;32m Thread Configuration:\033[0m");
+        Output::info("  Max concurrent operations: \033[1;33m" + std::to_string(async_io_manager->get_max_concurrent_operations()) + "\033[0m");
+        Output::info("  Hardware concurrency: \033[1;33m" + std::to_string(std::thread::hardware_concurrency()) + "\033[0m");
         
-        Output::info(" Performance Configuration:");
-        Output::info("  Current queue size: " + std::to_string(async_io_manager->get_queue_size()));
-        Output::info("  Active operations: " + std::to_string(async_io_manager->get_active_operations()));
+        Output::info("\033[1;32m Performance Configuration:\033[0m");
+        Output::info("  Current queue size: \033[1;34m" + std::to_string(async_io_manager->get_queue_size()) + "\033[0m");
+        Output::info("  Active operations: \033[1;35m" + std::to_string(async_io_manager->get_active_operations()) + "\033[0m");
         
-        Output::info(" Optimization Suggestions:");
+        Output::info("\033[1;33m Optimization Suggestions:\033[0m");
         if (async_io_manager->get_queue_size() > 100) {
-            Output::info("  [WARN] Queue backlog is high, consider adding worker threads");
+            Output::info("  \033[1;33m[WARN]\033[0m Queue backlog is high, consider adding worker threads");
         }
         if (async_io_manager->get_success_rate() < 90.0) {
-            Output::info("  [WARN] Low success rate, consider checking I/O operations");
+            Output::info("  \033[1;33m[WARN]\033[0m Low success rate, consider checking I/O operations");
         }
         if (async_io_manager->get_average_operation_time() > 1000) {
-            Output::info("  [WARN] Average operation time is long, consider optimizing I/O performance");
+            Output::info("  \033[1;33m[WARN]\033[0m Average operation time is long, consider optimizing I/O performance");
         }
         
     } catch (const std::exception& e) {
@@ -136,7 +136,7 @@ void pm_async_io_test() {
     auto* async_io_manager = get_async_io_manager();
     
     try {
-        Output::info("🧪 Starting async I/O test...");
+        Output::info("\033[1;36mStarting async I/O test...\033[0m");
         
         // 创建测试文件
         std::string test_content = "This is a test file for async I/O operations.\n";
@@ -146,36 +146,50 @@ void pm_async_io_test() {
         std::string test_file = "/tmp/paker_async_test.txt";
         
         // 测试异步写入
-        Output::info("📝 Testing async file write...");
+        Output::info("\033[1;34mTesting async file write...\033[0m");
         auto write_future = async_io_manager->write_file_async(test_file, test_content);
-        auto write_result = write_future.get();
+        
+        // 设置超时机制（5秒）
+        auto write_result = write_future.wait_for(std::chrono::seconds(5)) == std::future_status::ready 
+            ? write_future.get() 
+            : nullptr;
         
         if (write_result && write_result->status == IOOperationStatus::COMPLETED) {
-            Output::success("[OK] Async write test passed");
-            Output::info("  Bytes written: " + std::to_string(write_result->bytes_written));
-            Output::info("  Write time: " + std::to_string(write_result->duration.count()) + "ms");
+            Output::success("\033[1;32m[OK]\033[0m Async write test passed");
+            Output::info("  Bytes written: \033[1;33m" + std::to_string(write_result->bytes_written) + "\033[0m");
+            Output::info("  Write time: \033[1;36m" + std::to_string(write_result->duration.count()) + "ms\033[0m");
+        } else if (!write_result) {
+            Output::error("\033[1;31m[FAIL]\033[0m Async write test timed out (5s)");
+            return;
         } else {
-            Output::error("[FAIL] Async write test failed");
+            Output::error("\033[1;31m[FAIL]\033[0m Async write test failed");
             return;
         }
         
         // 测试异步读取
-        Output::info("📖 Testing async file read...");
+        Output::info("\033[1;34mTesting async file read...\033[0m");
         auto read_future = async_io_manager->read_file_async(test_file, true);
-        auto read_result = read_future.get();
+        
+        // 设置超时机制（5秒）
+        auto read_result = read_future.wait_for(std::chrono::seconds(5)) == std::future_status::ready 
+            ? read_future.get() 
+            : nullptr;
         
         if (read_result && read_result->status == IOOperationStatus::COMPLETED) {
-            Output::success("[OK] Async read test passed");
-            Output::info("  Bytes read: " + std::to_string(read_result->bytes_processed));
-            Output::info("  Read time: " + std::to_string(read_result->duration.count()) + "ms");
-            Output::info("  Content match: " + std::string(read_result->content == test_content ? "[OK] Yes" : "[FAIL] No"));
+            Output::success("\033[1;32m[OK]\033[0m Async read test passed");
+            Output::info("  Bytes read: \033[1;33m" + std::to_string(read_result->bytes_processed) + "\033[0m");
+            Output::info("  Read time: \033[1;36m" + std::to_string(read_result->duration.count()) + "ms\033[0m");
+            Output::info("  Content match: " + std::string(read_result->content == test_content ? "\033[1;32m[OK] Yes\033[0m" : "\033[1;31m[FAIL] No\033[0m"));
+        } else if (!read_result) {
+            Output::error("\033[1;31m[FAIL]\033[0m Async read test timed out (5s)");
+            return;
         } else {
-            Output::error("[FAIL] Async read test failed");
+            Output::error("\033[1;31m[FAIL]\033[0m Async read test failed");
             return;
         }
         
-        // 测试批量操作
-        Output::info("📚 测试批量异步操作...");
+        // Test batch operations
+        Output::info("\033[1;35mTesting batch async operations...\033[0m");
         std::vector<std::string> test_files;
         std::vector<std::pair<std::string, std::string>> test_data;
         
@@ -191,19 +205,29 @@ void pm_async_io_test() {
         // 批量写入
         auto write_futures = async_io_manager->write_files_async(test_data);
         for (auto& future : write_futures) {
-            auto result = future.get();
-            if (!result || result->status != IOOperationStatus::COMPLETED) {
-                Output::error("[FAIL] 批量写入测试失败");
+            auto result = future.wait_for(std::chrono::seconds(5)) == std::future_status::ready 
+                ? future.get() 
+                : nullptr;
+            if (!result) {
+                Output::error("\033[1;31m[FAIL]\033[0m Batch write test timed out (5s)");
+                return;
+            } else if (result->status != IOOperationStatus::COMPLETED) {
+                Output::error("\033[1;31m[FAIL]\033[0m Batch write test failed");
                 return;
             }
         }
         
-        // 批量读取
+        // Batch read
         auto read_futures = async_io_manager->read_files_async(test_files, true);
         for (auto& future : read_futures) {
-            auto result = future.get();
-            if (!result || result->status != IOOperationStatus::COMPLETED) {
-                Output::error("[FAIL] 批量读取测试失败");
+            auto result = future.wait_for(std::chrono::seconds(5)) == std::future_status::ready 
+                ? future.get() 
+                : nullptr;
+            if (!result) {
+                Output::error("\033[1;31m[FAIL]\033[0m Batch read test timed out (5s)");
+                return;
+            } else if (result->status != IOOperationStatus::COMPLETED) {
+                Output::error("\033[1;31m[FAIL]\033[0m Batch read test failed");
                 return;
             }
         }
@@ -211,21 +235,21 @@ void pm_async_io_test() {
         auto end_time = std::chrono::high_resolution_clock::now();
         auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
         
-        Output::success("[OK] 批量操作测试通过");
-        Output::info("  批量操作时间: " + std::to_string(total_time.count()) + "ms");
-        Output::info("  平均每文件: " + std::to_string(total_time.count() / test_files.size()) + "ms");
+        Output::success("\033[1;32m[OK]\033[0m Batch operation test passed");
+        Output::info("  Batch operation time: \033[1;36m" + std::to_string(total_time.count()) + "ms\033[0m");
+        Output::info("  Average per file: \033[1;33m" + std::to_string(total_time.count() / test_files.size()) + "ms\033[0m");
         
-        // 清理测试文件
+        // Clean up test files
         for (const auto& file : test_files) {
             std::filesystem::remove(file);
         }
         std::filesystem::remove(test_file);
         
-        Output::success("🎉 异步I/O测试全部通过！");
+        Output::success("\033[1;32mAsync I/O test completed successfully!\033[0m");
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Async I/O test failed: " << e.what();
-        Output::error("异步I/O测试失败: " + std::string(e.what()));
+        Output::error("Async I/O test failed: " + std::string(e.what()));
     }
 }
 
@@ -239,12 +263,12 @@ void pm_async_io_benchmark() {
     auto* async_io_manager = get_async_io_manager();
     
     try {
-        Output::info("🏃 开始异步I/O性能基准测试...");
+        Output::info("\033[1;36mStarting async I/O performance benchmark...\033[0m");
         
         const int num_files = 100;
         const int file_size = 1024; // 1KB per file
         
-        // 生成测试数据
+        // Generate test data
         std::string test_content(file_size, 'A');
         std::vector<std::string> test_files;
         std::vector<std::pair<std::string, std::string>> test_data;
@@ -255,36 +279,44 @@ void pm_async_io_benchmark() {
             test_data.emplace_back(filename, test_content);
         }
         
-        // 异步I/O基准测试
-        Output::info(" 异步I/O基准测试 (" + std::to_string(num_files) + " 文件)...");
+        // Async I/O benchmark
+        Output::info("\033[1;34mAsync I/O benchmark (\033[1;33m" + std::to_string(num_files) + "\033[1;34m files)...\033[0m");
         auto async_start = std::chrono::high_resolution_clock::now();
         
         auto write_futures = async_io_manager->write_files_async(test_data);
         for (auto& future : write_futures) {
+            if (future.wait_for(std::chrono::seconds(10)) != std::future_status::ready) {
+                Output::error("\033[1;31m[FAIL]\033[0m Async write benchmark timed out (10s)");
+                return;
+            }
             future.get();
         }
         
         auto read_futures = async_io_manager->read_files_async(test_files, true);
         for (auto& future : read_futures) {
+            if (future.wait_for(std::chrono::seconds(10)) != std::future_status::ready) {
+                Output::error("\033[1;31m[FAIL]\033[0m Async read benchmark timed out (10s)");
+                return;
+            }
             future.get();
         }
         
         auto async_end = std::chrono::high_resolution_clock::now();
         auto async_time = std::chrono::duration_cast<std::chrono::milliseconds>(async_end - async_start);
         
-        // 同步I/O基准测试（对比）
-        Output::info("🐌 同步I/O基准测试 (" + std::to_string(num_files) + " 文件)...");
+        // Sync I/O benchmark (comparison)
+        Output::info("\033[1;35mSync I/O benchmark (\033[1;33m" + std::to_string(num_files) + "\033[1;35m files)...\033[0m");
         auto sync_start = std::chrono::high_resolution_clock::now();
         
         for (int i = 0; i < num_files; ++i) {
             std::string filename = "/tmp/paker_sync_benchmark_" + std::to_string(i) + ".txt";
             
-            // 同步写入
+            // Sync write
             std::ofstream file(filename);
             file << test_content;
             file.close();
             
-            // 同步读取
+            // Sync read
             std::ifstream read_file(filename);
             std::string content((std::istreambuf_iterator<char>(read_file)),
                                std::istreambuf_iterator<char>());
@@ -294,18 +326,18 @@ void pm_async_io_benchmark() {
         auto sync_end = std::chrono::high_resolution_clock::now();
         auto sync_time = std::chrono::duration_cast<std::chrono::milliseconds>(sync_end - sync_start);
         
-        // 显示结果
-        Output::info(" 基准测试结果:");
-        Output::info("  异步I/O时间: " + std::to_string(async_time.count()) + "ms");
-        Output::info("  同步I/O时间: " + std::to_string(sync_time.count()) + "ms");
+        // Display results
+        Output::info("\033[1;32mBenchmark results:\033[0m");
+        Output::info("  Async I/O time: \033[1;34m" + std::to_string(async_time.count()) + "ms\033[0m");
+        Output::info("  Sync I/O time: \033[1;35m" + std::to_string(sync_time.count()) + "ms\033[0m");
         
         if (sync_time.count() > 0) {
             double speedup = static_cast<double>(sync_time.count()) / async_time.count();
-            Output::info("  性能提升: " + std::to_string(speedup) + "x");
-            Output::info("  时间节省: " + std::to_string(sync_time.count() - async_time.count()) + "ms");
+            Output::info("  Performance improvement: \033[1;33m" + std::to_string(speedup) + "x\033[0m");
+            Output::info("  Time saved: \033[1;36m" + std::to_string(sync_time.count() - async_time.count()) + "ms\033[0m");
         }
         
-        // 清理测试文件
+        // Clean up test files
         for (const auto& file : test_files) {
             std::filesystem::remove(file);
         }
@@ -314,11 +346,11 @@ void pm_async_io_benchmark() {
             std::filesystem::remove(filename);
         }
         
-        Output::success("🎉 基准测试完成！");
+        Output::success("\033[1;32mBenchmark completed!\033[0m");
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Async I/O benchmark failed: " << e.what();
-        Output::error("异步I/O基准测试失败: " + std::string(e.what()));
+        Output::error("Async I/O benchmark failed: " + std::string(e.what()));
     }
 }
 
@@ -332,69 +364,69 @@ void pm_async_io_optimize() {
     auto* async_io_manager = get_async_io_manager();
     
     try {
-        Output::info(" 开始异步I/O性能优化...");
+        Output::info("\033[1;36mStarting async I/O performance optimization...\033[0m");
         
-        // 清理队列
+        // Clear queue
         size_t queue_size = async_io_manager->get_queue_size();
         if (queue_size > 0) {
-            Output::info("🧹 清理队列中的 " + std::to_string(queue_size) + " 个待处理操作...");
+            Output::info("Clearing \033[1;33m" + std::to_string(queue_size) + "\033[0m pending operations in queue...");
             async_io_manager->clear_queue();
         }
         
-        // 取消所有操作
-        Output::info("⏹️ 取消所有进行中的操作...");
+        // Cancel all operations
+        Output::info("Canceling all ongoing operations...");
         async_io_manager->cancel_all_operations();
         
-        // 等待操作完成
+        // Wait for operations to complete
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
-        // 显示优化后的状态
-        Output::info(" 优化后状态:");
-        Output::info("  Queue size: " + std::to_string(async_io_manager->get_queue_size()));
-        Output::info("  Active operations: " + std::to_string(async_io_manager->get_active_operations()));
-        Output::info("  Success rate: " + std::to_string(async_io_manager->get_success_rate()) + "%");
+        // Display optimized state
+        Output::info("\033[1;32mOptimized state:\033[0m");
+        Output::info("  Queue size: \033[1;34m" + std::to_string(async_io_manager->get_queue_size()) + "\033[0m");
+        Output::info("  Active operations: \033[1;35m" + std::to_string(async_io_manager->get_active_operations()) + "\033[0m");
+        Output::info("  Success rate: \033[1;33m" + std::to_string(async_io_manager->get_success_rate()) + "%\033[0m");
         
-        // 显示增强功能状态
-        Output::info("🚀 增强功能状态:");
-        Output::info("  自适应缓冲区: " + std::string(async_io_manager->is_adaptive_buffering_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
-        Output::info("  智能预读: " + std::string(async_io_manager->is_smart_pre_read_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
-        Output::info("  网络重试: " + std::string(async_io_manager->is_network_retry_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
-        Output::info("  批量优化: " + std::string(async_io_manager->is_batch_optimization_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
-        Output::info("  内存使用: " + std::to_string(async_io_manager->get_memory_usage() / 1024 / 1024) + " MB");
+        // Display enhanced features status
+        Output::info("\033[1;35mEnhanced features status:\033[0m");
+        Output::info("  Adaptive buffering: " + std::string(async_io_manager->is_adaptive_buffering_enabled() ? "\033[1;32m[OK] Enabled\033[0m" : "\033[1;31m[FAIL] Disabled\033[0m"));
+        Output::info("  Smart pre-read: " + std::string(async_io_manager->is_smart_pre_read_enabled() ? "\033[1;32m[OK] Enabled\033[0m" : "\033[1;31m[FAIL] Disabled\033[0m"));
+        Output::info("  Network retry: " + std::string(async_io_manager->is_network_retry_enabled() ? "\033[1;32m[OK] Enabled\033[0m" : "\033[1;31m[FAIL] Disabled\033[0m"));
+        Output::info("  Batch optimization: " + std::string(async_io_manager->is_batch_optimization_enabled() ? "\033[1;32m[OK] Enabled\033[0m" : "\033[1;31m[FAIL] Disabled\033[0m"));
+        Output::info("  Memory usage: \033[1;33m" + std::to_string(async_io_manager->get_memory_usage() / 1024 / 1024) + " MB\033[0m");
         
-        // 获取优化建议
+        // Get optimization suggestions
         auto suggestions = async_io_manager->get_optimization_suggestions();
         if (!suggestions.empty()) {
-            Output::info(" Optimization Suggestions:");
+            Output::info("\033[1;33mOptimization Suggestions:\033[0m");
             for (const auto& suggestion : suggestions) {
-                Output::info("  • " + suggestion);
+                Output::info("  \033[1;36m•\033[0m " + suggestion);
             }
         }
         
-        // 应用优化建议
+        // Apply optimization suggestions
         if (!suggestions.empty()) {
-            Output::info(" 应用优化建议...");
+            Output::info("Applying optimization suggestions...");
             async_io_manager->apply_optimization_suggestions();
         }
         
-        // 触发预读分析
+        // Trigger pre-read analysis
         if (async_io_manager->is_smart_pre_read_enabled()) {
-            Output::info("📖 执行智能预读分析...");
+            Output::info("Executing smart pre-read analysis...");
             async_io_manager->trigger_pre_read_analysis();
             
             auto candidates = async_io_manager->get_pre_read_candidates();
             if (!candidates.empty()) {
-                Output::info("  发现 " + std::to_string(candidates.size()) + " 个预读候选文件");
+                Output::info("  Found " + std::to_string(candidates.size()) + " pre-read candidate files");
             }
         }
         
-        // 处理批量操作
+        // Process batch operations
         if (async_io_manager->is_batch_optimization_enabled()) {
-            Output::info("📦 处理批量操作优化...");
+            Output::info("Processing batch operation optimization...");
             async_io_manager->process_pending_batches();
         }
         
-        // 显示详细性能报告
+        // Display detailed performance report
         std::string detailed_report = async_io_manager->get_detailed_performance_report();
         std::istringstream report_stream(detailed_report);
         std::string line;
@@ -404,11 +436,11 @@ void pm_async_io_optimize() {
             }
         }
         
-        Output::success("[OK] 异步I/O性能优化完成！");
+        Output::success("\033[1;32m[OK]\033[0m Async I/O performance optimization completed!");
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Async I/O optimization failed: " << e.what();
-        Output::error("异步I/O优化失败: " + std::string(e.what()));
+        Output::error("Async I/O optimization failed: " + std::string(e.what()));
     }
 }
 
@@ -422,81 +454,81 @@ void pm_async_io_enhanced_features() {
     auto* async_io_manager = get_async_io_manager();
     
     try {
-        Output::info("🚀 增强异步I/O功能展示");
-        Output::info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        Output::info("\033[1;36mEnhanced Async I/O Features\033[0m");
+        Output::info("\033[0;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m");
         
-        // 动态缓冲区管理
-        Output::info(" 动态缓冲区管理:");
-        Output::info("  自适应缓冲区: " + std::string(async_io_manager->is_adaptive_buffering_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
-        Output::info("  内存使用: " + std::to_string(async_io_manager->get_memory_usage() / 1024 / 1024) + " MB");
+        // Dynamic buffer management
+        Output::info("\033[1;32mDynamic buffer management:\033[0m");
+        Output::info("  Adaptive buffering: " + std::string(async_io_manager->is_adaptive_buffering_enabled() ? "\033[1;32m[OK] Enabled\033[0m" : "\033[1;31m[FAIL] Disabled\033[0m"));
+        Output::info("  Memory usage: \033[1;33m" + std::to_string(async_io_manager->get_memory_usage() / 1024 / 1024) + " MB\033[0m");
         
-        // 显示各种缓冲区配置
+        // Display various buffer configurations
         for (int i = 0; i < 4; ++i) {
             BufferType type = static_cast<BufferType>(i);
             auto config = async_io_manager->get_buffer_config(type);
             std::string type_name;
             switch (type) {
-                case BufferType::FILE_READ: type_name = "文件读取"; break;
-                case BufferType::FILE_WRITE: type_name = "文件写入"; break;
-                case BufferType::NETWORK_DOWNLOAD: type_name = "网络下载"; break;
-                case BufferType::NETWORK_UPLOAD: type_name = "网络上传"; break;
+                case BufferType::FILE_READ: type_name = "File read"; break;
+                case BufferType::FILE_WRITE: type_name = "File write"; break;
+                case BufferType::NETWORK_DOWNLOAD: type_name = "Network download"; break;
+                case BufferType::NETWORK_UPLOAD: type_name = "Network upload"; break;
             }
-            Output::info("  " + type_name + ": " + std::to_string(config.initial_size / 1024) + "KB");
+            Output::info("  " + type_name + ": \033[1;34m" + std::to_string(config.initial_size / 1024) + "KB\033[0m");
         }
         
-        // 智能预读策略
-        Output::info("📖 智能预读策略:");
-        Output::info("  智能预读: " + std::string(async_io_manager->is_smart_pre_read_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
+        // Smart pre-read strategy
+        Output::info("\033[1;35mSmart pre-read strategy:\033[0m");
+        Output::info("  Smart pre-read: " + std::string(async_io_manager->is_smart_pre_read_enabled() ? "\033[1;32m[OK] Enabled\033[0m" : "\033[1;31m[FAIL] Disabled\033[0m"));
         
         auto candidates = async_io_manager->get_pre_read_candidates();
         if (!candidates.empty()) {
-            Output::info("  预读候选: " + std::to_string(candidates.size()) + " 个文件");
+            Output::info("  Pre-read candidates: \033[1;33m" + std::to_string(candidates.size()) + " files\033[0m");
             for (size_t i = 0; i < std::min(candidates.size(), static_cast<size_t>(5)); ++i) {
-                Output::info("    • " + candidates[i]);
+                Output::info("    \033[1;36m•\033[0m " + candidates[i]);
             }
             if (candidates.size() > 5) {
-                Output::info("    ... 还有 " + std::to_string(candidates.size() - 5) + " 个文件");
+                Output::info("    ... and \033[1;33m" + std::to_string(candidates.size() - 5) + "\033[0m more files");
             }
         } else {
-            Output::info("  暂无预读候选文件");
+            Output::info("  No pre-read candidate files");
         }
         
-        // 网络重试策略
-        Output::info("🌐 网络重试策略:");
-        Output::info("  网络重试: " + std::string(async_io_manager->is_network_retry_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
+        // Network retry strategy
+        Output::info("\033[1;34mNetwork retry strategy:\033[0m");
+        Output::info("  Network retry: " + std::string(async_io_manager->is_network_retry_enabled() ? "\033[1;32m[OK] Enabled\033[0m" : "\033[1;31m[FAIL] Disabled\033[0m"));
         
         auto retry_config = async_io_manager->get_retry_config();
-        Output::info("  最大重试次数: " + std::to_string(retry_config.max_retries));
-        Output::info("  初始延迟: " + std::to_string(retry_config.initial_delay.count()) + "ms");
-        Output::info("  退避因子: " + std::to_string(retry_config.backoff_factor));
-        Output::info("  最大延迟: " + std::to_string(retry_config.max_delay.count()) + "ms");
+        Output::info("  Max retry attempts: \033[1;33m" + std::to_string(retry_config.max_retries) + "\033[0m");
+        Output::info("  Initial delay: \033[1;36m" + std::to_string(retry_config.initial_delay.count()) + "ms\033[0m");
+        Output::info("  Backoff factor: \033[1;35m" + std::to_string(retry_config.backoff_factor) + "\033[0m");
+        Output::info("  Max delay: \033[1;36m" + std::to_string(retry_config.max_delay.count()) + "ms\033[0m");
         
-        // 批量处理优化
-        Output::info("📦 批量处理优化:");
-        Output::info("  批量优化: " + std::string(async_io_manager->is_batch_optimization_enabled() ? "[OK] 启用" : "[FAIL] 禁用"));
+        // Batch processing optimization
+        Output::info("\033[1;32mBatch processing optimization:\033[0m");
+        Output::info("  Batch optimization: " + std::string(async_io_manager->is_batch_optimization_enabled() ? "\033[1;32m[OK] Enabled\033[0m" : "\033[1;31m[FAIL] Disabled\033[0m"));
         
-        // 性能统计
-        Output::info("📈 性能统计:");
-        Output::info("  平均吞吐量: " + std::to_string(async_io_manager->get_average_throughput()) + " MB/s");
-        Output::info("  Cache hit rate: " + std::to_string(async_io_manager->get_cache_hit_rate()) + "%");
-        Output::info("  总处理字节: " + std::to_string(async_io_manager->get_total_bytes_processed() / 1024 / 1024) + " MB");
+        // Performance statistics
+        Output::info("\033[1;33mPerformance statistics:\033[0m");
+        Output::info("  Average throughput: \033[1;34m" + std::to_string(async_io_manager->get_average_throughput()) + " MB/s\033[0m");
+        Output::info("  Cache hit rate: \033[1;36m" + std::to_string(async_io_manager->get_cache_hit_rate()) + "%\033[0m");
+        Output::info("  Total bytes processed: \033[1;35m" + std::to_string(async_io_manager->get_total_bytes_processed() / 1024 / 1024) + " MB\033[0m");
         
-        // 优化建议
+        // Optimization suggestions
         auto suggestions = async_io_manager->get_optimization_suggestions();
         if (!suggestions.empty()) {
-            Output::info(" Optimization Suggestions:");
+            Output::info("\033[1;33mOptimization Suggestions:\033[0m");
             for (const auto& suggestion : suggestions) {
-                Output::info("  • " + suggestion);
+                Output::info("  \033[1;36m•\033[0m " + suggestion);
             }
         } else {
-            Output::info("  [OK] 当前配置已优化");
+            Output::info("  \033[1;32m[OK]\033[0m Current configuration is optimized");
         }
         
-        Output::success("🎉 增强功能展示完成！");
+        Output::success("\033[1;32mEnhanced features demonstration completed!\033[0m");
         
     } catch (const std::exception& e) {
         LOG(ERROR) << "Failed to display enhanced features: " << e.what();
-        Output::error("显示增强功能失败: " + std::string(e.what()));
+        Output::error("Failed to display enhanced features: " + std::string(e.what()));
     }
 }
 
