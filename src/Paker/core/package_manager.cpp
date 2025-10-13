@@ -11,6 +11,7 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
+#include <chrono>
 #include "nlohmann/json.hpp"
 #include <filesystem>
 #include <glog/logging.h>
@@ -118,22 +119,11 @@ void pm_resolve_dependencies() {
     LOG(INFO) << "Resolving project dependencies";
     Paker::Output::info("Resolving project dependencies...");
     
-    // 确保服务已初始化
-    if (!Paker::get_dependency_resolver()) {
-        Paker::Output::info("Initializing dependency resolver service...");
-        if (!initialize_paker_services()) {
-            LOG(ERROR) << "Failed to initialize services";
-            Paker::Output::error("Failed to initialize services");
-            return;
-        }
-    }
+    // 使用轻量级依赖解析器，跳过重型服务初始化
+    auto start_time = std::chrono::high_resolution_clock::now();
     
-    auto* resolver = Paker::get_dependency_resolver();
-    if (!resolver) {
-        LOG(ERROR) << "Dependency resolver service not available";
-        Paker::Output::error("Dependency resolver service not available");
-        return;
-    }
+    // 直接创建依赖解析器，不通过服务管理器
+    std::unique_ptr<Paker::DependencyResolver> resolver = std::make_unique<Paker::DependencyResolver>();
     
     if (!resolver->resolve_project_dependencies()) {
         LOG(ERROR) << "Failed to resolve project dependencies";
@@ -141,6 +131,10 @@ void pm_resolve_dependencies() {
         return;
     }
     
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    
+    LOG(INFO) << "Dependency resolution completed in " << duration.count() << "ms";
     Paker::Output::success("Dependencies resolved successfully");
 }
 
@@ -148,35 +142,26 @@ void pm_check_conflicts() {
     LOG(INFO) << "Checking for dependency conflicts";
     Paker::Output::info("Checking for dependency conflicts...");
     
-    // 确保服务已初始化
-    if (!Paker::get_dependency_resolver()) {
-        Paker::Output::info("Initializing dependency resolver service...");
-        if (!initialize_paker_services()) {
-            LOG(ERROR) << "Failed to initialize services";
-            Paker::Output::error("Failed to initialize services");
-            return;
-        }
-    }
+    // 使用轻量级依赖解析器，跳过重型服务初始化
+    auto start_time = std::chrono::high_resolution_clock::now();
     
-    auto* resolver = Paker::get_dependency_resolver();
-    auto* graph = Paker::get_dependency_graph();
+    // 直接创建依赖解析器，不通过服务管理器
+    std::unique_ptr<Paker::DependencyResolver> resolver = std::make_unique<Paker::DependencyResolver>();
     
-    if (!resolver || !graph) {
-        LOG(ERROR) << "Dependency resolver or graph service not available";
-        Paker::Output::error("Dependency system not available");
-        return;
-    }
-    
-    // 确保依赖已解析
     if (!resolver->resolve_project_dependencies()) {
-        LOG(ERROR) << "Failed to resolve dependencies for conflict checking";
-        Paker::Output::error("Failed to resolve dependencies for conflict checking");
+        LOG(ERROR) << "Failed to resolve project dependencies";
+        Paker::Output::error("Failed to resolve project dependencies");
         return;
     }
+    
+    auto& graph = resolver->get_dependency_graph();
     
     // 检测冲突
-    Paker::ConflictDetector detector(*graph);
+    Paker::ConflictDetector detector(graph);
     auto conflicts = detector.detect_all_conflicts();
+    
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     
     if (conflicts.empty()) {
         Paker::Output::success("No conflicts detected");
@@ -185,40 +170,30 @@ void pm_check_conflicts() {
         std::string report = detector.generate_conflict_report(conflicts);
         Paker::Output::info(report);
     }
+    
+    LOG(INFO) << "Conflict checking completed in " << duration.count() << "ms";
 }
 
 void pm_resolve_conflicts() {
     LOG(INFO) << "Resolving dependency conflicts";
     Paker::Output::info("Resolving dependency conflicts...");
     
-    // 确保服务已初始化
-    if (!Paker::get_dependency_resolver()) {
-        Paker::Output::info("Initializing dependency resolver service...");
-        if (!initialize_paker_services()) {
-            LOG(ERROR) << "Failed to initialize services";
-            Paker::Output::error("Failed to initialize services");
-            return;
-        }
-    }
+    // 使用轻量级依赖解析器，跳过重型服务初始化
+    auto start_time = std::chrono::high_resolution_clock::now();
     
-    auto* resolver = Paker::get_dependency_resolver();
-    auto* graph = Paker::get_dependency_graph();
+    // 直接创建依赖解析器，不通过服务管理器
+    std::unique_ptr<Paker::DependencyResolver> resolver = std::make_unique<Paker::DependencyResolver>();
     
-    if (!resolver || !graph) {
-        LOG(ERROR) << "Dependency resolver or graph service not available";
-        Paker::Output::error("Dependency system not available");
-        return;
-    }
-    
-    // 确保依赖已解析
     if (!resolver->resolve_project_dependencies()) {
-        LOG(ERROR) << "Failed to resolve dependencies for conflict resolution";
-        Paker::Output::error("Failed to resolve dependencies for conflict resolution");
+        LOG(ERROR) << "Failed to resolve project dependencies";
+        Paker::Output::error("Failed to resolve project dependencies");
         return;
     }
+    
+    auto& graph = resolver->get_dependency_graph();
     
     // 检测冲突
-    Paker::ConflictDetector detector(*graph);
+    Paker::ConflictDetector detector(graph);
     auto conflicts = detector.detect_all_conflicts();
     
     if (conflicts.empty()) {
@@ -227,7 +202,7 @@ void pm_resolve_conflicts() {
     }
     
     // 解决冲突
-    Paker::ConflictResolver conflict_resolver(*graph);
+    Paker::ConflictResolver conflict_resolver(graph);
     
     // 询问用户是否自动解决
     Paker::Output::info("Found " + std::to_string(conflicts.size()) + " conflicts");
@@ -248,6 +223,9 @@ void pm_resolve_conflicts() {
         return;
     }
     
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    
     if (success) {
         Paker::Output::success("Conflicts resolved successfully");
         
@@ -261,30 +239,19 @@ void pm_resolve_conflicts() {
     } else {
         Paker::Output::error("Failed to resolve all conflicts");
     }
+    
+    LOG(INFO) << "Conflict resolution completed in " << duration.count() << "ms";
 }
 
 void pm_validate_dependencies() {
     LOG(INFO) << "Validating dependencies";
     Paker::Output::info("Validating dependencies...");
     
-    // 确保服务已初始化
-    if (!Paker::get_dependency_resolver()) {
-        Paker::Output::info("Initializing dependency resolver service...");
-        if (!initialize_paker_services()) {
-            LOG(ERROR) << "Failed to initialize services";
-            Paker::Output::error("Failed to initialize services");
-            return;
-        }
-    }
+    // 使用轻量级依赖解析器，跳过重型服务初始化
+    auto start_time = std::chrono::high_resolution_clock::now();
     
-    auto* resolver = Paker::get_dependency_resolver();
-    auto* graph = Paker::get_dependency_graph();
-    
-    if (!resolver || !graph) {
-        LOG(ERROR) << "Dependency resolver or graph service not available";
-        Paker::Output::error("Dependency system not available");
-        return;
-    }
+    // 直接创建依赖解析器，不通过服务管理器
+    std::unique_ptr<Paker::DependencyResolver> resolver = std::make_unique<Paker::DependencyResolver>();
     
     // 解析依赖
     if (!resolver->resolve_project_dependencies()) {
@@ -300,14 +267,20 @@ void pm_validate_dependencies() {
         return;
     }
     
+    auto& graph = resolver->get_dependency_graph();
+    
     // 检测冲突
-    Paker::ConflictDetector detector(*graph);
+    Paker::ConflictDetector detector(graph);
     if (!detector.validate_dependency_graph()) {
         LOG(ERROR) << "Dependency graph validation failed";
         Paker::Output::error("Dependency graph validation failed");
         return;
     }
     
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    
+    LOG(INFO) << "Dependency validation completed in " << duration.count() << "ms";
     Paker::Output::success("Dependencies validated successfully");
 }
 
