@@ -12,10 +12,11 @@ namespace Paker {
 // CDN节点信息
 struct CDNNode {
     std::string name_;           // CDN名称
-    std::string base_url_;       // 基础URL
-    std::string region_;         // 地区
+    std::string url;            // 完整URL
+    std::string base_url_;      // 基础URL
+    std::string region_;        // 地区
     double priority_;            // 优先级 (0.0-1.0)
-    bool is_active_;             // 是否活跃
+    bool is_active_;            // 是否活跃
     std::chrono::steady_clock::time_point last_used_;
     
     // 性能指标
@@ -24,11 +25,29 @@ struct CDNNode {
     double success_rate_;       // 成功率
     size_t total_requests_;     // 总请求数
     size_t successful_requests_; // 成功请求数
+    size_t failed_requests_;    // 失败请求数
+    
+    // 详细统计信息
+    double average_latency_ms_; // 平均延迟
+    double latency_std_dev_;    // 延迟标准差
+    double average_bandwidth_bps_; // 平均带宽
+    double current_load_;        // 当前负载
+    size_t total_bytes_transferred_; // 总传输字节数
+    
+    // 历史数据
+    std::vector<double> latency_history_;    // 延迟历史
+    std::vector<double> bandwidth_history_;  // 带宽历史
+    std::vector<double> load_history_;      // 负载历史
+    
+    // 线程安全
+    mutable std::mutex stats_mutex_;
     
     CDNNode(const std::string& name, const std::string& base_url, const std::string& region = "")
-        : name_(name), base_url_(base_url), region_(region), priority_(1.0), is_active_(true)
+        : name_(name), url(base_url), base_url_(base_url), region_(region), priority_(1.0), is_active_(true)
         , latency_ms_(100.0), bandwidth_mbps_(10.0), success_rate_(0.95)
-        , total_requests_(0), successful_requests_(0) {
+        , total_requests_(0), successful_requests_(0), failed_requests_(0)
+        , average_latency_ms_(0.0), latency_std_dev_(0.0), average_bandwidth_bps_(0.0)
+        , current_load_(0.0), total_bytes_transferred_(0) {
     }
 };
 
@@ -152,10 +171,23 @@ private:
     bool check_node_health(CDNNode* node);
     void update_node_health(CDNNode* node, bool is_healthy);
     
+    // 健康检查辅助方法
+    bool test_basic_connectivity(const std::string& url);
+    bool test_health_endpoint(CDNNode* node);
+    double measure_response_time(const std::string& url);
+    bool test_availability(CDNNode* node);
+    
     // 性能计算
     double calculate_node_score(const CDNNode* node) const;
     void update_node_statistics(CDNNode* node, bool success, double latency_ms, size_t bytes_transferred);
     void calculate_average_throughput();
+    
+    // 统计更新辅助方法
+    void update_latency_statistics(CDNNode* node, double latency_ms);
+    void update_bandwidth_statistics(CDNNode* node, size_t bytes_transferred, double latency_ms);
+    void update_load_statistics(CDNNode* node);
+    void update_health_status(CDNNode* node);
+    double calculate_recent_success_rate(CDNNode* node);
     
     // 故障转移
     bool try_failover_download(const std::string& file_path, const std::string& local_path,
