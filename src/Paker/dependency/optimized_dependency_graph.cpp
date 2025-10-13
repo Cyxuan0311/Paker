@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <queue>
 #include <stack>
+#include <filesystem>
+#include <sstream>
 #include "nlohmann/json.hpp"
 
 using json = nlohmann::json;
@@ -663,28 +665,654 @@ void DependencyGraphBuilder::add_repository(const std::string& name, const std::
 }
 
 bool DependencyGraphBuilder::resolve_package_dependencies(const std::string& package, const std::string& version) {
-    // 创建节点
-    LightweightDependencyNode node(package, version);
-    
-    // 设置仓库URL
-    auto repo_it = repositories_.find(package);
-    if (repo_it != repositories_.end()) {
-        node.repository = repo_it->second;
+    try {
+        LOG(INFO) << "Resolving dependencies for package: " << package << " version: " << version;
+        
+        // 创建节点
+        LightweightDependencyNode node(package, version);
+        
+        // 设置仓库URL
+        auto repo_it = repositories_.find(package);
+        if (repo_it != repositories_.end()) {
+            node.repository = repo_it->second;
+            VLOG(1) << "Found repository for " << package << ": " << repo_it->second;
+        } else {
+            LOG(WARNING) << "No repository found for package: " << package;
+        }
+        
+        // 读取包元数据
+        std::string package_path = find_package_path(package, version);
+        if (!package_path.empty()) {
+            if (!read_package_metadata(package_path, node)) {
+                LOG(WARNING) << "Failed to read metadata for package: " << package;
+            }
+        } else {
+            LOG(WARNING) << "Package path not found for: " << package << " version: " << version;
+        }
+        
+        // 添加到图
+        size_t node_index = graph_->add_node(node);
+        VLOG(1) << "Added node at index: " << node_index;
+        
+        // 解析依赖关系
+        std::vector<std::string> dependencies = extract_dependencies(node);
+        LOG(INFO) << "Found " << dependencies.size() << " dependencies for " << package;
+        
+        // 递归解析依赖
+        for (const auto& dep : dependencies) {
+            VLOG(1) << "Processing dependency: " << dep;
+            
+            // 检查依赖是否已存在
+            if (!graph_->has_node(dep)) {
+                // 尝试解析依赖版本
+                std::string dep_version = resolve_dependency_version(package, dep);
+                if (!dep_version.empty()) {
+                    LOG(INFO) << "Resolving dependency: " << dep << " version: " << dep_version;
+                    
+                    // 递归解析依赖的依赖
+                    if (!resolve_package_dependencies(dep, dep_version)) {
+                        LOG(ERROR) << "Failed to resolve dependencies for: " << dep;
+                        return false;
+                    }
+                } else {
+                    LOG(WARNING) << "Could not resolve version for dependency: " << dep;
+                }
+            }
+            
+            // 添加依赖关系
+            if (graph_->has_node(dep)) {
+                graph_->add_dependency(package, dep);
+                VLOG(1) << "Added dependency relationship: " << package << " -> " << dep;
+            }
+        }
+        
+        LOG(INFO) << "Successfully resolved dependencies for: " << package;
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error resolving dependencies for " << package << ": " << e.what();
+        return false;
     }
-    
-    // 添加到图
-    graph_->add_node(node);
-    
-    // 这里可以添加实际的依赖解析逻辑
-    // 目前简化实现
-    
-    return true;
 }
 
 bool DependencyGraphBuilder::read_package_metadata(const std::string& package_path, LightweightDependencyNode& node) {
-    // 这里可以添加读取包元数据的逻辑
-    // 目前简化实现
-    return true;
+    try {
+        LOG(INFO) << "Reading package metadata from: " << package_path;
+        
+        if (package_path.empty() || !std::filesystem::exists(package_path)) {
+            LOG(WARNING) << "Package path does not exist: " << package_path;
+            return false;
+        }
+        
+        // 尝试读取C++包的元数据文件
+        std::vector<std::string> cpp_metadata_files = {
+            "CMakeLists.txt",
+            "Makefile",
+            "configure.ac",
+            "configure.in",
+            "autogen.sh",
+            "pkg-config.pc",
+            "config.h",
+            "version.h",
+            "dependencies.txt",
+            "requirements.txt",  // C++项目也可能使用这个名称
+            "vcpkg.json",
+            "conanfile.txt",
+            "conanfile.py"
+        };
+        
+        for (const auto& metadata_file : cpp_metadata_files) {
+            std::string full_path = package_path + "/" + metadata_file;
+            if (std::filesystem::exists(full_path)) {
+                VLOG(1) << "Found C++ metadata file: " << metadata_file;
+                
+                if (metadata_file == "CMakeLists.txt") {
+                    return read_cmake_metadata(full_path, node);
+                } else if (metadata_file == "Makefile") {
+                    return read_makefile_metadata(full_path, node);
+                } else if (metadata_file == "configure.ac" || metadata_file == "configure.in") {
+                    return read_autotools_metadata(full_path, node);
+                } else if (metadata_file == "pkg-config.pc") {
+                    return read_pkgconfig_metadata(full_path, node);
+                } else if (metadata_file == "vcpkg.json") {
+                    return read_vcpkg_metadata(full_path, node);
+                } else if (metadata_file == "conanfile.txt" || metadata_file == "conanfile.py") {
+                    return read_conan_metadata(full_path, node);
+                } else if (metadata_file == "dependencies.txt" || metadata_file == "requirements.txt") {
+                    return read_cpp_requirements(full_path, node);
+                }
+            }
+        }
+        
+        // 如果没有找到标准的元数据文件，尝试从目录结构推断
+        LOG(INFO) << "No standard metadata files found, analyzing directory structure";
+        return analyze_package_structure(package_path, node);
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error reading package metadata from " << package_path << ": " << e.what();
+        return false;
+    }
+}
+
+// 辅助函数实现
+std::string DependencyGraphBuilder::find_package_path(const std::string& package, const std::string& version) const {
+    (void)version; // 避免未使用参数警告
+    try {
+        // 在多个可能的位置查找包
+        std::vector<std::string> search_paths = {
+            "packages/" + package,
+            "node_modules/" + package,
+            "vendor/" + package,
+            "lib/" + package,
+            "src/" + package,
+            ".paker/packages/" + package
+        };
+        
+        for (const auto& path : search_paths) {
+            if (std::filesystem::exists(path)) {
+                VLOG(1) << "Found package at: " << path;
+                return path;
+            }
+        }
+        
+        LOG(WARNING) << "Package path not found for: " << package;
+        return "";
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error finding package path for " << package << ": " << e.what();
+        return "";
+    }
+}
+
+std::vector<std::string> DependencyGraphBuilder::extract_dependencies(const LightweightDependencyNode& node) const {
+    std::vector<std::string> dependencies;
+    
+    try {
+        // 从节点的元数据中提取依赖
+        if (!node.metadata.empty()) {
+            // 这里可以解析不同格式的依赖信息
+            // 目前简化实现
+            VLOG(1) << "Extracting dependencies from metadata";
+        }
+        
+        return dependencies;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error extracting dependencies: " << e.what();
+        return dependencies;
+    }
+}
+
+std::string DependencyGraphBuilder::resolve_dependency_version(const std::string& parent_package, const std::string& dependency) const {
+    try {
+        // 尝试从多个来源解析依赖版本
+        // 1. 从父包的约束中获取
+        // 2. 从仓库中查询最新版本
+        // 3. 使用默认版本策略
+        
+        VLOG(1) << "Resolving version for dependency: " << dependency << " from parent: " << parent_package;
+        
+        // 简化实现：返回默认版本
+        return "latest";
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error resolving version for " << dependency << ": " << e.what();
+        return "";
+    }
+}
+
+bool DependencyGraphBuilder::read_cmake_metadata(const std::string& file_path, LightweightDependencyNode& node) const {
+    try {
+        std::ifstream file(file_path);
+        if (!file.is_open()) {
+            LOG(ERROR) << "Failed to open file: " << file_path;
+            return false;
+        }
+        
+        std::string line;
+        
+        while (std::getline(file, line)) {
+            // 查找项目名称
+            if (line.find("project(") != std::string::npos) {
+                size_t start = line.find("project(") + 8;
+                size_t end = line.find(")", start);
+                if (end != std::string::npos) {
+                    node.name = line.substr(start, end - start);
+                    // 移除可能的版本信息
+                    size_t space_pos = node.name.find(' ');
+                    if (space_pos != std::string::npos) {
+                        node.version = node.name.substr(space_pos + 1);
+                        node.name = node.name.substr(0, space_pos);
+                    }
+                }
+            }
+            
+            // 查找依赖
+            if (line.find("find_package(") != std::string::npos) {
+                size_t start = line.find("find_package(") + 12;
+                size_t end = line.find(")", start);
+                if (end != std::string::npos) {
+                    std::string dep = line.substr(start, end - start);
+                    // 移除可能的版本约束
+                    size_t space_pos = dep.find(' ');
+                    if (space_pos != std::string::npos) {
+                        dep = dep.substr(0, space_pos);
+                    }
+                    node.dependencies.push_back(dep);
+                    VLOG(1) << "Found CMake dependency: " << dep;
+                }
+            }
+            
+            // 查找pkg-config依赖
+            if (line.find("pkg_check_modules(") != std::string::npos) {
+                size_t start = line.find("pkg_check_modules(") + 18;
+                size_t end = line.find(")", start);
+                if (end != std::string::npos) {
+                    std::string dep = line.substr(start, end - start);
+                    // 移除可能的版本约束
+                    size_t space_pos = dep.find(' ');
+                    if (space_pos != std::string::npos) {
+                        dep = dep.substr(0, space_pos);
+                    }
+                    node.dependencies.push_back(dep);
+                    VLOG(1) << "Found pkg-config dependency: " << dep;
+                }
+            }
+        }
+        
+        LOG(INFO) << "Successfully read CMake metadata for: " << node.name;
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error reading CMake metadata: " << e.what();
+        return false;
+    }
+}
+
+bool DependencyGraphBuilder::read_makefile_metadata(const std::string& file_path, LightweightDependencyNode& node) const {
+    try {
+        std::ifstream file(file_path);
+        if (!file.is_open()) {
+            LOG(ERROR) << "Failed to open file: " << file_path;
+            return false;
+        }
+        
+        std::string line;
+        while (std::getline(file, line)) {
+            // 查找项目名称（通常在PROJECT_NAME或TARGET变量中）
+            if (line.find("PROJECT_NAME") != std::string::npos || line.find("TARGET") != std::string::npos) {
+                size_t eq_pos = line.find('=');
+                if (eq_pos != std::string::npos) {
+                    node.name = line.substr(eq_pos + 1);
+                    // 移除空格和制表符
+                    node.name.erase(0, node.name.find_first_not_of(" \t"));
+                    node.name.erase(node.name.find_last_not_of(" \t") + 1);
+                }
+            }
+            
+            // 查找链接库依赖
+            if (line.find("LIBS") != std::string::npos || line.find("LDFLAGS") != std::string::npos) {
+                std::istringstream iss(line);
+                std::string token;
+                while (iss >> token) {
+                    // 查找 -l 开头的库
+                    if (token.find("-l") == 0) {
+                        std::string lib = token.substr(2);
+                        node.dependencies.push_back(lib);
+                        VLOG(1) << "Found Makefile library dependency: " << lib;
+                    }
+                }
+            }
+            
+            // 查找包含路径依赖
+            if (line.find("INCLUDES") != std::string::npos || line.find("CPPFLAGS") != std::string::npos) {
+                std::istringstream iss(line);
+                std::string token;
+                while (iss >> token) {
+                    // 查找 -I 开头的包含路径
+                    if (token.find("-I") == 0) {
+                        std::string include_path = token.substr(2);
+                        // 从路径中提取可能的库名
+                        size_t last_slash = include_path.find_last_of("/\\");
+                        if (last_slash != std::string::npos) {
+                            std::string lib_name = include_path.substr(last_slash + 1);
+                            if (!lib_name.empty()) {
+                                node.dependencies.push_back(lib_name);
+                                VLOG(1) << "Found Makefile include dependency: " << lib_name;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        LOG(INFO) << "Successfully read Makefile metadata for: " << node.name;
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error reading Makefile metadata: " << e.what();
+        return false;
+    }
+}
+
+bool DependencyGraphBuilder::read_autotools_metadata(const std::string& file_path, LightweightDependencyNode& node) const {
+    try {
+        std::ifstream file(file_path);
+        if (!file.is_open()) {
+            LOG(ERROR) << "Failed to open file: " << file_path;
+            return false;
+        }
+        
+        std::string line;
+        while (std::getline(file, line)) {
+            // 查找项目名称
+            if (line.find("AC_INIT(") != std::string::npos) {
+                size_t start = line.find("AC_INIT(") + 8;
+                size_t end = line.find(",", start);
+                if (end != std::string::npos) {
+                    node.name = line.substr(start, end - start);
+                    // 移除引号和空格
+                    node.name.erase(0, node.name.find_first_not_of(" \t\""));
+                    node.name.erase(node.name.find_last_not_of(" \t\"") + 1);
+                }
+            }
+            
+            // 查找PKG_CHECK_MODULES依赖
+            if (line.find("PKG_CHECK_MODULES(") != std::string::npos) {
+                size_t start = line.find("PKG_CHECK_MODULES(") + 18;
+                size_t end = line.find(",", start);
+                if (end != std::string::npos) {
+                    std::string dep = line.substr(start, end - start);
+                    // 移除空格
+                    dep.erase(0, dep.find_first_not_of(" \t"));
+                    dep.erase(dep.find_last_not_of(" \t") + 1);
+                    node.dependencies.push_back(dep);
+                    VLOG(1) << "Found Autotools pkg-config dependency: " << dep;
+                }
+            }
+            
+            // 查找AC_CHECK_LIB依赖
+            if (line.find("AC_CHECK_LIB(") != std::string::npos) {
+                size_t start = line.find("AC_CHECK_LIB(") + 13;
+                size_t end = line.find(",", start);
+                if (end != std::string::npos) {
+                    std::string dep = line.substr(start, end - start);
+                    // 移除空格
+                    dep.erase(0, dep.find_first_not_of(" \t"));
+                    dep.erase(dep.find_last_not_of(" \t") + 1);
+                    node.dependencies.push_back(dep);
+                    VLOG(1) << "Found Autotools library dependency: " << dep;
+                }
+            }
+        }
+        
+        LOG(INFO) << "Successfully read Autotools metadata for: " << node.name;
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error reading Autotools metadata: " << e.what();
+        return false;
+    }
+}
+
+bool DependencyGraphBuilder::read_pkgconfig_metadata(const std::string& file_path, LightweightDependencyNode& node) const {
+    try {
+        std::ifstream file(file_path);
+        if (!file.is_open()) {
+            LOG(ERROR) << "Failed to open file: " << file_path;
+            return false;
+        }
+        
+        std::string line;
+        while (std::getline(file, line)) {
+            // 查找包名
+            if (line.find("Name:") == 0) {
+                node.name = line.substr(5);
+                // 移除空格
+                node.name.erase(0, node.name.find_first_not_of(" \t"));
+                node.name.erase(node.name.find_last_not_of(" \t") + 1);
+            }
+            
+            // 查找版本
+            if (line.find("Version:") == 0) {
+                node.version = line.substr(8);
+                // 移除空格
+                node.version.erase(0, node.version.find_first_not_of(" \t"));
+                node.version.erase(node.version.find_last_not_of(" \t") + 1);
+            }
+            
+            // 查找描述
+            if (line.find("Description:") == 0) {
+                node.description = line.substr(12);
+                // 移除空格
+                node.description.erase(0, node.description.find_first_not_of(" \t"));
+                node.description.erase(node.description.find_last_not_of(" \t") + 1);
+            }
+            
+            // 查找依赖
+            if (line.find("Requires:") == 0) {
+                std::string deps = line.substr(9);
+                // 移除空格
+                deps.erase(0, deps.find_first_not_of(" \t"));
+                deps.erase(deps.find_last_not_of(" \t") + 1);
+                
+                // 分割依赖列表
+                std::istringstream iss(deps);
+                std::string dep;
+                while (std::getline(iss, dep, ' ')) {
+                    if (!dep.empty()) {
+                        node.dependencies.push_back(dep);
+                        VLOG(1) << "Found pkg-config dependency: " << dep;
+                    }
+                }
+            }
+        }
+        
+        LOG(INFO) << "Successfully read pkg-config metadata for: " << node.name;
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error reading pkg-config metadata: " << e.what();
+        return false;
+    }
+}
+
+bool DependencyGraphBuilder::read_vcpkg_metadata(const std::string& file_path, LightweightDependencyNode& node) const {
+    try {
+        std::ifstream file(file_path);
+        if (!file.is_open()) {
+            LOG(ERROR) << "Failed to open file: " << file_path;
+            return false;
+        }
+        
+        json j;
+        file >> j;
+        
+        // 提取基本信息
+        if (j.contains("name")) {
+            node.name = j["name"];
+        }
+        if (j.contains("version")) {
+            node.version = j["version"];
+        }
+        if (j.contains("description")) {
+            node.description = j["description"];
+        }
+        
+        // 提取依赖
+        if (j.contains("dependencies")) {
+            for (const auto& dep : j["dependencies"]) {
+                if (dep.is_string()) {
+                    node.dependencies.push_back(dep);
+                    VLOG(1) << "Found vcpkg dependency: " << dep.get<std::string>();
+                } else if (dep.is_object() && dep.contains("name")) {
+                    node.dependencies.push_back(dep["name"]);
+                    VLOG(1) << "Found vcpkg dependency: " << dep["name"];
+                }
+            }
+        }
+        
+        LOG(INFO) << "Successfully read vcpkg metadata for: " << node.name;
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error reading vcpkg metadata: " << e.what();
+        return false;
+    }
+}
+
+bool DependencyGraphBuilder::analyze_package_structure(const std::string& package_path, LightweightDependencyNode& node) const {
+    try {
+        LOG(INFO) << "Analyzing package structure for: " << package_path;
+        
+        // 分析目录结构来推断包类型和依赖
+        std::filesystem::path path(package_path);
+        
+        // 检查常见的包结构模式
+        if (std::filesystem::exists(path / "src")) {
+            node.package_type = "source_code";
+            VLOG(1) << "Detected source code package";
+        } else if (std::filesystem::exists(path / "lib")) {
+            node.package_type = "library";
+            VLOG(1) << "Detected library package";
+        } else if (std::filesystem::exists(path / "bin")) {
+            node.package_type = "executable";
+            VLOG(1) << "Detected executable package";
+        }
+        
+        // 尝试从文件扩展名推断C++项目类型
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
+            if (entry.is_regular_file()) {
+                std::string extension = entry.path().extension().string();
+                if (extension == ".cpp" || extension == ".cc" || extension == ".cxx" || extension == ".c++") {
+                    node.language = "cpp";
+                    node.package_type = "source_code";
+                    break;
+                } else if (extension == ".h" || extension == ".hpp" || extension == ".hxx" || extension == ".h++") {
+                    node.language = "cpp";
+                    node.package_type = "header_only";
+                    break;
+                } else if (extension == ".c") {
+                    node.language = "c";
+                    node.package_type = "source_code";
+                    break;
+                } else if (extension == ".so" || extension == ".a" || extension == ".lib" || extension == ".dll") {
+                    node.language = "cpp";
+                    node.package_type = "library";
+                    break;
+                }
+            }
+        }
+        
+        LOG(INFO) << "Package analysis completed. Type: " << node.package_type 
+                  << ", Language: " << node.language;
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error analyzing package structure: " << e.what();
+        return false;
+    }
+}
+
+bool DependencyGraphBuilder::read_conan_metadata(const std::string& file_path, LightweightDependencyNode& node) const {
+    try {
+        std::ifstream file(file_path);
+        if (!file.is_open()) {
+            LOG(ERROR) << "Failed to open file: " << file_path;
+            return false;
+        }
+        
+        std::string line;
+        while (std::getline(file, line)) {
+            // 查找项目名称
+            if (line.find("name =") != std::string::npos) {
+                size_t eq_pos = line.find('=');
+                if (eq_pos != std::string::npos) {
+                    node.name = line.substr(eq_pos + 1);
+                    // 移除引号和空格
+                    node.name.erase(0, node.name.find_first_not_of(" \t\""));
+                    node.name.erase(node.name.find_last_not_of(" \t\"") + 1);
+                }
+            }
+            
+            // 查找版本
+            if (line.find("version =") != std::string::npos) {
+                size_t eq_pos = line.find('=');
+                if (eq_pos != std::string::npos) {
+                    node.version = line.substr(eq_pos + 1);
+                    // 移除引号和空格
+                    node.version.erase(0, node.version.find_first_not_of(" \t\""));
+                    node.version.erase(node.version.find_last_not_of(" \t\"") + 1);
+                }
+            }
+            
+            // 查找依赖
+            if (line.find("requires =") != std::string::npos) {
+                size_t eq_pos = line.find('=');
+                if (eq_pos != std::string::npos) {
+                    std::string deps = line.substr(eq_pos + 1);
+                    // 移除引号和空格
+                    deps.erase(0, deps.find_first_not_of(" \t\""));
+                    deps.erase(deps.find_last_not_of(" \t\"") + 1);
+                    
+                    // 分割依赖列表
+                    std::istringstream iss(deps);
+                    std::string dep;
+                    while (std::getline(iss, dep, ',')) {
+                        // 移除空格
+                        dep.erase(0, dep.find_first_not_of(" \t"));
+                        dep.erase(dep.find_last_not_of(" \t") + 1);
+                        if (!dep.empty()) {
+                            node.dependencies.push_back(dep);
+                            VLOG(1) << "Found Conan dependency: " << dep;
+                        }
+                    }
+                }
+            }
+        }
+        
+        LOG(INFO) << "Successfully read Conan metadata for: " << node.name;
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error reading Conan metadata: " << e.what();
+        return false;
+    }
+}
+
+bool DependencyGraphBuilder::read_cpp_requirements(const std::string& file_path, LightweightDependencyNode& node) const {
+    try {
+        std::ifstream file(file_path);
+        if (!file.is_open()) {
+            LOG(ERROR) << "Failed to open file: " << file_path;
+            return false;
+        }
+        
+        std::string line;
+        while (std::getline(file, line)) {
+            // 跳过注释和空行
+            if (line.empty() || line[0] == '#') {
+                continue;
+            }
+            
+            // 解析依赖行
+            std::istringstream iss(line);
+            std::string dependency;
+            iss >> dependency;
+            
+            if (!dependency.empty()) {
+                node.dependencies.push_back(dependency);
+                VLOG(1) << "Found C++ dependency: " << dependency;
+            }
+        }
+        
+        LOG(INFO) << "Successfully read C++ requirements for: " << node.name;
+        return true;
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Error reading C++ requirements: " << e.what();
+        return false;
+    }
 }
 
 // DependencyGraphAnalyzer 实现
