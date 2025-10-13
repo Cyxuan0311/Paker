@@ -81,26 +81,26 @@ DependencyAnalysis DependencyAnalyzer::analyze() {
 
 std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysis& analysis) {
     std::ostringstream report;
-    report << "Dependency Analysis Report\n";
-    report << "============================\n\n";
+    report << "\033[1;36mDependency Analysis Report\033[0m\n";
+    report << "\033[0;36m============================\033[0m\n\n";
     
     // 基本统计
-    report << " Basic Statistics\n";
-    report << "-------------------\n";
-    report << "Total packages: " << analysis.total_packages << "\n";
-    report << "Direct dependencies: " << analysis.direct_dependencies << "\n";
-    report << "Transitive dependencies: " << analysis.transitive_dependencies << "\n";
-    report << "Circular dependencies: " << analysis.circular_dependencies << "\n";
-    report << "Version conflicts: " << analysis.version_conflicts << "\n\n";
+    report << "\033[1;32m Basic Statistics\033[0m\n";
+    report << "\033[0;32m-------------------\033[0m\n";
+    report << "Total packages: \033[1;33m" << analysis.total_packages << "\033[0m\n";
+    report << "Direct dependencies: \033[1;33m" << analysis.direct_dependencies << "\033[0m\n";
+    report << "Transitive dependencies: \033[1;33m" << analysis.transitive_dependencies << "\033[0m\n";
+    report << "Circular dependencies: \033[1;31m" << analysis.circular_dependencies << "\033[0m\n";
+    report << "Version conflicts: \033[1;31m" << analysis.version_conflicts << "\033[0m\n\n";
     
     // 版本分布
     if (!analysis.version_distribution.empty()) {
-        report << "Version Distribution\n";
-        report << "------------------------\n";
+        report << "\033[1;35mVersion Distribution\033[0m\n";
+        report << "\033[0;35m------------------------\033[0m\n";
         for (const auto& [package, versions] : analysis.version_distribution) {
-            report << package << ":\n";
+            report << "\033[1;34m" << package << "\033[0m:\n";
             for (const auto& version : versions) {
-                report << "  - " << version << "\n";
+                report << "  - \033[0;33m" << version << "\033[0m\n";
             }
         }
         report << "\n";
@@ -108,8 +108,8 @@ std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysi
     
     // 依赖深度
     if (!analysis.dependency_depth.empty()) {
-        report << "Dependency Depth\n";
-        report << "--------------------\n";
+        report << "\033[1;36mDependency Depth\033[0m\n";
+        report << "\033[0;36m--------------------\033[0m\n";
         std::vector<std::pair<std::string, size_t>> sorted_depth;
         for (const auto& [package, depth] : analysis.dependency_depth) {
             sorted_depth.emplace_back(package, depth);
@@ -118,15 +118,15 @@ std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysi
                  [](const auto& a, const auto& b) { return a.second > b.second; });
         
         for (const auto& [package, depth] : sorted_depth) {
-            report << package << ": " << depth << " levels deep\n";
+            report << "\033[1;34m" << package << "\033[0m: \033[1;33m" << depth << "\033[0m levels deep\n";
         }
         report << "\n";
     }
     
     // 包大小
     if (!analysis.package_sizes.empty()) {
-        report << "Package Sizes\n";
-        report << "----------------\n";
+        report << "\033[1;32mPackage Sizes\033[0m\n";
+        report << "\033[0;32m----------------\033[0m\n";
         std::vector<std::pair<std::string, size_t>> sorted_sizes;
         for (const auto& [package, size] : analysis.package_sizes) {
             sorted_sizes.emplace_back(package, size);
@@ -135,7 +135,7 @@ std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysi
                  [](const auto& a, const auto& b) { return a.second > b.second; });
         
         for (const auto& [package, size] : sorted_sizes) {
-            report << package << ": " << format_size(size) << "\n";
+            report << "\033[1;34m" << package << "\033[0m: \033[1;33m" << format_size(size) << "\033[0m\n";
         }
         report << "\n";
     }
@@ -165,8 +165,8 @@ std::string DependencyAnalyzer::generate_analysis_report(const DependencyAnalysi
 
 std::string DependencyAnalyzer::generate_dependency_tree_visualization() {
     std::ostringstream visualization;
-    visualization << "Dependency Tree Visualization\n";
-    visualization << "================================\n\n";
+    visualization << "\033[1;35mDependency Tree Visualization\033[0m\n";
+    visualization << "\033[0;35m================================\033[0m\n\n";
     
     // 获取拓扑排序
     auto sorted = graph_.topological_sort();
@@ -186,14 +186,14 @@ std::string DependencyAnalyzer::generate_dependency_tree_visualization() {
         visualization << indent;
         
         if (depth == 0) {
-            visualization << "📦 ";
+            visualization << "\033[1;32m[*]\033[0m ";
         } else {
-            visualization << "├── ";
+            visualization << "\033[0;36m├──\033[0m ";
         }
         
-        visualization << package;
+        visualization << "\033[1;34m" << package << "\033[0m";
         if (!node->version.empty()) {
-            visualization << " (" << node->version << ")";
+            visualization << " \033[0;33m(" << node->version << ")\033[0m";
         }
         visualization << "\n";
     }
