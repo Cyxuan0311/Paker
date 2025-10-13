@@ -502,9 +502,26 @@ bool CacheWarmupService::analyze_usage_patterns(const std::string& project_path)
             return false;
         }
         
+        // 检查文件是否为空
+        if (fs::file_size(config_file) == 0) {
+            LOG(WARNING) << "Project config file is empty: " << config_file;
+            return false;
+        }
+        
         std::ifstream file(config_file);
+        if (!file.is_open()) {
+            LOG(ERROR) << "Failed to open config file: " << config_file;
+            return false;
+        }
+        
         json config;
-        file >> config;
+        try {
+            file >> config;
+        } catch (const json::parse_error& e) {
+            LOG(ERROR) << "JSON parse error in " << config_file << ": " << e.what();
+            LOG(ERROR) << "Parse error at line " << e.byte << ", column " << e.byte << ": " << e.what();
+            return false;
+        }
         
         // 分析依赖使用模式
         if (config.contains("dependencies")) {
@@ -596,9 +613,25 @@ std::vector<std::string> CacheWarmupService::analyze_project_dependencies(const 
             return dependencies;
         }
         
+        // 检查文件是否为空
+        if (fs::file_size(project_path) == 0) {
+            LOG(WARNING) << "Project config file is empty: " << project_path;
+            return dependencies;
+        }
+        
         std::ifstream file(project_path);
+        if (!file.is_open()) {
+            LOG(ERROR) << "Failed to open config file: " << project_path;
+            return dependencies;
+        }
+        
         json config;
-        file >> config;
+        try {
+            file >> config;
+        } catch (const json::parse_error& e) {
+            LOG(WARNING) << "JSON parse error in " << project_path << ": " << e.what();
+            return dependencies;
+        }
         
         if (config.contains("dependencies")) {
             for (const auto& [package, version] : config["dependencies"].items()) {
@@ -771,9 +804,25 @@ bool CacheWarmupService::load_preload_config(const std::string& config_path) {
             return false;
         }
         
+        // 检查文件是否为空
+        if (fs::file_size(config_path) == 0) {
+            LOG(WARNING) << "Preload config file is empty: " << config_path;
+            return false;
+        }
+        
         std::ifstream file(config_path);
+        if (!file.is_open()) {
+            LOG(ERROR) << "Failed to open preload config file: " << config_path;
+            return false;
+        }
+        
         json config;
-        file >> config;
+        try {
+            file >> config;
+        } catch (const json::parse_error& e) {
+            LOG(ERROR) << "JSON parse error in preload config " << config_path << ": " << e.what();
+            return false;
+        }
         
         // 加载配置
         if (config.contains("max_concurrent_preloads")) {

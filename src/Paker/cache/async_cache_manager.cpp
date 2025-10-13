@@ -2,6 +2,9 @@
 #include "Paker/core/async_io.h"
 #include <filesystem>
 #include <glog/logging.h>
+#include <fstream>
+#include <sstream>
+#include <functional>
 
 namespace fs = std::filesystem;
 
@@ -269,8 +272,43 @@ std::future<bool> AsyncCacheManager::validate_cache_async() {
         try {
             async_operations_++;
             
-            // 这里可以实现更复杂的缓存验证逻辑
-            return true;
+            // 验证缓存目录是否存在
+            if (!std::filesystem::exists(cache_directory_)) {
+                LOG(WARNING) << "Cache directory does not exist: " << cache_directory_;
+                return false;
+            }
+            
+            // 检查缓存目录权限
+            if (!std::filesystem::is_directory(cache_directory_)) {
+                LOG(ERROR) << "Cache path is not a directory: " << cache_directory_;
+                return false;
+            }
+            
+            // 验证缓存文件完整性
+            size_t valid_files = 0;
+            size_t total_files = 0;
+            
+            for (const auto& entry : std::filesystem::directory_iterator(cache_directory_)) {
+                if (entry.is_regular_file() && entry.path().extension() == ".cache") {
+                    total_files++;
+                    
+                    // 检查文件大小是否合理（大于0字节）
+                    if (entry.file_size() > 0) {
+                        valid_files++;
+                    } else {
+                        LOG(WARNING) << "Empty cache file found: " << entry.path();
+                    }
+                }
+            }
+            
+            // 计算缓存健康度
+            double health_ratio = total_files > 0 ? static_cast<double>(valid_files) / total_files : 1.0;
+            
+            LOG(INFO) << "Cache validation completed - Valid files: " << valid_files 
+                      << "/" << total_files << " (Health: " << (health_ratio * 100) << "%)";
+            
+            return health_ratio >= 0.8; // 80%以上的文件有效才认为缓存健康
+            
         } catch (const std::exception& e) {
             LOG(ERROR) << "Exception during cache validation: " << e.what();
             return false;
@@ -285,11 +323,76 @@ std::future<std::vector<std::string>> AsyncCacheManager::get_corrupted_cache_asy
         try {
             async_operations_++;
             
-            // 这里可以实现缓存损坏检测逻辑
-            // 暂时返回空列表
+            // 检查缓存目录是否存在
+            if (!std::filesystem::exists(cache_directory_)) {
+                LOG(WARNING) << "Cache directory does not exist: " << cache_directory_;
+                return corrupted_keys;
+            }
+            
+            // 遍历所有缓存文件，检测损坏的文件
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(cache_directory_)) {
+                if (entry.is_regular_file() && entry.path().extension() == ".cache") {
+                    try {
+                        // 检查文件是否可读
+                        std::ifstream file(entry.path(), std::ios::binary);
+                        if (!file.is_open()) {
+                            LOG(WARNING) << "Cannot open cache file: " << entry.path();
+                            corrupted_keys.push_back(entry.path().filename().string());
+                            continue;
+                        }
+                        
+                        // 检查文件大小
+                        file.seekg(0, std::ios::end);
+                        size_t file_size = file.tellg();
+                        file.seekg(0, std::ios::beg);
+                        
+                        if (file_size == 0) {
+                            LOG(WARNING) << "Empty cache file detected: " << entry.path();
+                            corrupted_keys.push_back(entry.path().filename().string());
+                            continue;
+                        }
+                        
+                        // 尝试读取文件头部，检查是否包含有效的缓存头信息
+                        char header[16];
+                        file.read(header, sizeof(header));
+                        if (static_cast<size_t>(file.gcount()) < sizeof(header)) {
+                            LOG(WARNING) << "Cache file too small or corrupted: " << entry.path();
+                            corrupted_keys.push_back(entry.path().filename().string());
+                            continue;
+                        }
+                        
+                        // 简单的校验和检查（这里可以添加更复杂的验证逻辑）
+                        bool is_valid = true;
+                        for (size_t i = 0; i < sizeof(header); ++i) {
+                            if (header[i] == 0 && i < 8) { // 前8字节不应该全为0
+                                is_valid = false;
+                                break;
+                            }
+                        }
+                        
+                        if (!is_valid) {
+                            LOG(WARNING) << "Invalid cache file header: " << entry.path();
+                            corrupted_keys.push_back(entry.path().filename().string());
+                        }
+                        
+                    } catch (const std::exception& file_error) {
+                        LOG(ERROR) << "Error checking cache file " << entry.path() 
+                                  << ": " << file_error.what();
+                        corrupted_keys.push_back(entry.path().filename().string());
+                    }
+                }
+            }
+            
+            if (!corrupted_keys.empty()) {
+                LOG(WARNING) << "Found " << corrupted_keys.size() << " corrupted cache files";
+            } else {
+                LOG(INFO) << "No corrupted cache files found";
+            }
             
         } catch (const std::exception& e) {
             LOG(ERROR) << "Exception during corrupted cache detection: " << e.what();
+            LOG(ERROR) << "Cache directory: " << cache_directory_;
+            LOG(ERROR) << "Error type: " << typeid(e).name();
         }
         
         return corrupted_keys;
@@ -297,23 +400,18 @@ std::future<std::vector<std::string>> AsyncCacheManager::get_corrupted_cache_asy
 }
 
 double AsyncCacheManager::get_cache_hit_rate() const {
-    size_t total = cache_hits_ + cache_misses_;
-    if (total == 0) return 0.0;
-    return static_cast<double>(cache_hits_) / total * 100.0;
+    std::lock_guard<std::mutex> lock(stats_mutex_);
+    return cache_hit_rate_; // 直接返回已计算的命中率，避免重复计算
 }
 
 double AsyncCacheManager::get_average_read_time() const {
     std::lock_guard<std::mutex> lock(stats_mutex_);
-    size_t reads = total_reads_.load();
-    if (reads == 0) return 0.0;
-    return static_cast<double>(total_read_time_.count()) / reads;
+    return average_read_time_; // 直接返回已计算的平均读取时间
 }
 
 double AsyncCacheManager::get_average_write_time() const {
     std::lock_guard<std::mutex> lock(stats_mutex_);
-    size_t writes = total_writes_.load();
-    if (writes == 0) return 0.0;
-    return static_cast<double>(total_write_time_.count()) / writes;
+    return average_write_time_; // 直接返回已计算的平均写入时间
 }
 
 std::string AsyncCacheManager::get_performance_report() const {
@@ -332,18 +430,72 @@ std::string AsyncCacheManager::get_performance_report() const {
 }
 
 std::string AsyncCacheManager::get_cache_path(const std::string& cache_key) const {
-    // 简单的缓存路径生成，实际项目中应该有更复杂的逻辑
-    return "cache/" + cache_key + ".cache";
+    // 生成缓存键的哈希值，避免文件名过长和特殊字符问题
+    std::hash<std::string> hasher;
+    size_t hash_value = hasher(cache_key);
+    
+    // 将哈希值转换为十六进制字符串
+    std::stringstream ss;
+    ss << std::hex << hash_value;
+    std::string hash_str = ss.str();
+    
+    // 创建分层目录结构，避免单个目录下文件过多
+    // 使用哈希值的前2位作为第一级目录，接下来2位作为第二级目录
+    std::string level1 = hash_str.substr(0, 2);
+    std::string level2 = hash_str.length() > 2 ? hash_str.substr(2, 2) : "00";
+    
+    // 构建完整路径
+    std::string cache_path = cache_directory_ + "/" + level1 + "/" + level2 + "/" + hash_str + ".cache";
+    
+    // 确保目录存在
+    std::string dir_path = std::filesystem::path(cache_path).parent_path();
+    if (!std::filesystem::exists(dir_path)) {
+        try {
+            std::filesystem::create_directories(dir_path);
+        } catch (const std::filesystem::filesystem_error& e) {
+            LOG(ERROR) << "Failed to create cache directory: " << dir_path << " - " << e.what();
+            // 回退到简单路径
+            return cache_directory_ + "/" + hash_str + ".cache";
+        }
+    }
+    
+    return cache_path;
 }
 
 void AsyncCacheManager::update_read_stats(const std::chrono::milliseconds& duration, bool hit) {
     std::lock_guard<std::mutex> lock(stats_mutex_);
     total_read_time_ += duration;
+    total_read_operations_++;
+    
+    if (hit) {
+        cache_hits_++;
+    } else {
+        cache_misses_++;
+    }
+    
+    // 更新平均读取时间
+    average_read_time_ = total_read_operations_ > 0 ? 
+        total_read_time_.count() / total_read_operations_ : 0;
+    
+    // 更新缓存命中率
+    size_t total_requests = cache_hits_ + cache_misses_;
+    cache_hit_rate_ = total_requests > 0 ? 
+        static_cast<double>(cache_hits_) / total_requests * 100.0 : 0.0;
 }
 
 void AsyncCacheManager::update_write_stats(const std::chrono::milliseconds& duration) {
     std::lock_guard<std::mutex> lock(stats_mutex_);
     total_write_time_ += duration;
+    total_write_operations_++;
+    
+    // 更新平均写入时间
+    average_write_time_ = total_write_operations_ > 0 ? 
+        total_write_time_.count() / total_write_operations_ : 0;
+    
+    // 记录最大写入时间
+    if (duration > max_write_time_) {
+        max_write_time_ = duration;
+    }
 }
 
 // 全局函数实现

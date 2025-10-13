@@ -543,9 +543,64 @@ void LRUCacheManager::optimize_cache() {
 }
 
 void LRUCacheManager::defragment_cache() {
-    // 这里可以实现缓存碎片整理逻辑
-    // 目前简化实现
-    LOG(INFO) << "Cache defragmentation completed";
+    std::lock_guard<std::mutex> lock(cache_mutex_);
+    
+    LOG(INFO) << "Starting cache defragmentation...";
+    
+    try {
+        // 1. 分析缓存碎片情况
+        auto fragmentation_info = analyze_cache_fragmentation();
+        
+        if (fragmentation_info.fragmentation_ratio < 0.1) {
+            LOG(INFO) << "Cache fragmentation is low (" << (fragmentation_info.fragmentation_ratio * 100) 
+                      << "%), skipping defragmentation";
+            return;
+        }
+        
+        LOG(INFO) << "Cache fragmentation detected: " << (fragmentation_info.fragmentation_ratio * 100) 
+                  << "% (" << fragmentation_info.fragmented_files << " fragmented files)";
+        
+        // 2. 创建临时整理目录
+        std::string temp_dir = cache_directory_ + "/.defrag_temp";
+        if (!fs::create_directories(temp_dir)) {
+            LOG(ERROR) << "Failed to create temporary defragmentation directory";
+            return;
+        }
+        
+        // 3. 按访问频率和大小排序缓存项
+        auto sorted_items = get_sorted_cache_items_for_defragmentation();
+        
+        // 4. 重新组织文件结构
+        size_t moved_files = 0;
+        size_t total_space_saved = 0;
+        
+        for (const auto& item : sorted_items) {
+            if (consolidate_cache_item(item, temp_dir)) {
+                moved_files++;
+                total_space_saved += item.size_bytes;
+            }
+        }
+        
+        // 5. 更新缓存索引
+        update_cache_index_after_defragmentation();
+        
+        // 6. 清理临时文件
+        fs::remove_all(temp_dir);
+        
+        // 7. 记录整理结果
+        LOG(INFO) << "Cache defragmentation completed successfully:";
+        LOG(INFO) << "  - Files moved: " << moved_files;
+        LOG(INFO) << "  - Space saved: " << (total_space_saved / 1024 / 1024) << " MB";
+        LOG(INFO) << "  - Fragmentation reduced from " << (fragmentation_info.fragmentation_ratio * 100) 
+                  << "% to " << (analyze_cache_fragmentation().fragmentation_ratio * 100) << "%";
+        
+        // 8. 更新统计信息
+        statistics_.defragmentation_count++;
+        statistics_.last_defragmentation = std::chrono::system_clock::now();
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Cache defragmentation failed: " << e.what();
+    }
 }
 
 bool LRUCacheManager::validate_cache_integrity() const {
@@ -1193,6 +1248,137 @@ void LRUCacheManager::optimize_cache_strategy() {
     if (adaptive_strategy_) {
         adaptive_strategy_->analyze_patterns();
         adaptive_strategy_->update_strategy_parameters();
+    }
+}
+
+// 新增的缓存碎片整理辅助方法
+
+FragmentationInfo LRUCacheManager::analyze_cache_fragmentation() const {
+    FragmentationInfo info;
+    
+    try {
+        size_t total_files = 0;
+        size_t fragmented_files = 0;
+        size_t total_size = 0;
+        size_t fragmented_size = 0;
+        
+        // 分析每个缓存项
+        for (const auto& [key, item] : cache_items_) {
+            if (!fs::exists(item.cache_path)) continue;
+            
+            total_files++;
+            total_size += item.size_bytes;
+            
+            // 检查文件是否碎片化（这里简化判断：文件大小与预期不符）
+            size_t actual_size = fs::file_size(item.cache_path);
+            if (actual_size != item.size_bytes) {
+                fragmented_files++;
+                fragmented_size += item.size_bytes;
+            }
+            
+            // 检查文件是否在非连续目录中（碎片化的另一个指标）
+            std::string parent_dir = fs::path(item.cache_path).parent_path().string();
+            if (parent_dir.find(cache_directory_) == std::string::npos) {
+                fragmented_files++;
+            }
+        }
+        
+        // 计算碎片化比例
+        if (total_files > 0) {
+            info.fragmentation_ratio = static_cast<double>(fragmented_files) / total_files;
+        }
+        
+        info.total_files = total_files;
+        info.fragmented_files = fragmented_files;
+        info.total_size = total_size;
+        info.fragmented_size = fragmented_size;
+        
+        LOG(INFO) << "Fragmentation analysis: " << fragmented_files << "/" << total_files 
+                  << " files fragmented (" << (info.fragmentation_ratio * 100) << "%)";
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Failed to analyze cache fragmentation: " << e.what();
+    }
+    
+    return info;
+}
+
+std::vector<LRUCacheItem> LRUCacheManager::get_sorted_cache_items_for_defragmentation() const {
+    std::vector<LRUCacheItem> items;
+    
+    // 收集所有缓存项
+    for (const auto& [key, item] : cache_items_) {
+        if (fs::exists(item.cache_path)) {
+            items.push_back(item);
+        }
+    }
+    
+    // 按访问频率和大小排序（高频访问和大文件优先）
+    std::sort(items.begin(), items.end(), [](const LRUCacheItem& a, const LRUCacheItem& b) {
+        // 计算综合分数：访问频率权重 + 文件大小权重
+        double score_a = (a.access_count * 0.7) + (a.size_bytes / 1024.0 / 1024.0 * 0.3);
+        double score_b = (b.access_count * 0.7) + (b.size_bytes / 1024.0 / 1024.0 * 0.3);
+        return score_a > score_b; // 分数高的优先
+    });
+    
+    LOG(INFO) << "Sorted " << items.size() << " cache items for defragmentation";
+    return items;
+}
+
+bool LRUCacheManager::consolidate_cache_item(const LRUCacheItem& item, const std::string& temp_dir) {
+    try {
+        // 创建新的优化路径
+        std::string new_path = temp_dir + "/" + item.package_name + "_" + item.version + ".cache";
+        
+        // 复制文件到新位置
+        if (fs::copy_file(item.cache_path, new_path)) {
+            // 验证文件完整性
+            if (fs::file_size(new_path) == item.size_bytes) {
+                // 更新缓存项路径
+                const_cast<LRUCacheItem&>(item).cache_path = new_path;
+                LOG(INFO) << "Consolidated cache item: " << item.package_name;
+                return true;
+            } else {
+                LOG(WARNING) << "File size mismatch during consolidation: " << item.package_name;
+                fs::remove(new_path);
+            }
+        }
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Failed to consolidate cache item " << item.package_name << ": " << e.what();
+    }
+    
+    return false;
+}
+
+void LRUCacheManager::update_cache_index_after_defragmentation() {
+    try {
+        // 重新构建LRU列表
+        lru_list_.clear();
+        lru_map_.clear();
+        
+        // 按访问时间重新排序
+        std::vector<std::pair<std::string, std::chrono::system_clock::time_point>> access_times;
+        for (const auto& [key, item] : cache_items_) {
+            access_times.emplace_back(key, item.last_access);
+        }
+        
+        std::sort(access_times.begin(), access_times.end(),
+                  [](const auto& a, const auto& b) { return a.second > b.second; });
+        
+        // 重建LRU结构
+        for (const auto& [key, time] : access_times) {
+            lru_list_.push_back(key);
+            lru_map_[key] = --lru_list_.end();
+        }
+        
+        // 保存更新后的索引
+        save_cache_index();
+        
+        LOG(INFO) << "Cache index updated after defragmentation";
+        
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Failed to update cache index: " << e.what();
     }
 }
 
