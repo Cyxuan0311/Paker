@@ -121,7 +121,7 @@ std::string ConflictDetector::generate_conflict_report(const std::vector<Conflic
     }
     
     std::ostringstream report;
-    report << "⚠️  Dependency Conflicts Detected\n\n";
+    report << "Dependency Conflicts Detected\n\n";
     
     for (size_t i = 0; i < conflicts.size(); ++i) {
         const auto& conflict = conflicts[i];
@@ -237,9 +237,10 @@ bool ConflictDetector::is_version_compatible(const std::string& version1, const 
     return VersionManager::is_version_compatible(version1, version2);
 }
 
-std::string ConflictDetector::generate_solution_suggestion(const std::string& package, 
-                                                         const std::string& version1, 
-                                                         const std::string& version2) const {
+std::string ConflictDetector::generate_solution_suggestion(const std::string& package,
+                                                          const std::string& version1, 
+                                                          const std::string& version2) const {
+    (void)package; // 避免未使用参数警告
     SemanticVersion v1(version1);
     SemanticVersion v2(version2);
     
@@ -257,12 +258,14 @@ std::string ConflictDetector::generate_solution_suggestion(const std::string& pa
 }
 
 std::vector<std::string> ConflictDetector::get_available_versions(const std::string& package) const {
+    (void)package; // 避免未使用参数警告
     // 这里应该从仓库中获取可用版本
     // 简化实现，返回一些示例版本
     return {"1.0.0", "1.1.0", "1.2.0", "2.0.0"};
 }
 
 bool ConflictDetector::package_exists_in_repository(const std::string& package) const {
+    (void)package; // 避免未使用参数警告
     // 这里应该检查包是否存在于任何配置的仓库中
     // 简化实现，假设所有包都存在
     return true;
