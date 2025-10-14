@@ -78,7 +78,7 @@ void CacheWarmupService::shutdown() {
         stop_preload();
         
         // 保存配置
-        save_preload_config(".paker/warmup_config.json");
+        save_preload_config(get_warmup_config_path());
         
         LOG(INFO) << "Cache warmup service shut down successfully";
         
