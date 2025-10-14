@@ -21,7 +21,15 @@ std::pair<std::string, std::string> parse_name_version(const std::string& input)
 }
 
 std::string get_record_file_path() {
-    return "Paker_install_record.json";
+    return ".paker/record/Paker_install_record.json";
+}
+
+std::string get_lock_file_path() {
+    return ".paker/lock/Paker.lock";
+}
+
+std::string get_warmup_config_path() {
+    return ".paker/cache/warmup_config.json";
 }
 
 std::vector<std::string> collect_package_files(const std::string& package_path) {
