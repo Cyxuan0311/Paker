@@ -111,6 +111,11 @@ Paker analyze
 
 # 智能推荐
 Paker suggestion
+
+# 包安装与卸载
+Paker install fmt
+Paker install-p fmt spdlog nlohmann-json
+Paker uninstall fmt
 ```
 
 ### 开发模式
@@ -184,6 +189,7 @@ Paker/
 | **快速开始** | [命令行使用指南](docs/COMMAND_LINE_USAGE.md) | 详细的命令行功能说明和使用示例 |
 | **命令参考** | [命令参考](docs/COMMAND_REFERENCE.md) | 快速命令查询表，适合日常使用 |
 | **功能特性** | [功能特性详解](docs/FEATURES.md) | 深入了解 Paker 的所有功能特性 |
+| **包安装** | [Install命令详解](docs/INSTALL_COMMAND.md) | 包安装、卸载和系统集成功能 |
 | **架构优化** | [头文件优化](docs/HEADER_OPTIMIZATION.md) | 编译性能优化和头文件管理 |
 | **网络优化** | [网络优化](docs/NETWORK_OPTIMIZATION.md) | HTTP/2、连接池、CDN集成 |
 | **SIMD优化** | [SIMD优化](docs/SIMD_OPTIMIZATION.md) | SIMD指令集加速数据处理 |
