@@ -75,7 +75,7 @@ TEST_F(IntegrationTest, UtilityFunctions) {
     
     // 验证文件名格式
     EXPECT_EQ(json_file, "Paker.json");
-    EXPECT_EQ(record_file, "Paker_install_record.json");
+    EXPECT_EQ(record_file, ".paker/record/Paker_install_record.json");
 }
 
 // 测试文件收集功能
