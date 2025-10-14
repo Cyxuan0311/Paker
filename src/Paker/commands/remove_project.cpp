@@ -73,8 +73,15 @@ void pm_remove_project(bool force) {
             "install_record.json",
             "package_records.json",
             "Paker_install_record.json",
+            ".paker/record/Paker_install_record.json",
             ".paker_record.json",
             "paker_record.json"
+        };
+        
+        // 查找并删除可能的锁定文件
+        std::vector<std::string> lock_files = {
+            "Paker.lock",
+            ".paker/lock/Paker.lock"
         };
         
         for (const auto& record_file : record_files) {
@@ -84,6 +91,17 @@ void pm_remove_project(bool force) {
                     Output::info("Removed record file: " + record_file);
                 } catch (const std::exception& e) {
                     Output::warning("Failed to remove record file " + record_file + ": " + e.what());
+                }
+            }
+        }
+        
+        for (const auto& lock_file : lock_files) {
+            if (fs::exists(lock_file)) {
+                try {
+                    fs::remove(lock_file);
+                    Output::info("Removed lock file: " + lock_file);
+                } catch (const std::exception& e) {
+                    Output::warning("Failed to remove lock file " + lock_file + ": " + e.what());
                 }
             }
         }

@@ -95,19 +95,24 @@ void pm_lock() {
             lock_j["url_dependencies"][dep] = version;
         }
     }
-    std::ofstream ofs("Paker.lock");
+    // 确保目录存在
+    fs::path lock_file_path = get_lock_file_path();
+    fs::create_directories(lock_file_path.parent_path());
+    
+    std::ofstream ofs(lock_file_path);
     ofs << lock_j.dump(4);
-    LOG(INFO) << "Generated Paker.lock";
-    std::cout << "Generated Paker.lock\n";
+    LOG(INFO) << "Generated " << lock_file_path;
+    std::cout << "Generated " << lock_file_path << "\n";
 }
 
 void pm_add_lock() {
-    if (!fs::exists("Paker.lock")) {
+    std::string lock_file_path = get_lock_file_path();
+    if (!fs::exists(lock_file_path)) {
         LOG(ERROR) << "No Paker.lock file found. Run 'paker lock' first.";
         std::cout << "No Paker.lock file found. Run 'paker lock' first.\n";
         return;
     }
-    std::ifstream ifs("Paker.lock");
+    std::ifstream ifs(lock_file_path);
     json lock_j; ifs >> lock_j;
     if (!lock_j.contains("dependencies")) {
         LOG(ERROR) << "Paker.lock missing dependencies field.";

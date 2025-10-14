@@ -742,4 +742,513 @@ static void add_recursive(const std::string& pkg, std::set<std::string>& install
 void pm_add_recursive(const std::string& pkg) {
     std::set<std::string> installed;
     add_recursive(pkg, installed);
+}
+
+// ============================================================================
+// 新的install命令实现
+// ============================================================================
+
+// Build system detection
+BuildSystem detect_build_system(const std::string& package_path) {
+    fs::path pkg_path(package_path);
+    
+    // Check for CMake
+    if (fs::exists(pkg_path / "CMakeLists.txt")) {
+        return BuildSystem::CMAKE;
+    }
+    
+    // Check for Meson
+    if (fs::exists(pkg_path / "meson.build")) {
+        return BuildSystem::MESON;
+    }
+    
+    // Check for Ninja
+    if (fs::exists(pkg_path / "build.ninja")) {
+        return BuildSystem::NINJA;
+    }
+    
+    // Check for Makefile
+    if (fs::exists(pkg_path / "Makefile") || fs::exists(pkg_path / "makefile")) {
+        return BuildSystem::MAKE;
+    }
+    
+    // Check for Autotools
+    if (fs::exists(pkg_path / "configure") || fs::exists(pkg_path / "configure.ac")) {
+        return BuildSystem::AUTOTOOLS;
+    }
+    
+    return BuildSystem::UNKNOWN;
+}
+
+// Build and install package
+bool build_and_install_package(const std::string& package_path, const std::string& package_name, BuildSystem build_system) {
+    fs::path pkg_path(package_path);
+    fs::path build_dir = pkg_path / "build";
+    fs::path install_dir = pkg_path / "install";
+    
+    try {
+        // Clean existing build directory if it exists
+        if (fs::exists(build_dir)) {
+            fs::remove_all(build_dir);
+        }
+        
+        // Create build and install directories
+        fs::create_directories(build_dir);
+        fs::create_directories(install_dir);
+        
+        std::string build_cmd;
+        std::string install_cmd;
+        
+        switch (build_system) {
+            case BuildSystem::CMAKE: {
+                // CMake configuration (silent)
+                std::ostringstream cmake_cmd;
+                cmake_cmd << "cd " << fs::absolute(build_dir).string() 
+                         << " && cmake -DCMAKE_INSTALL_PREFIX=" << fs::absolute(install_dir).string() 
+                         << " -DCMAKE_BUILD_TYPE=Release"
+                         << " " << fs::absolute(pkg_path).string()
+                         << " >/dev/null 2>&1";
+                build_cmd = cmake_cmd.str();
+                
+                // CMake build (silent)
+                std::ostringstream make_cmd;
+                make_cmd << "cd " << fs::absolute(build_dir).string() << " && make -j$(nproc) >/dev/null 2>&1";
+                install_cmd = make_cmd.str();
+                
+                // CMake install (silent)
+                std::ostringstream install_cmake_cmd;
+                install_cmake_cmd << "cd " << fs::absolute(build_dir).string() << " && make install >/dev/null 2>&1";
+                install_cmd += " && " + install_cmake_cmd.str();
+                break;
+            }
+            case BuildSystem::MESON: {
+                // Meson configuration (silent)
+                std::ostringstream meson_cmd;
+                meson_cmd << "cd " << fs::absolute(build_dir).string() 
+                         << " && meson setup --prefix=" << fs::absolute(install_dir).string() 
+                         << " " << fs::absolute(pkg_path).string()
+                         << " >/dev/null 2>&1";
+                build_cmd = meson_cmd.str();
+                
+                // Meson build and install (silent)
+                std::ostringstream ninja_cmd;
+                ninja_cmd << "cd " << fs::absolute(build_dir).string() << " && ninja >/dev/null 2>&1 && ninja install >/dev/null 2>&1";
+                install_cmd = ninja_cmd.str();
+                break;
+            }
+            case BuildSystem::NINJA: {
+                // Direct Ninja usage (silent)
+                std::ostringstream ninja_cmd;
+                ninja_cmd << "cd " << fs::absolute(pkg_path).string() << " && ninja >/dev/null 2>&1";
+                build_cmd = ninja_cmd.str();
+                
+                std::ostringstream ninja_install_cmd;
+                ninja_install_cmd << "cd " << fs::absolute(pkg_path).string() << " && ninja install >/dev/null 2>&1";
+                install_cmd = ninja_install_cmd.str();
+                break;
+            }
+            case BuildSystem::MAKE: {
+                // Using Make (silent)
+                std::ostringstream make_cmd;
+                make_cmd << "cd " << fs::absolute(pkg_path).string() << " && make -j$(nproc) >/dev/null 2>&1";
+                build_cmd = make_cmd.str();
+                
+                std::ostringstream make_install_cmd;
+                make_install_cmd << "cd " << fs::absolute(pkg_path).string() << " && make install >/dev/null 2>&1";
+                install_cmd = make_install_cmd.str();
+                break;
+            }
+            case BuildSystem::AUTOTOOLS: {
+                // Autotools configuration (silent)
+                std::ostringstream configure_cmd;
+                configure_cmd << "cd " << fs::absolute(pkg_path).string() 
+                             << " && ./configure --prefix=" << fs::absolute(install_dir).string()
+                             << " >/dev/null 2>&1";
+                build_cmd = configure_cmd.str();
+                
+                // Autotools build and install (silent)
+                std::ostringstream make_autotools_cmd;
+                make_autotools_cmd << "cd " << fs::absolute(pkg_path).string() 
+                                   << " && make -j$(nproc) >/dev/null 2>&1 && make install >/dev/null 2>&1";
+                install_cmd = make_autotools_cmd.str();
+                break;
+            }
+            default:
+                Paker::Output::error("Unsupported build system");
+                return false;
+        }
+        
+        // Execute build command
+        Paker::Output::info("Configuring and building package: " + package_name + " (this may take a while)...");
+        int build_result = std::system(build_cmd.c_str());
+        if (build_result != 0) {
+            Paker::Output::error("Build failed: " + package_name);
+            return false;
+        }
+        
+        // Execute install command
+        Paker::Output::info("Installing package: " + package_name + "...");
+        int install_result = std::system(install_cmd.c_str());
+        if (install_result != 0) {
+            Paker::Output::error("Installation failed: " + package_name);
+            return false;
+        }
+        
+        return true;
+        
+    } catch (const std::exception& e) {
+        Paker::Output::error("Error during build and installation: " + std::string(e.what()));
+        return false;
+    }
+}
+
+// Collect installed files
+std::vector<std::string> collect_installed_files(const std::string& package_path) {
+    std::vector<std::string> files;
+    fs::path install_path(package_path);
+    
+    try {
+        if (fs::exists(install_path)) {
+            for (const auto& entry : fs::recursive_directory_iterator(install_path)) {
+                if (entry.is_regular_file()) {
+                    files.push_back(entry.path().string());
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        LOG(WARNING) << "Error collecting installed files: " << e.what();
+    }
+    
+    return files;
+}
+
+// Install to system and return installed file paths
+std::vector<std::string> install_to_system_and_get_files(const std::string& package_path, const std::string& package_name, const std::vector<std::string>& installed_files) {
+    // Determine system install directory
+    std::string system_install_dir;
+    const char* home_dir = std::getenv("HOME");
+    if (home_dir) {
+        // Install to user directory
+        system_install_dir = std::string(home_dir) + "/.local";
+    } else {
+        // Fallback to current directory
+        system_install_dir = ".local";
+    }
+    
+    fs::path system_path(system_install_dir);
+    fs::create_directories(system_path);
+    
+    // Copy files from package install directory to system directory
+    fs::path package_install_path(package_path);
+    std::vector<std::string> system_installed_files;
+    
+    try {
+        for (const auto& file : installed_files) {
+            fs::path source_file(file);
+            if (fs::exists(source_file)) {
+                // Calculate relative path from package install directory
+                fs::path relative_path = fs::relative(source_file, package_install_path);
+                fs::path dest_file = system_path / relative_path;
+                
+                // Create destination directory
+                fs::create_directories(dest_file.parent_path());
+                
+                // Copy file
+                fs::copy_file(source_file, dest_file, fs::copy_options::overwrite_existing);
+                system_installed_files.push_back(dest_file.string());
+            }
+        }
+        
+        Paker::Output::info("Package " + package_name + " installed to system directory: " + system_install_dir);
+        return system_installed_files;
+        
+    } catch (const std::exception& e) {
+        Paker::Output::error("Failed to install to system: " + std::string(e.what()));
+        return std::vector<std::string>();
+    }
+}
+
+// Record installation information
+void record_installation(const std::string& package_name, const std::string& install_path, const std::vector<std::string>& installed_files) {
+    // Ensure .paker/record directory exists
+    fs::path record_dir = ".paker/record";
+    fs::create_directories(record_dir);
+    
+    // Record file path
+    std::string record_file = record_dir.string() + "/Record_Installing.json";
+    
+    json record_data;
+    
+    // If file exists, read existing data
+    if (fs::exists(record_file)) {
+        try {
+            std::ifstream ifs(record_file);
+            ifs >> record_data;
+            ifs.close();
+        } catch (const std::exception& e) {
+            LOG(WARNING) << "Failed to read installation record file: " << e.what();
+            record_data = json::object();
+        }
+    }
+    
+    // Add new installation record
+    json package_record;
+    package_record["install_path"] = install_path;
+    package_record["installed_files"] = installed_files;
+    package_record["install_time"] = std::time(nullptr);
+    package_record["build_system"] = "detected";
+    
+    record_data[package_name] = package_record;
+    
+    // Write record file
+    try {
+        std::ofstream ofs(record_file);
+        ofs << record_data.dump(4);
+        ofs.close();
+        
+        LOG(INFO) << "Recorded installation info for package: " << package_name;
+        Paker::Output::success("Recorded installation info for package: " + package_name);
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Failed to write installation record file: " << e.what();
+        Paker::Output::error("Failed to record installation info");
+    }
+}
+
+// Remove installation record
+void remove_installation_record(const std::string& package_name) {
+    fs::path record_dir = ".paker/record";
+    std::string record_file = record_dir.string() + "/Record_Installing.json";
+    
+    if (!fs::exists(record_file)) {
+        Paker::Output::warning("Installation record file does not exist");
+        return;
+    }
+    
+    try {
+        json record_data;
+        std::ifstream ifs(record_file);
+        ifs >> record_data;
+        ifs.close();
+        
+        if (record_data.contains(package_name)) {
+            record_data.erase(package_name);
+            
+            std::ofstream ofs(record_file);
+            ofs << record_data.dump(4);
+            ofs.close();
+            
+            LOG(INFO) << "Removed installation record for package: " << package_name;
+            Paker::Output::success("Removed installation record for package: " + package_name);
+        } else {
+            Paker::Output::warning("Installation record not found for package: " + package_name);
+        }
+    } catch (const std::exception& e) {
+        LOG(ERROR) << "Failed to remove installation record: " << e.what();
+        Paker::Output::error("Failed to remove installation record");
+    }
+}
+
+// Main install command implementation
+void pm_install(const std::string& package) {
+    LOG(INFO) << "Starting package installation: " << package;
+    Paker::Output::info("Starting package installation: " + package);
+    
+    // Check if package exists - use standard packages/ directory
+    std::string package_path = "packages/" + package;
+    if (!fs::exists(package_path)) {
+        Paker::Output::error("Package not found: " + package + ", please use 'Paker add' to download first");
+        Paker::Output::info("Checked path: " + package_path);
+        return;
+    }
+    
+    Paker::Output::info("Found package path: " + package_path);
+    
+    // Detect build system
+    BuildSystem build_system = detect_build_system(package_path);
+    if (build_system == BuildSystem::UNKNOWN) {
+        Paker::Output::error("Unable to detect supported build system");
+        return;
+    }
+    
+    std::string build_system_name;
+    switch (build_system) {
+        case BuildSystem::CMAKE: build_system_name = "CMake"; break;
+        case BuildSystem::MESON: build_system_name = "Meson"; break;
+        case BuildSystem::NINJA: build_system_name = "Ninja"; break;
+        case BuildSystem::MAKE: build_system_name = "Make"; break;
+        case BuildSystem::AUTOTOOLS: build_system_name = "Autotools"; break;
+        default: build_system_name = "Unknown"; break;
+    }
+    
+    Paker::Output::info("Detected build system: " + build_system_name);
+    
+    // Build and install package
+    if (!build_and_install_package(package_path, package, build_system)) {
+        Paker::Output::error("Package installation failed: " + package);
+        return;
+    }
+    
+    // Collect installed files from package install directory
+    std::string install_path = package_path + "/install";
+    std::vector<std::string> package_files = collect_installed_files(install_path);
+    
+    // Install to system and get system file paths
+    std::vector<std::string> system_files = install_to_system_and_get_files(install_path, package, package_files);
+    if (system_files.empty()) {
+        Paker::Output::error("System installation failed: " + package);
+        return;
+    }
+    
+    // Get system install directory for recording
+    std::string system_install_dir;
+    const char* home_dir = std::getenv("HOME");
+    if (home_dir) {
+        system_install_dir = std::string(home_dir) + "/.local";
+    } else {
+        system_install_dir = ".local";
+    }
+    
+    // Record installation information with system paths
+    record_installation(package, system_install_dir, system_files);
+    
+    Paker::Output::success("Package " + package + " installed successfully (" + std::to_string(system_files.size()) + " files)");
+}
+
+// Parallel install command implementation
+void pm_install_parallel(const std::vector<std::string>& packages) {
+    if (packages.empty()) {
+        Paker::Output::warning("No packages specified for installation");
+        return;
+    }
+    
+    LOG(INFO) << "Starting parallel installation of " << packages.size() << " packages";
+    Paker::Output::info("Starting parallel installation of " + std::to_string(packages.size()) + " packages");
+    
+    // Initialize parallel executor
+    if (!Paker::g_parallel_executor) {
+        if (!Paker::initialize_parallel_executor()) {
+            Paker::Output::error("Failed to initialize parallel executor");
+            return;
+        }
+    }
+    
+    std::vector<std::string> task_ids;
+    
+    // Create installation tasks for each package
+    for (const auto& package : packages) {
+        // Check if package exists - use standard packages/ directory
+        std::string package_path = "packages/" + package;
+        if (!fs::exists(package_path)) {
+            Paker::Output::warning("Package not found: " + package + ", skipping");
+            continue;
+        }
+        
+        // Create installation task
+        auto install_task = std::make_shared<Paker::Task>(
+            "install_" + package + "_" + std::to_string(std::time(nullptr)),
+            Paker::TaskType::INSTALL,
+            package
+        );
+        
+        // Set task function
+        install_task->task_function = [package]() -> bool {
+            try {
+                pm_install(package);
+                return true;
+            } catch (...) {
+                return false;
+            }
+        };
+        
+        std::string task_id = Paker::g_parallel_executor->submit_task(install_task);
+        if (!task_id.empty()) {
+            task_ids.push_back(task_id);
+        }
+    }
+    
+    // Wait for all tasks to complete
+    bool all_success = true;
+    for (const auto& task_id : task_ids) {
+        if (!Paker::g_parallel_executor->wait_for_task(task_id, std::chrono::minutes(30))) {
+            Paker::Output::error("Installation task failed or timed out: " + task_id);
+            all_success = false;
+        }
+    }
+    
+    if (all_success) {
+        Paker::Output::success("All packages installed successfully");
+    } else {
+        Paker::Output::error("Some packages failed to install");
+    }
+}
+
+// Uninstall command implementation
+void pm_uninstall(const std::string& package) {
+    LOG(INFO) << "Starting package uninstallation: " << package;
+    Paker::Output::info("Starting package uninstallation: " + package);
+    
+    // Read installation record
+    fs::path record_dir = ".paker/record";
+    std::string record_file = record_dir.string() + "/Record_Installing.json";
+    
+    if (!fs::exists(record_file)) {
+        Paker::Output::warning("Installation record file not found");
+        return;
+    }
+    
+    json record_data;
+    try {
+        std::ifstream ifs(record_file);
+        ifs >> record_data;
+        ifs.close();
+    } catch (const std::exception& e) {
+        Paker::Output::error("Failed to read installation record file");
+        return;
+    }
+    
+    if (!record_data.contains(package)) {
+        Paker::Output::warning("Installation record not found for package: " + package);
+        return;
+    }
+    
+    // Get installed files list
+    auto package_record = record_data[package];
+    if (!package_record.contains("installed_files")) {
+        Paker::Output::warning("Incomplete installation record for package: " + package);
+        return;
+    }
+    
+    std::vector<std::string> installed_files = package_record["installed_files"];
+    
+    // Delete installed files
+    int deleted_count = 0;
+    for (const auto& file : installed_files) {
+        if (fs::exists(file)) {
+            try {
+                fs::remove(file);
+                deleted_count++;
+                LOG(INFO) << "Deleted file: " << file;
+            } catch (const std::exception& e) {
+                LOG(WARNING) << "Failed to delete file: " << file << " - " << e.what();
+            }
+        }
+    }
+    
+    // Delete install directory
+    if (package_record.contains("install_path")) {
+        std::string install_path = package_record["install_path"];
+        if (fs::exists(install_path)) {
+            try {
+                fs::remove_all(install_path);
+                LOG(INFO) << "Deleted install directory: " << install_path;
+            } catch (const std::exception& e) {
+                LOG(WARNING) << "Failed to delete install directory: " << install_path << " - " << e.what();
+            }
+        }
+    }
+    
+    // Remove installation record
+    remove_installation_record(package);
+    
+    Paker::Output::success("Package " + package + " uninstalled successfully (deleted " + std::to_string(deleted_count) + " files)");
 } 

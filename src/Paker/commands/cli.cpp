@@ -184,6 +184,33 @@ int run_cli(int argc, char* argv[]) {
         pm_clean();
     });
 
+    // install
+    std::string install_pkg;
+    auto install = app.add_subcommand("install", "Compile and install package to system");
+    install->group("Core Package Management");
+    install->add_option("package", install_pkg, "Package name to install")->required();
+    install->callback([&]() {
+        pm_install(install_pkg);
+    });
+
+    // install-p (parallel install)
+    std::vector<std::string> install_parallel_pkgs;
+    auto install_parallel = app.add_subcommand("install-p", "Parallel compile and install packages");
+    install_parallel->group("Core Package Management");
+    install_parallel->add_option("packages", install_parallel_pkgs, "Package names to install in parallel")->required();
+    install_parallel->callback([&]() {
+        pm_install_parallel(install_parallel_pkgs);
+    });
+
+    // uninstall
+    std::string uninstall_pkg;
+    auto uninstall = app.add_subcommand("uninstall", "Uninstall package from system");
+    uninstall->group("Core Package Management");
+    uninstall->add_option("package", uninstall_pkg, "Package name to uninstall")->required();
+    uninstall->callback([&]() {
+        pm_uninstall(uninstall_pkg);
+    });
+
     // ============================================================================
     // 2. 依赖锁定命令 (Dependency Locking)
     // ============================================================================
