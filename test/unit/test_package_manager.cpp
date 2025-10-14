@@ -53,8 +53,8 @@ TEST_F(PakerTest, ListDependency) {
 TEST_F(PakerTest, LockFileGeneration) {
     pm_add("fmt");
     pm_lock();
-    ASSERT_TRUE(fs::exists("Paker.lock"));
-    std::ifstream ifs("Paker.lock");
+    ASSERT_TRUE(fs::exists(".paker/lock/Paker.lock"));
+    std::ifstream ifs(".paker/lock/Paker.lock");
     std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
     ASSERT_NE(content.find("fmt"), std::string::npos);
 }
