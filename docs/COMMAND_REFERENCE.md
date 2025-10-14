@@ -19,6 +19,9 @@ Paker采用8个核心命令组，每个命令组包含相关的子命令，让�
 | `search <keyword>` | 搜索依赖包 | `Paker search fmt` |
 | `info <package>` | 查看包信息 | `Paker info fmt` |
 | `clean` | 清理未使用的包 | `Paker clean` |
+| `install <package>` | 编译并安装包到系统 | `Paker install fmt` |
+| `install-p <pkg1> <pkg2>...` | 并行编译并安装多个包 | `Paker install-p fmt spdlog` |
+| `uninstall <package>` | 卸载已安装的包 | `Paker uninstall fmt` |
 
 ### 2. 依赖锁定命令 (Dependency Locking)
 
