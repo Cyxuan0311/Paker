@@ -510,42 +510,59 @@ void ProjectTypeConfig::initialize_project_indicators() {
         "pub_sub", "publish_subscribe", "producer", "consumer", "broker", "topic"
     };
     
-    // 包管理器关键词（新增）
+    // 包管理器关键词（增强版）
     project_indicators_["package_manager"] = {
-        // 包管理概念
+        // 包管理核心概念（最高权重）
         "package_manager", "package", "dependency", "dependency_management", "resolve",
         "install", "uninstall", "update", "upgrade", "downgrade", "version", "semver",
         "semantic_versioning", "lock_file", "lockfile", "manifest", "metadata",
+        "paker", "paker.json", "pakerfile", "Paker.json", "Pakerfile",
         
-        // 包管理器
+        // 包管理器名称（高权重）
         "npm", "yarn", "pnpm", "pip", "conda", "mamba", "apt", "yum", "dnf", "pacman",
         "brew", "portage", "pkg", "pkg_add", "pkg_install", "vcpkg", "conan", "hunter",
         "cget", "build2", "xmake", "meson", "cmake", "bazel", "buck", "pants",
+        "cargo", "go_mod", "composer", "bundler", "gem", "pub", "cocoapods",
         
-        // 包格式
+        // 包格式（高权重）
         "wheel", "egg", "tar", "gz", "zip", "deb", "rpm", "msi", "dmg", "pkg", "apk",
         "snap", "flatpak", "appimage", "nix", "guix", "spack", "easybuild",
         
-        // 依赖解析
+        // 依赖解析（高权重）
         "dependency_resolution", "conflict_resolution", "transitive_dependency",
         "direct_dependency", "indirect_dependency", "peer_dependency", "dev_dependency",
         "optional_dependency", "bundled_dependency", "system_dependency",
+        "resolve_dependencies", "find_package", "add_dependency", "remove_dependency",
         
-        // 版本控制
+        // 版本控制（高权重）
         "version_constraint", "version_range", "caret", "tilde", "exact_version",
         "latest", "stable", "beta", "alpha", "rc", "release_candidate", "pre_release",
+        "version_control", "version_management", "semantic_versioning",
         
-        // 仓库管理
+        // 仓库管理（高权重）
         "repository", "registry", "index", "mirror", "cache", "local_cache", "remote",
         "private_registry", "public_registry", "organization", "scope", "namespace",
+        "package_registry", "package_repository", "package_index",
         
-        // 安全
+        // 安全（中权重）
         "security_audit", "vulnerability_scan", "license_check", "compliance",
         "signed_package", "checksum", "hash", "integrity", "authenticity", "trust",
+        "package_security", "vulnerability_assessment",
         
-        // 构建集成
+        // 构建集成（中权重）
         "build_system", "cmake", "make", "ninja", "msbuild", "gradle", "maven",
-        "sbt", "cargo", "go_mod", "composer", "bundler", "gem", "pub", "cocoapods"
+        "sbt", "cargo", "go_mod", "composer", "bundler", "gem", "pub", "cocoapods",
+        
+        // 包管理器特有功能（最高权重）
+        "install_package", "uninstall_package", "list_packages", "search_packages",
+        "package_info", "package_metadata", "package_dependencies", "package_conflicts",
+        "package_versions", "package_updates", "package_removal", "package_installation",
+        "pm", "pkg_mgr", "pkg_manager", "package_mgr", "package_manager_tool",
+        
+        // 包管理器类和方法（最高权重）
+        "PackageManager", "Paker", "Dependency", "Registry", "Package", "Installer",
+        "package_manager::", "paker::", "namespace Paker", "class Paker",
+        "class PackageManager", "class Dependency", "class Registry", "class Package"
     };
     
     // 终端工具关键词（新增）

@@ -68,6 +68,30 @@ std::string ProjectAnalyzer::detect_project_type(const std::string& project_path
     // 1. 基于文件结构的深度分析
     std::filesystem::path path(project_path);
     
+    // 包管理器项目检测（最高优先级）
+    if (file_exists(path / "src" / "package_manager.cpp") || file_exists(path / "package_manager.cpp") ||
+        file_exists(path / "src" / "paker.cpp") || file_exists(path / "paker.cpp") ||
+        file_exists(path / "src" / "dependency.cpp") || file_exists(path / "dependency.cpp") ||
+        file_exists(path / "src" / "registry.cpp") || file_exists(path / "registry.cpp") ||
+        file_exists(path / "src" / "installer.cpp") || file_exists(path / "installer.cpp") ||
+        file_exists(path / "src" / "pm.cpp") || file_exists(path / "pm.cpp")) {
+        type_scores["package_manager"] += 10.0; // 最高权重
+    }
+    
+    // 检查包管理器特有的文件
+    if (file_exists(path / "Paker.json") || file_exists(path / "paker.json") ||
+        file_exists(path / "Pakerfile") || file_exists(path / "pakerfile") ||
+        file_exists(path / "package.json") || file_exists(path / "Cargo.toml") ||
+        file_exists(path / "requirements.txt") || file_exists(path / "composer.json")) {
+        type_scores["package_manager"] += 8.0; // 高权重
+    }
+    
+    // 检查包管理器目录结构
+    if (file_exists(path / "packages") || file_exists(path / "registry") ||
+        file_exists(path / "cache") || file_exists(path / "lockfiles")) {
+        type_scores["package_manager"] += 6.0;
+    }
+    
     // 检查常见的项目结构模式
     if (file_exists(path / "src" / "main.cpp") || file_exists(path / "main.cpp")) {
         type_scores["desktop_application"] += 3.0;
@@ -87,6 +111,24 @@ std::string ProjectAnalyzer::detect_project_type(const std::string& project_path
     if (file_exists(path / "src" / "compute.cpp") || file_exists(path / "compute.cpp") ||
         file_exists(path / "src" / "math.cpp") || file_exists(path / "math.cpp")) {
         type_scores["scientific_computing"] += 4.0;
+    }
+    
+    // 新增：检查更多项目类型
+    if (file_exists(path / "src" / "embedded.cpp") || file_exists(path / "embedded.cpp") ||
+        file_exists(path / "src" / "firmware.cpp") || file_exists(path / "firmware.cpp")) {
+        type_scores["embedded_system"] += 4.0;
+    }
+    if (file_exists(path / "src" / "blockchain.cpp") || file_exists(path / "blockchain.cpp") ||
+        file_exists(path / "src" / "crypto.cpp") || file_exists(path / "crypto.cpp")) {
+        type_scores["blockchain"] += 4.0;
+    }
+    if (file_exists(path / "src" / "database.cpp") || file_exists(path / "database.cpp") ||
+        file_exists(path / "src" / "storage.cpp") || file_exists(path / "storage.cpp")) {
+        type_scores["database"] += 4.0;
+    }
+    if (file_exists(path / "src" / "network.cpp") || file_exists(path / "network.cpp") ||
+        file_exists(path / "src" / "socket.cpp") || file_exists(path / "socket.cpp")) {
+        type_scores["networking"] += 4.0;
     }
     
     // 2. 基于CMakeLists.txt的深度分析
@@ -126,6 +168,60 @@ std::string ProjectAnalyzer::detect_project_type(const std::string& project_path
             cmake_content.find("find_package(mbed") != std::string::npos) {
             type_scores["embedded_system"] += 10.0;
         }
+        
+        // 新增：检查更多项目类型的CMake包
+        if (cmake_content.find("find_package(OpenSSL") != std::string::npos ||
+            cmake_content.find("find_package(CryptoPP") != std::string::npos ||
+            cmake_content.find("find_package(libsecp256k1") != std::string::npos) {
+            type_scores["blockchain"] += 10.0;
+        }
+        if (cmake_content.find("find_package(SQLite3") != std::string::npos ||
+            cmake_content.find("find_package(MySQL") != std::string::npos ||
+            cmake_content.find("find_package(PostgreSQL") != std::string::npos) {
+            type_scores["database"] += 10.0;
+        }
+        if (cmake_content.find("find_package(libuv") != std::string::npos ||
+            cmake_content.find("find_package(Asio") != std::string::npos ||
+            cmake_content.find("find_package(libevent") != std::string::npos) {
+            type_scores["networking"] += 10.0;
+        }
+        
+        // 检查包管理器特有的CMake内容
+        if (cmake_content.find("package_manager") != std::string::npos ||
+            cmake_content.find("dependency") != std::string::npos ||
+            cmake_content.find("registry") != std::string::npos ||
+            cmake_content.find("install") != std::string::npos ||
+            cmake_content.find("uninstall") != std::string::npos) {
+            type_scores["package_manager"] += 8.0; // 高权重
+        }
+        
+        // 检查项目名称和描述
+        if (cmake_content.find("project(") != std::string::npos) {
+            // 提取项目名称进行分析
+            size_t project_start = cmake_content.find("project(");
+            size_t project_end = cmake_content.find(")", project_start);
+            if (project_start != std::string::npos && project_end != std::string::npos) {
+                std::string project_name = cmake_content.substr(project_start + 8, project_end - project_start - 8);
+                std::transform(project_name.begin(), project_name.end(), project_name.begin(), ::tolower);
+                
+                // 包管理器项目名称检测（最高优先级）
+                if (project_name.find("paker") != std::string::npos || project_name.find("package") != std::string::npos ||
+                    project_name.find("pm") != std::string::npos || project_name.find("pkg") != std::string::npos ||
+                    project_name.find("manager") != std::string::npos) {
+                    type_scores["package_manager"] += 10.0; // 最高权重
+                } else if (project_name.find("web") != std::string::npos || project_name.find("server") != std::string::npos) {
+                    type_scores["web_application"] += 5.0;
+                } else if (project_name.find("game") != std::string::npos || project_name.find("engine") != std::string::npos) {
+                    type_scores["game_engine"] += 5.0;
+                } else if (project_name.find("ml") != std::string::npos || project_name.find("ai") != std::string::npos) {
+                    type_scores["machine_learning"] += 5.0;
+                } else if (project_name.find("sci") != std::string::npos || project_name.find("math") != std::string::npos) {
+                    type_scores["scientific_computing"] += 5.0;
+                } else if (project_name.find("embedded") != std::string::npos || project_name.find("firmware") != std::string::npos) {
+                    type_scores["embedded_system"] += 5.0;
+                }
+            }
+        }
     }
     
     // 3. 基于源代码内容的深度分析（使用配置系统）
@@ -142,45 +238,136 @@ std::string ProjectAnalyzer::detect_project_type(const std::string& project_path
                 pos += indicator.length();
             }
             
-            // 根据关键词重要性加权
+            // 根据关键词重要性和上下文加权（更智能的权重分配）
             double weight = 1.0;
-            if (indicator == "qt" || indicator == "gtk" || indicator == "wxwidgets") weight = 4.0;
-            else if (indicator == "opengl" || indicator == "vulkan" || indicator == "sdl") weight = 4.0;
-            else if (indicator == "boost-beast" || indicator == "crow" || indicator == "http") weight = 4.0;
-            else if (indicator == "eigen" || indicator == "armadillo" || indicator == "gsl") weight = 4.0;
-            else if (indicator == "opencv" || indicator == "tensorflow" || indicator == "pytorch") weight = 5.0;
-            else if (indicator == "freertos" || indicator == "zephyr" || indicator == "mbed") weight = 4.0;
+            
+            // GUI框架权重
+            if (indicator == "qt" || indicator == "gtk" || indicator == "wxwidgets" || 
+                indicator == "imgui" || indicator == "nuklear") {
+                weight = 5.0;
+            }
+            // 图形API权重
+            else if (indicator == "opengl" || indicator == "vulkan" || indicator == "sdl" ||
+                     indicator == "sfml" || indicator == "directx") {
+                weight = 5.0;
+            }
+            // Web框架权重
+            else if (indicator == "boost-beast" || indicator == "crow" || indicator == "http" ||
+                     indicator == "cpp-httplib" || indicator == "pistache") {
+                weight = 5.0;
+            }
+            // 数学库权重
+            else if (indicator == "eigen" || indicator == "armadillo" || indicator == "gsl" ||
+                     indicator == "blas" || indicator == "lapack") {
+                weight = 4.0;
+            }
+            // 机器学习权重
+            else if (indicator == "opencv" || indicator == "tensorflow" || indicator == "pytorch" ||
+                     indicator == "keras" || indicator == "scikit-learn") {
+                weight = 6.0;
+            }
+            // 嵌入式系统权重
+            else if (indicator == "freertos" || indicator == "zephyr" || indicator == "mbed" ||
+                     indicator == "stm32" || indicator == "arduino") {
+                weight = 5.0;
+            }
+            // 区块链权重
+            else if (indicator == "bitcoin" || indicator == "ethereum" || indicator == "crypto" ||
+                     indicator == "blockchain" || indicator == "secp256k1") {
+                weight = 6.0;
+            }
+            // 数据库权重
+            else if (indicator == "sqlite" || indicator == "mysql" || indicator == "postgresql" ||
+                     indicator == "mongodb" || indicator == "redis") {
+                weight = 5.0;
+            }
+            // 网络编程权重
+            else if (indicator == "socket" || indicator == "tcp" || indicator == "udp" ||
+                      indicator == "libuv" || indicator == "asio") {
+                weight = 4.0;
+            }
+            // 包管理器权重（最高优先级）
+            else if (indicator == "package_manager" || indicator == "paker" || indicator == "dependency" ||
+                      indicator == "registry" || indicator == "install" || indicator == "uninstall" ||
+                      indicator == "package" || indicator == "pm" || indicator == "pkg_mgr") {
+                weight = 10.0; // 最高权重
+            }
+            
+            // 基于出现频率的额外加权
+            if (count > 5) {
+                weight *= 1.5; // 高频关键词额外加权
+            } else if (count > 2) {
+                weight *= 1.2; // 中频关键词适度加权
+            }
             
             score += count * weight;
         }
         type_scores[type] += score;
     }
     
-    // 4. 基于包含文件的深度分析
+    // 4. 基于包含文件的深度分析（增强版）
     if (content.find("#include <QApplication>") != std::string::npos ||
         content.find("#include <QWidget>") != std::string::npos ||
-        content.find("#include <QMainWindow>") != std::string::npos) {
+        content.find("#include <QMainWindow>") != std::string::npos ||
+        content.find("#include <gtkmm/") != std::string::npos ||
+        content.find("#include <wx/") != std::string::npos) {
         type_scores["desktop_application"] += 6.0;
     }
     if (content.find("#include <GL/gl.h>") != std::string::npos ||
         content.find("#include <vulkan/vulkan.h>") != std::string::npos ||
-        content.find("#include <SDL2/SDL.h>") != std::string::npos) {
+        content.find("#include <SDL2/SDL.h>") != std::string::npos ||
+        content.find("#include <SFML/") != std::string::npos ||
+        content.find("#include <GLFW/") != std::string::npos) {
         type_scores["game_engine"] += 6.0;
     }
     if (content.find("#include <opencv2/opencv.hpp>") != std::string::npos ||
         content.find("#include <tensorflow/") != std::string::npos ||
-        content.find("#include <torch/") != std::string::npos) {
+        content.find("#include <torch/") != std::string::npos ||
+        content.find("#include <pytorch/") != std::string::npos ||
+        content.find("#include <keras/") != std::string::npos) {
         type_scores["machine_learning"] += 6.0;
     }
     if (content.find("#include <eigen3/Eigen/") != std::string::npos ||
         content.find("#include <armadillo>") != std::string::npos ||
-        content.find("#include <gsl/gsl_") != std::string::npos) {
+        content.find("#include <gsl/gsl_") != std::string::npos ||
+        content.find("#include <blas/") != std::string::npos ||
+        content.find("#include <lapack/") != std::string::npos) {
         type_scores["scientific_computing"] += 6.0;
     }
     if (content.find("#include <freertos/") != std::string::npos ||
         content.find("#include <zephyr/") != std::string::npos ||
-        content.find("#include <mbed.h>") != std::string::npos) {
+        content.find("#include <mbed.h>") != std::string::npos ||
+        content.find("#include <stm32/") != std::string::npos ||
+        content.find("#include <arduino.h>") != std::string::npos) {
         type_scores["embedded_system"] += 6.0;
+    }
+    
+    // 新增：更多项目类型的包含文件检测
+    if (content.find("#include <openssl/") != std::string::npos ||
+        content.find("#include <cryptopp/") != std::string::npos ||
+        content.find("#include <secp256k1.h>") != std::string::npos) {
+        type_scores["blockchain"] += 6.0;
+    }
+    if (content.find("#include <sqlite3.h>") != std::string::npos ||
+        content.find("#include <mysql/") != std::string::npos ||
+        content.find("#include <postgresql/") != std::string::npos ||
+        content.find("#include <mongocxx/") != std::string::npos) {
+        type_scores["database"] += 6.0;
+    }
+    if (content.find("#include <libuv/") != std::string::npos ||
+        content.find("#include <asio/") != std::string::npos ||
+        content.find("#include <libevent/") != std::string::npos ||
+        content.find("#include <boost/asio/") != std::string::npos) {
+        type_scores["networking"] += 6.0;
+    }
+    
+    // 包管理器包含文件检测（最高优先级）
+    if (content.find("#include <package_manager/") != std::string::npos ||
+        content.find("#include <paker/") != std::string::npos ||
+        content.find("#include <dependency/") != std::string::npos ||
+        content.find("#include <registry/") != std::string::npos ||
+        content.find("#include <package/") != std::string::npos) {
+        type_scores["package_manager"] += 10.0; // 最高权重
     }
     
     // 5. 基于函数调用的深度分析
@@ -210,6 +397,20 @@ std::string ProjectAnalyzer::detect_project_type(const std::string& project_path
         type_scores["embedded_system"] += 4.0;
     }
     
+    // 包管理器函数调用检测（最高优先级）
+    if (content.find("install_package") != std::string::npos ||
+        content.find("uninstall_package") != std::string::npos ||
+        content.find("resolve_dependencies") != std::string::npos ||
+        content.find("find_package") != std::string::npos ||
+        content.find("add_dependency") != std::string::npos ||
+        content.find("remove_dependency") != std::string::npos ||
+        content.find("update_package") != std::string::npos ||
+        content.find("list_packages") != std::string::npos ||
+        content.find("paker::") != std::string::npos ||
+        content.find("PackageManager") != std::string::npos) {
+        type_scores["package_manager"] += 8.0; // 最高权重
+    }
+    
     // 6. 基于类名和命名空间的深度分析
     if (content.find("class Q") != std::string::npos ||
         content.find("namespace Qt") != std::string::npos) {
@@ -231,25 +432,83 @@ std::string ProjectAnalyzer::detect_project_type(const std::string& project_path
         type_scores["scientific_computing"] += 3.0;
     }
     
-    // 返回得分最高的类型，提高检测精度
+    // 包管理器类名检测（最高优先级）
+    if (content.find("class PackageManager") != std::string::npos ||
+        content.find("class Paker") != std::string::npos ||
+        content.find("class Dependency") != std::string::npos ||
+        content.find("class Registry") != std::string::npos ||
+        content.find("class Package") != std::string::npos ||
+        content.find("namespace Paker") != std::string::npos ||
+        content.find("namespace PackageManager") != std::string::npos) {
+        type_scores["package_manager"] += 10.0; // 最高权重
+    }
+    
+    // 返回得分最高的类型，提高检测精度（智能算法）
     auto max_type = std::max_element(type_scores.begin(), type_scores.end(),
         [](const auto& a, const auto& b) { return a.second < b.second; });
     
-    // 提高检测阈值，确保更准确的类型识别
-    if (max_type->second > 5.0) {
+    // 智能检测阈值，考虑多个因素
+    double confidence_threshold = 8.0;  // 提高置信度阈值
+    double secondary_threshold = 5.0;   // 次要阈值
+    
+    // 包管理器特殊处理（最高优先级）
+    if (max_type->first == "package_manager" && max_type->second > 5.0) {
+        return "package_manager"; // 包管理器项目优先识别
+    }
+    
+    if (max_type->second > confidence_threshold) {
+        // 高置信度，直接返回
         return max_type->first;
-    } else if (max_type->second > 3.0) {
-        // 如果得分不够高，尝试基于文件结构进一步分析
+    } else if (max_type->second > secondary_threshold) {
+        // 中等置信度，进行二次验证
         std::filesystem::path path(project_path);
+        
+        // 检查是否有明确的构建系统指示
+        if (file_exists(path / "CMakeLists.txt")) {
+            // 基于CMake进一步分析
+            std::string cmake_content = read_file_content(path / "CMakeLists.txt");
+            if (cmake_content.find("find_package") != std::string::npos) {
+                return max_type->first; // 有明确的包依赖，返回检测结果
+            }
+            return "cmake_project";
+        } else if (file_exists(path / "Makefile")) {
+            return "make_project";
+        } else if (file_exists(path / "meson.build")) {
+            return "meson_project";
+        } else if (file_exists(path / "conanfile.txt") || file_exists(path / "conanfile.py")) {
+            return "conan_project";
+        } else if (file_exists(path / "vcpkg.json")) {
+            return "vcpkg_project";
+        }
+        
+        // 如果检测到明确的代码模式，仍然返回检测结果
+        if (max_type->second > 6.0) {
+            return max_type->first;
+        }
+        
+        return "general";
+    } else {
+        // 低置信度，基于文件结构进行基础分类
+        std::filesystem::path path(project_path);
+        
+        // 检查是否有任何构建文件
         if (file_exists(path / "CMakeLists.txt")) {
             return "cmake_project";
         } else if (file_exists(path / "Makefile")) {
             return "make_project";
         } else if (file_exists(path / "meson.build")) {
             return "meson_project";
+        } else if (file_exists(path / "conanfile.txt") || file_exists(path / "conanfile.py")) {
+            return "conan_project";
+        } else if (file_exists(path / "vcpkg.json")) {
+            return "vcpkg_project";
         }
-        return "general";
-    } else {
+        
+        // 检查是否有源代码文件
+        if (!source_files.empty()) {
+            return "cpp_project";
+        }
+        
         return "general";
     }
 }
@@ -583,15 +842,32 @@ std::string ProjectAnalyzer::make_github_request(const std::string& url) {
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "Paker-Package-Manager/1.0");
         
+        // 设置超时和重试
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 3L);
+        
         // 添加认证头
         if (github_token_) {
             std::string auth_header = "Authorization: token " + std::string(github_token_);
             struct curl_slist* headers = nullptr;
             headers = curl_slist_append(headers, auth_header.c_str());
+            headers = curl_slist_append(headers, "Accept: application/vnd.github.v3+json");
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         }
         
         res = curl_easy_perform(curl);
+        
+        // 检查HTTP状态码
+        long http_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        
+        if (res != CURLE_OK || http_code != 200) {
+            // 静默处理GitHub API请求失败，不显示警告信息
+            response.clear();
+        }
+        
         curl_easy_cleanup(curl);
     }
     
@@ -1190,9 +1466,51 @@ GitHubPackageInfo ProjectAnalyzer::get_github_package_info(const std::string& pa
             // 如果API调用失败，使用默认信息
         }
     } else {
-        // 如果不在已知列表中，使用搜索
-        info.github_url = "https://github.com/search?q=" + package_name + "+language%3AC%2B%2B&s=stars&o=desc";
-        info.description = "C++ library found on GitHub";
+        // 如果不在已知列表中，尝试通过GitHub搜索API获取信息
+        try {
+            std::string search_url = github_api_base_ + "/search/repositories?q=" + package_name + "+language:C++&sort=stars&order=desc&per_page=1";
+            std::string response = make_github_request(search_url);
+            
+            if (!response.empty() && response.find("\"items\"") != std::string::npos) {
+                // 解析搜索结果
+                if (response.find("\"full_name\"") != std::string::npos) {
+                    // 提取仓库全名
+                    size_t start = response.find("\"full_name\":\"") + 13;
+                    size_t end = response.find("\"", start);
+                    if (start != std::string::npos && end != std::string::npos) {
+                        info.full_name = response.substr(start, end - start);
+                        info.github_url = "https://github.com/" + info.full_name;
+                        info.found = true;
+                    }
+                }
+                
+                if (response.find("\"description\"") != std::string::npos) {
+                    // 提取描述
+                    size_t start = response.find("\"description\":\"") + 15;
+                    size_t end = response.find("\"", start);
+                    if (start != std::string::npos && end != std::string::npos) {
+                        info.description = response.substr(start, end - start);
+                    }
+                }
+                
+                if (response.find("\"stargazers_count\"") != std::string::npos) {
+                    // 提取星标数
+                    size_t start = response.find("\"stargazers_count\":") + 19;
+                    size_t end = response.find(",", start);
+                    if (start != std::string::npos && end != std::string::npos) {
+                        std::string stars_str = response.substr(start, end - start);
+                        info.stars = std::stoi(stars_str);
+                    }
+                }
+            }
+        } catch (...) {
+            // 如果搜索失败，使用默认信息
+        }
+        
+        if (!info.found) {
+            info.github_url = "https://github.com/search?q=" + package_name + "+language%3AC%2B%2B&s=stars&o=desc";
+            info.description = "C++ library found on GitHub";
+        }
     }
     
     return info;
