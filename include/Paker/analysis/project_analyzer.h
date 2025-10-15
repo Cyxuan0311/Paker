@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <filesystem>
+#include <chrono>
 #include "Paker/analysis/project_type_config.h"
 
 namespace Paker {
@@ -319,6 +320,11 @@ private:
     // GitHub API相关
     std::string github_api_base_;
     const char* github_token_;
+    
+    // 缓存相关
+    bool cache_enabled_;
+    std::chrono::steady_clock::duration cache_duration_;
+    std::map<size_t, std::pair<std::chrono::steady_clock::time_point, ProjectAnalysis>> analysis_cache_;
 };
 
 } // namespace Analysis
