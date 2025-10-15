@@ -83,17 +83,17 @@ void display_project_analysis(const Analysis::ProjectAnalysis& analysis, bool de
     
     std::cout << top_border << std::endl;
     std::cout << "| " << std::setw(LABEL_WIDTH) << std::left << "Project Type"
-              << " | " << std::setw(VALUE_WIDTH) << std::left << analysis.project_type << " |" << std::endl;
+              << "| " << std::setw(VALUE_WIDTH) << std::left << analysis.project_type << "|" << std::endl;
     std::cout << "| " << std::setw(LABEL_WIDTH) << std::left << "Build System"
-              << " | " << std::setw(VALUE_WIDTH) << std::left << analysis.build_system << " |" << std::endl;
+              << "| " << std::setw(VALUE_WIDTH) << std::left << analysis.build_system << "|" << std::endl;
     std::cout << "| " << std::setw(LABEL_WIDTH) << std::left << "C++ Standard"
-              << " | " << std::setw(VALUE_WIDTH) << std::left << analysis.cpp_standard << " |" << std::endl;
+              << "| " << std::setw(VALUE_WIDTH) << std::left << analysis.cpp_standard << "|" << std::endl;
     std::cout << "| " << std::setw(LABEL_WIDTH) << std::left << "Performance"
-              << " | " << std::setw(VALUE_WIDTH) << std::left << analysis.performance_requirements << " |" << std::endl;
+              << "| " << std::setw(VALUE_WIDTH) << std::left << analysis.performance_requirements << "|" << std::endl;
     std::cout << "| " << std::setw(LABEL_WIDTH) << std::left << "Security"
-              << " | " << std::setw(VALUE_WIDTH) << std::left << analysis.security_requirements << " |" << std::endl;
+              << "| " << std::setw(VALUE_WIDTH) << std::left << analysis.security_requirements << "|" << std::endl;
     std::cout << "| " << std::setw(LABEL_WIDTH) << std::left << "Testing"
-              << " | " << std::setw(VALUE_WIDTH) << std::left << analysis.testing_requirements << " |" << std::endl;
+              << "| " << std::setw(VALUE_WIDTH) << std::left << analysis.testing_requirements << "|" << std::endl;
     std::cout << bottom_border << std::endl;
     
     if (detailed) {
